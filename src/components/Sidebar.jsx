@@ -15,19 +15,20 @@ import {
 } from 'lucide-react';
 
 const Sidebar = () => {
+    const location = useLocation();
     const menuItems = [
-        { icon: <LayoutDashboard size={20} />, label: 'Dashboard', active: true },
-        { icon: <Users size={20} />, label: 'Employees' },
-        { icon: <CalendarCheck size={20} />, label: 'Attendance' },
-        { icon: <ClipboardList size={20} />, label: 'Leave Requests' },
-        { icon: <CreditCard size={20} />, label: 'Payroll' },
-        { icon: <Briefcase size={20} />, label: 'Projects' },
-        { icon: <BarChart3 size={20} />, label: 'Analytics' },
-        { icon: <Files size={20} />, label: 'Documents' },
-        { icon: <Mail size={20} />, label: 'Offer Letters' },
-        { icon: <History size={20} />, label: 'Audit Logs' },
-        { icon: <MessageSquare size={20} />, label: 'Complaints' },
-        { icon: <Settings size={20} />, label: 'Settings' },
+        { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/hr/dashboard' },
+        { icon: <Users size={20} />, label: 'Employees', path: '/hr/employees' },
+        { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/hr/attendance' },
+        { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leave-requests' },
+        { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
+        { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
+        { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
+        { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
+        { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
+        { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
+        { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
+        { icon: <Settings size={20} />, label: 'Settings', path: '/hr/settings' },
     ];
 
     return (
@@ -41,7 +42,8 @@ const Sidebar = () => {
             padding: '24px 16px',
             position: 'fixed',
             left: 0,
-            top: 0
+            top: 0,
+            zIndex: 100
         }}>
             <div style={{
                 display: 'flex',
@@ -68,15 +70,20 @@ const Sidebar = () => {
             </div>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {menuItems.map((item, index) => (
-                    <div
-                        key={index}
-                        className={`sidebar-item ${item.active ? 'active' : ''}`}
-                    >
-                        {item.icon}
-                        <span>{item.label}</span>
-                    </div>
-                ))}
+                {menuItems.map((item, index) => {
+                    const isActive = location.pathname.startsWith(item.path);
+                    return (
+                        <Link
+                            key={index}
+                            to={item.path}
+                            className={`sidebar-item ${isActive ? 'active' : ''}`}
+                            style={{ textDecoration: 'none' }}
+                        >
+                            {item.icon}
+                            <span>{item.label}</span>
+                        </Link>
+                    );
+                })}
             </nav>
         </div>
     );
