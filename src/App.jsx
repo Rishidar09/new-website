@@ -14,6 +14,7 @@ import HRPayrollPage from './pages/HRPayrollPage';
 import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
 import HRDocumentsPage from './pages/HRDocumentsPage';
 import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
+import HRAnalyticsPage from './pages/HRAnalyticsPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import './index.css';
 
@@ -59,6 +60,11 @@ function App() {
           <Route path="/hr/documents" element={
             <ProtectedRoute requiredRole="hr">
               <HRDocumentsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/hr/analytics" element={
+            <ProtectedRoute requiredRole="hr">
+              <HRAnalyticsPage />
             </ProtectedRoute>
           } />
 

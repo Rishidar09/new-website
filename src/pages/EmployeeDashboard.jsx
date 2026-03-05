@@ -8,7 +8,7 @@ const EmployeeDashboard = () => {
     return (
         <Layout>
             <div style={{ marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '24px', color: 'var(--text-main)' }}>Employee Dashboard</h1>
+                <h1 style={{ fontSize: '24px', color: 'var(--text-main)' }}>IndusInnovate Employee Portal</h1>
                 <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
                     Welcome back, {profile?.email || 'Employee'}
                 </p>
