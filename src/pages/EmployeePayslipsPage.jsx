@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipPDF from '../components/Payroll/PayslipPDF';
 import {
@@ -23,19 +23,15 @@ const EmployeePayslipsPage = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // For demo, fetch the first employee record
-            const { data: empData } = await supabase.from('employees').select('*').limit(1).single();
-            if (!empData) return;
-            setEmployee(empData);
 
-            const { data: psData, error } = await supabase
-                .from('payslips')
-                .select('*')
-                .eq('employee_id', empData.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            // Fetch payslips for the logged-in user
+            const psData = await api.get('/payroll');
             setPayslips(psData || []);
+
+            // Employee data will be part of the payslip relation in local API
+            if (psData.length > 0) {
+                setEmployee({ full_name: psData[0].full_name });
+            }
         } catch (error) {
             console.error(error.message);
         } finally {

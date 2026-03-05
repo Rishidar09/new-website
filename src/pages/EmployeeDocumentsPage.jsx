@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import {
     Folder,
     FileText,
@@ -27,25 +27,7 @@ const EmployeeDocumentsPage = () => {
     const fetchEmployeeAndDocs = async () => {
         try {
             setLoading(true);
-            // Simulate current employee (using first one for demo)
-            const { data: empData } = await supabase.from('employees').select('id').limit(1).single();
-            if (!empData) return;
-            setEmployee(empData);
-
-            let query = supabase
-                .from('documents')
-                .select('*')
-                .eq('folder', activeFolder);
-
-            if (activeFolder === 'Policies') {
-                query = query.is('employee_id', null);
-            } else {
-                query = query.eq('employee_id', empData.id);
-            }
-
-            const { data, error } = await query.order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await api.get(`/documents?folder=${activeFolder}`);
             setDocuments(data || []);
         } catch (error) {
             console.error('Error fetching documents:', error);
@@ -55,8 +37,7 @@ const EmployeeDocumentsPage = () => {
     };
 
     const getFileUrl = (path) => {
-        const { data } = supabase.storage.from('documents').getPublicUrl(path);
-        return data.publicUrl;
+        return path;
     };
 
     return (

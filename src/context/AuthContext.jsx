@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 
 const AuthContext = createContext({});
 
@@ -9,51 +9,47 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active sessions and sets the user
-        const setData = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (session) {
-                setUser(session.user);
-                await fetchProfile(session.user.id);
+        const initAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const userData = await api.get('/auth/me');
+                    setUser(userData);
+                    setProfile(userData); // In local setup, profile is the same as user for now
+                } catch (err) {
+                    console.error('Auth initialization failed', err);
+                    localStorage.removeItem('token');
+                }
             }
             setLoading(false);
         };
-
-        const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                await fetchProfile(session.user.id);
-            } else {
-                setProfile(null);
-            }
-            setLoading(false);
-        });
-
-        setData();
-
-        return () => {
-            listener?.subscription.unsubscribe();
-        };
+        initAuth();
     }, []);
 
-    const fetchProfile = async (userId) => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-        if (!error && data) {
-            setProfile(data);
-        }
+    const login = async (email, password) => {
+        const data = await api.post('/auth/login', { email, password });
+        localStorage.setItem('token', data.token);
+        setUser(data.user);
+        setProfile(data.user);
+        return data;
     };
 
-    const signOut = async () => {
-        await supabase.auth.signOut();
+    const signup = async (email, password, role) => {
+        const data = await api.post('/auth/signup', { email, password, role });
+        localStorage.setItem('token', data.token);
+        setUser(data.user);
+        setProfile(data.user);
+        return data;
+    };
+
+    const signOut = () => {
+        localStorage.removeItem('token');
+        setUser(null);
+        setProfile(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+        <AuthContext.Provider value={{ user, profile, loading, login, signup, signOut }}>
             {children}
         </AuthContext.Provider>
     );

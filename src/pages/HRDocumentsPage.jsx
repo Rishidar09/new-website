@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import {
     Folder,
     FileText,
@@ -43,7 +43,7 @@ const HRDocumentsPage = () => {
 
     const fetchInitialData = async () => {
         try {
-            const { data: empData } = await supabase.from('employees').select('id, full_name');
+            const empData = await api.get('/employees');
             setEmployees(empData || []);
         } catch (error) {
             console.error('Error fetching employees:', error);
@@ -53,16 +53,7 @@ const HRDocumentsPage = () => {
     const fetchDocuments = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('documents')
-                .select(`
-                    *,
-                    employees (full_name)
-                `)
-                .eq('folder', activeFolder)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await api.get(`/documents?folder=${activeFolder}`);
             setDocuments(data || []);
         } catch (error) {
             console.error('Error fetching documents:', error);
@@ -80,27 +71,16 @@ const HRDocumentsPage = () => {
 
         try {
             setUploading(true);
-            const fileExt = selectedFile.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${activeFolder}/${fileName}`;
+            // Simulate file upload (real app would use multer)
+            const mockUrl = `/uploads/${selectedFile.name}`;
 
-            // 1. Upload to Supabase Storage
-            const { error: uploadError } = await supabase.storage
-                .from('documents')
-                .upload(filePath, selectedFile);
-
-            if (uploadError) throw uploadError;
-
-            // 2. Save metadata to DB
-            const { error: dbError } = await supabase.from('documents').insert([{
+            await api.post('/documents', {
                 employee_id: activeFolder === 'Policies' ? null : selectedEmployee,
                 name: selectedFile.name,
-                file_path: filePath,
+                file_url: mockUrl,
                 folder: activeFolder,
                 status: activeFolder === 'Policies' ? 'Signed' : docStatus
-            }]);
-
-            if (dbError) throw dbError;
+            });
 
             alert('Document uploaded successfully!');
             setIsUploadModalOpen(false);
@@ -115,8 +95,7 @@ const HRDocumentsPage = () => {
     };
 
     const getFileUrl = (path) => {
-        const { data } = supabase.storage.from('documents').getPublicUrl(path);
-        return data.publicUrl;
+        return path; // For now return the mock path
     };
 
     return (

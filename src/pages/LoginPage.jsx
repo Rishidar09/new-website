@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, Mail, Lock, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
@@ -12,53 +12,32 @@ const LoginPage = () => {
     const [error, setError] = useState(null);
     const [successMsg, setSuccessMsg] = useState(null);
     const navigate = useNavigate();
+    const { login, signup } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('--- START: LoginPage handleSubmit ---');
+        console.log('Mode:', isSignUp ? 'SignUp' : 'Login', 'Role:', role);
         setLoading(true);
         setError(null);
         setSuccessMsg(null);
 
         try {
             if (isSignUp) {
-                // Sign Up Logic
-                const { data, error: signUpError } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: {
-                            role: role
-                        }
-                    }
-                });
-
-                if (signUpError) throw signUpError;
-
-                if (data.user) {
-                    setSuccessMsg("Account created successfully! If email confirmation is enabled, check your inbox. Otherwise, you can sign in now.");
-                    setIsSignUp(false);
-                }
+                console.log('Attempting local startup signup for:', email);
+                await signup(email, password, role);
+                setSuccessMsg("Account created successfully! You can sign in now.");
+                setIsSignUp(false);
             } else {
-                // Login Logic
-                const { data, error: authError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
+                console.log('Attempting local login for:', email);
+                const data = await login(email, password);
 
-                if (authError) throw authError;
-
-                // Check if profile role matches the selected tab
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', data.user.id)
-                    .single();
-
-                if (profileError || profile.role !== role) {
-                    await supabase.auth.signOut();
-                    throw new Error(`Unauthorized. Please login as ${role.toUpperCase()}.`);
+                console.log('Login successful, checking role mismatch...');
+                if (data.user.role !== role) {
+                    throw new Error(`Unauthorized. This account is registered as ${data.user.role.toUpperCase()}, but you tried to login as ${role.toUpperCase()}.`);
                 }
 
+                console.log('Login fully validated. Navigating...');
                 if (role === 'hr') {
                     navigate('/hr/dashboard');
                 } else {
@@ -66,9 +45,11 @@ const LoginPage = () => {
                 }
             }
         } catch (err) {
-            setError(err.message);
+            console.error('LoginPage error:', err);
+            setError(err.message || 'An unexpected error occurred.');
         } finally {
             setLoading(false);
+            console.log('--- END: LoginPage handleSubmit ---');
         }
     };
 

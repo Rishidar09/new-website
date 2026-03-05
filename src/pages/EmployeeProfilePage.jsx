@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 import {
     ArrowLeft,
     User,
@@ -18,6 +18,7 @@ import {
 const EmployeeProfilePage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { profile } = useAuth();
     const [activeTab, setActiveTab] = useState('Personal Info');
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -25,19 +26,20 @@ const EmployeeProfilePage = () => {
     const tabs = ['Personal Info', 'Documents', 'Attendance', 'ID Card', 'NDA'];
 
     useEffect(() => {
-        fetchEmployee();
-    }, [id]);
+        if (!id && profile) {
+            setEmployee(profile);
+            setLoading(false);
+        } else if (id) {
+            fetchEmployee();
+        } else {
+            setLoading(false);
+        }
+    }, [id, profile]);
 
     const fetchEmployee = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('employees')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (error) throw error;
+            const data = await api.get(`/employees/${id}`);
             setEmployee(data);
         } catch (error) {
             console.error('Error fetching employee:', error.message);

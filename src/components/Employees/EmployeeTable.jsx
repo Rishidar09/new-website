@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import { api } from '../../lib/api';
 
 const EmployeeTable = ({ onAddClick }) => {
     const navigate = useNavigate();
@@ -16,12 +16,7 @@ const EmployeeTable = ({ onAddClick }) => {
     const fetchEmployees = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('employees')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await api.get('/employees');
             setEmployees(data || []);
         } catch (error) {
             console.error('Error fetching employees:', error.message);

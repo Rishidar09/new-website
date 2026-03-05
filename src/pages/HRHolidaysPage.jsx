@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import HolidayCalendar from '../components/Holidays/HolidayCalendar';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { Plus, X, Calendar as CalendarIcon, Loader2, PartyPopper } from 'lucide-react';
 
 const HRHolidaysPage = () => {
@@ -23,11 +23,7 @@ const HRHolidaysPage = () => {
     const fetchHolidays = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('holidays')
-                .select('*')
-                .order('date', { ascending: true });
-            if (error) throw error;
+            const data = await api.get('/holidays');
             setHolidays(data || []);
         } catch (error) {
             console.error('Error fetching holidays:', error.message);
@@ -40,9 +36,7 @@ const HRHolidaysPage = () => {
         e.preventDefault();
         try {
             setIsSubmitting(true);
-            const { error } = await supabase.from('holidays').insert([formData]);
-            if (error) throw error;
-
+            await api.post('/holidays', formData);
             fetchHolidays();
             setShowAddModal(false);
             setFormData({ name: '', date: '', type: 'National', label: '' });

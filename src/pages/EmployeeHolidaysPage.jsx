@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import HolidayCalendar from '../components/Holidays/HolidayCalendar';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { Calendar as CalendarIcon, Loader2, PartyPopper } from 'lucide-react';
 
 const EmployeeHolidaysPage = () => {
@@ -12,11 +12,7 @@ const EmployeeHolidaysPage = () => {
         const fetchHolidays = async () => {
             try {
                 setLoading(true);
-                const { data, error } = await supabase
-                    .from('holidays')
-                    .select('*')
-                    .order('date', { ascending: true });
-                if (error) throw error;
+                const data = await api.get('/holidays');
                 setHolidays(data || []);
             } catch (error) {
                 console.error('Error fetching holidays:', error.message);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { api } from '../../lib/api';
 
 const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
     const [loading, setLoading] = useState(false);
@@ -25,12 +25,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
         e.preventDefault();
         try {
             setLoading(true);
-            const { error } = await supabase
-                .from('employees')
-                .insert([formData]);
-
-            if (error) throw error;
-
+            await api.post('/employees', formData);
             onRefresh();
             onClose();
             setFormData({

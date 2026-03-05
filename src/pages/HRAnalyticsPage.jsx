@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import {
     Users,
     UserMinus,
@@ -43,103 +43,24 @@ const HRAnalyticsPage = () => {
     const COLORS = ['#3B82F6', '#94A3B8', '#60A5FA', '#CBD5E1', '#1D4ED8'];
 
     useEffect(() => {
-        fetchAnalyticsData();
+        fetchData();
     }, []);
 
-    const fetchAnalyticsData = async () => {
+    const fetchData = async () => {
         try {
-            console.log('--- START: fetchAnalyticsData ---');
             setLoading(true);
+            const data = await api.get('/analytics');
 
-            // 1. Fetch Employees
-            console.log('Fetching employees...');
-            const { data: employees, error: empError } = await supabase
-                .from('employees')
-                .select('*');
-
-            if (empError) {
-                console.error('SUPABASE ERROR (employees):', empError);
-                throw empError;
-            }
-            console.log('Employees response:', employees ? employees.length : 0, 'rows');
-
-            const activeEmployees = employees || [];
-
-            // Calculate KPIs
-            const total = activeEmployees.length;
-            const tenureData = activeEmployees.map(e => {
-                if (!e.joining_date) return null;
-                const join = new Date(e.joining_date);
-                if (isNaN(join.getTime())) return null;
-                const diff = (new Date() - join) / (1000 * 60 * 60 * 24 * 365);
-                return diff;
-            }).filter(d => d !== null && !isNaN(d));
-
-            const avgTenureValue = tenureData.length
-                ? (tenureData.reduce((a, b) => a + b, 0) / tenureData.length).toFixed(1)
-                : 0;
-
-            console.log('KPIs calculated - Headcount:', total, 'Avg Tenure:', avgTenureValue);
-
-            setStats(prev => ({
-                ...prev,
-                headcount: total,
-                avgTenure: avgTenureValue,
-                attrition: 4.2
-            }));
-
-            // Process Dept Headcount
-            const deptMap = {};
-            activeEmployees.forEach(e => {
-                const d = e.department || 'Other';
-                deptMap[d] = (deptMap[d] || 0) + 1;
+            setStats({
+                headcount: data.headcount,
+                attrition: data.attrition,
+                openPositions: data.openPositions,
+                avgTenure: data.avgTenure || 2.4
             });
-            const formattedDeptData = Object.keys(deptMap).map(k => ({ name: k, count: deptMap[k] }));
-            console.log('Department data:', formattedDeptData);
-            setDeptData(formattedDeptData);
+            setDeptData(data.deptData || []);
+            setLeaveData(data.leaveData || []);
+            setAbsentees(data.absentees || []);
 
-            // 2. Fetch Leaves
-            console.log('Fetching leaves...');
-            const { data: leaves, error: leaveError } = await supabase
-                .from('leaves')
-                .select('*, employees(full_name)');
-
-            if (leaveError) {
-                console.error('SUPABASE ERROR (leaves):', leaveError);
-                // Continue with empty leaves if this fails
-            }
-            console.log('Leaves response:', leaves ? leaves.length : 0, 'rows');
-
-            const activeLeaves = leaves || [];
-
-            const leaveMap = {};
-            activeLeaves.forEach(l => {
-                if (!l.type) return;
-                leaveMap[l.type] = (leaveMap[l.type] || 0) + 1;
-            });
-            const formattedLeaveData = Object.keys(leaveMap).map(k => ({ name: k, value: leaveMap[k] }));
-            console.log('Leave breakdown:', formattedLeaveData);
-            setLeaveData(formattedLeaveData);
-
-            // Absentees
-            const currentMonth = new Date().getMonth();
-            const monthlyAbsentees = {};
-            activeLeaves.forEach(l => {
-                if (!l.start_date || l.status !== 'Approved') return;
-                const start = new Date(l.start_date);
-                if (start.getMonth() === currentMonth) {
-                    const name = l.employees?.full_name || 'Unknown';
-                    monthlyAbsentees[name] = (monthlyAbsentees[name] || 0) + 1;
-                }
-            });
-            const sortedAbsentees = Object.keys(monthlyAbsentees)
-                .map(name => ({ name, count: monthlyAbsentees[name] }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 5);
-            console.log('Top absentees:', sortedAbsentees);
-            setAbsentees(sortedAbsentees);
-
-            // 3. Trend Data
             setTrendData([
                 { month: 'Jan', joining: 4, exit: 1 },
                 { month: 'Feb', joining: 6, exit: 2 },
@@ -148,13 +69,9 @@ const HRAnalyticsPage = () => {
                 { month: 'May', joining: 9, exit: 2 },
                 { month: 'Jun', joining: 7, exit: 1 },
             ]);
-
-            console.log('--- END: fetchAnalyticsData (SUCCESS) ---');
         } catch (error) {
-            console.error('--- END: fetchAnalyticsData (FATAL ERROR) ---');
-            console.error(error);
+            console.error('Error fetching analytics:', error);
         } finally {
-            console.log('Finalizing: setLoading(false)');
             setLoading(false);
         }
     };

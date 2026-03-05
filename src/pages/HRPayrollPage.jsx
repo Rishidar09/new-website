@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipPDF from '../components/Payroll/PayslipPDF';
 import {
@@ -31,8 +31,7 @@ const HRPayrollPage = () => {
     const fetchEmployees = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase.from('employees').select('*');
-            if (error) throw error;
+            const data = await api.get('/employees');
             setEmployees(data || []);
         } catch (error) {
             console.error(error.message);
@@ -78,22 +77,11 @@ const HRPayrollPage = () => {
 
         try {
             setGenerating(true);
-            const { error } = await supabase
-                .from('payslips')
-                .insert([{
-                    employee_id: selectedEmp.id,
-                    ...payslip
-                }]);
-
-            if (error) {
-                if (error.code === '23505') {
-                    alert('Payslip already exists for this month and year.');
-                } else {
-                    throw error;
-                }
-            } else {
-                alert('Payslip generated and saved successfully!');
-            }
+            await api.post('/payroll', {
+                employee_id: selectedEmp.id,
+                ...payslip
+            });
+            alert('Payslip generated and saved successfully!');
         } catch (error) {
             alert(error.message);
         } finally {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import {
     Check,
     X,
@@ -23,17 +23,7 @@ const HRLeavesPage = () => {
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            let query = supabase
-                .from('leaves')
-                .select('*, employees(full_name, department, avatar_url)')
-                .order('created_at', { ascending: false });
-
-            if (filter !== 'All') {
-                query = query.eq('status', filter);
-            }
-
-            const { data, error } = await query;
-            if (error) throw error;
+            const data = await api.get(`/leaves?status=${filter}`);
             setRequests(data || []);
         } catch (error) {
             console.error(error.message);
@@ -44,12 +34,7 @@ const HRLeavesPage = () => {
 
     const handleAction = async (id, status) => {
         try {
-            const { error } = await supabase
-                .from('leaves')
-                .update({ status })
-                .eq('id', id);
-
-            if (error) throw error;
+            await api.patch(`/leaves/${id}`, { status });
             fetchRequests();
         } catch (error) {
             alert(error.message);
