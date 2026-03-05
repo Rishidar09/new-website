@@ -48,71 +48,98 @@ const HRAnalyticsPage = () => {
 
     const fetchAnalyticsData = async () => {
         try {
+            console.log('--- START: fetchAnalyticsData ---');
             setLoading(true);
 
-            // 1. Fetch Employees for headcount, tenure, and dept stats
+            // 1. Fetch Employees
+            console.log('Fetching employees...');
             const { data: employees, error: empError } = await supabase
                 .from('employees')
                 .select('*');
 
-            if (empError) throw empError;
+            if (empError) {
+                console.error('SUPABASE ERROR (employees):', empError);
+                throw empError;
+            }
+            console.log('Employees response:', employees ? employees.length : 0, 'rows');
+
+            const activeEmployees = employees || [];
 
             // Calculate KPIs
-            const total = employees.length;
-            const activeEmps = employees.filter(e => e.status === 'Active' || !e.status).length;
-            const tenureData = employees.map(e => {
+            const total = activeEmployees.length;
+            const tenureData = activeEmployees.map(e => {
+                if (!e.joining_date) return null;
                 const join = new Date(e.joining_date);
-                const diff = (new Date() - join) / (1000 * 60 * 60 * 24 * 365); // Years
+                if (isNaN(join.getTime())) return null;
+                const diff = (new Date() - join) / (1000 * 60 * 60 * 24 * 365);
                 return diff;
-            }).filter(d => !isNaN(d));
-            const avgTenure = tenureData.length ? (tenureData.reduce((a, b) => a + b, 0) / tenureData.length).toFixed(1) : 0;
+            }).filter(d => d !== null && !isNaN(d));
+
+            const avgTenureValue = tenureData.length
+                ? (tenureData.reduce((a, b) => a + b, 0) / tenureData.length).toFixed(1)
+                : 0;
+
+            console.log('KPIs calculated - Headcount:', total, 'Avg Tenure:', avgTenureValue);
 
             setStats(prev => ({
                 ...prev,
                 headcount: total,
-                avgTenure: avgTenure,
-                attrition: 4.2 // Mocked for demo
+                avgTenure: avgTenureValue,
+                attrition: 4.2
             }));
 
             // Process Dept Headcount
             const deptMap = {};
-            employees.forEach(e => {
+            activeEmployees.forEach(e => {
                 const d = e.department || 'Other';
                 deptMap[d] = (deptMap[d] || 0) + 1;
             });
-            setDeptData(Object.keys(deptMap).map(k => ({ name: k, count: deptMap[k] })));
+            const formattedDeptData = Object.keys(deptMap).map(k => ({ name: k, count: deptMap[k] }));
+            console.log('Department data:', formattedDeptData);
+            setDeptData(formattedDeptData);
 
-            // 2. Fetch Leaves for breakdown
+            // 2. Fetch Leaves
+            console.log('Fetching leaves...');
             const { data: leaves, error: leaveError } = await supabase
                 .from('leaves')
                 .select('*, employees(full_name)');
 
-            if (leaveError) throw leaveError;
+            if (leaveError) {
+                console.error('SUPABASE ERROR (leaves):', leaveError);
+                // Continue with empty leaves if this fails
+            }
+            console.log('Leaves response:', leaves ? leaves.length : 0, 'rows');
+
+            const activeLeaves = leaves || [];
 
             const leaveMap = {};
-            leaves.forEach(l => {
+            activeLeaves.forEach(l => {
+                if (!l.type) return;
                 leaveMap[l.type] = (leaveMap[l.type] || 0) + 1;
             });
-            setLeaveData(Object.keys(leaveMap).map(k => ({ name: k, value: leaveMap[k] })));
+            const formattedLeaveData = Object.keys(leaveMap).map(k => ({ name: k, value: leaveMap[k] }));
+            console.log('Leave breakdown:', formattedLeaveData);
+            setLeaveData(formattedLeaveData);
 
-            // Absentees (Most leaves this month)
+            // Absentees
             const currentMonth = new Date().getMonth();
             const monthlyAbsentees = {};
-            leaves.forEach(l => {
+            activeLeaves.forEach(l => {
+                if (!l.start_date || l.status !== 'Approved') return;
                 const start = new Date(l.start_date);
-                if (start.getMonth() === currentMonth && l.status === 'Approved') {
+                if (start.getMonth() === currentMonth) {
                     const name = l.employees?.full_name || 'Unknown';
                     monthlyAbsentees[name] = (monthlyAbsentees[name] || 0) + 1;
                 }
             });
-            setAbsentees(
-                Object.keys(monthlyAbsentees)
-                    .map(name => ({ name, count: monthlyAbsentees[name] }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 5)
-            );
+            const sortedAbsentees = Object.keys(monthlyAbsentees)
+                .map(name => ({ name, count: monthlyAbsentees[name] }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+            console.log('Top absentees:', sortedAbsentees);
+            setAbsentees(sortedAbsentees);
 
-            // 3. Mock Trend Data (Since we don't have historical exit snapshots)
+            // 3. Trend Data
             setTrendData([
                 { month: 'Jan', joining: 4, exit: 1 },
                 { month: 'Feb', joining: 6, exit: 2 },
@@ -122,9 +149,12 @@ const HRAnalyticsPage = () => {
                 { month: 'Jun', joining: 7, exit: 1 },
             ]);
 
+            console.log('--- END: fetchAnalyticsData (SUCCESS) ---');
         } catch (error) {
-            console.error('Error fetching analytics:', error);
+            console.error('--- END: fetchAnalyticsData (FATAL ERROR) ---');
+            console.error(error);
         } finally {
+            console.log('Finalizing: setLoading(false)');
             setLoading(false);
         }
     };
