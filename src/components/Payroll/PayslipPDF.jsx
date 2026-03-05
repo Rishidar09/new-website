@@ -111,7 +111,7 @@ const PayslipPDF = ({ payslip, employee }) => {
         <Document>
             <Page size="A4" style={styles.page}>
                 <View style={styles.header}>
-                    <Text style={styles.companyName}>WorkNest</Text>
+                    <Text style={styles.companyName}>IndusInnovate</Text>
                     <Text style={styles.title}>Payslip</Text>
                 </View>
 
@@ -183,7 +183,7 @@ const PayslipPDF = ({ payslip, employee }) => {
 
                 <Text style={styles.footer}>
                     This is a computer generated document and does not require a signature.
-                    WorkNest HR Solutions | www.worknest.com
+                    IndusInnovate Technologies | www.indusinnovate.com
                 </Text>
             </Page>
         </Document>

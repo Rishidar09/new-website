@@ -91,7 +91,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
                                 name="email"
                                 type="email"
                                 className="input-field"
-                                placeholder="john@worknest.com"
+                                placeholder="john@indusinnovate.com"
                                 required
                                 value={formData.email}
                                 onChange={handleChange}

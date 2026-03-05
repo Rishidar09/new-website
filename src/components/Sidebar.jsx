@@ -73,7 +73,7 @@ const Sidebar = () => {
                     <LayoutDashboard size={20} />
                 </div>
                 <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-main)' }}>
-                    Work<span style={{ color: 'var(--primary)' }}>Nest</span>
+                    Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
                 </span>
             </div>
 
