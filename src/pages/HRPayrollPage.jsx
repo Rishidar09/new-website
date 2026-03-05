@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipPDF from '../components/Payroll/PayslipPDF';
@@ -13,6 +12,7 @@ import {
     Loader2,
     FileText
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const HRPayrollPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -81,9 +81,9 @@ const HRPayrollPage = () => {
                 employee_id: selectedEmp.id,
                 ...payslip
             });
-            alert('Payslip generated and saved successfully!');
+            toast.success('Payslip generated and saved successfully!');
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         } finally {
             setGenerating(false);
         }
@@ -94,7 +94,7 @@ const HRPayrollPage = () => {
     );
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '24px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Wallet size={24} color="var(--primary)" /> Payroll Management
@@ -200,10 +200,23 @@ const HRPayrollPage = () => {
                                         onClick={generatePayslip}
                                         disabled={generating}
                                         className="btn-primary"
-                                        style={{ flex: 1 }}
+                                        style={{ flex: 1.5 }}
                                     >
                                         {generating ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
                                         {generating ? 'Generating...' : 'Confirm & Save Payslip'}
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                console.log(`[SIMULATION] Sending payslip email to ${selectedEmp.email}`);
+                                                toast.success('Payslip sent to ' + selectedEmp.email + ' (Simulated)');
+                                            } catch (err) { }
+                                        }}
+                                        className="btn-secondary"
+                                        style={{ flex: 1 }}
+                                    >
+                                        <Send size={18} /> Send Email
                                     </button>
 
                                     <PDFDownloadLink
@@ -214,7 +227,7 @@ const HRPayrollPage = () => {
                                         {({ loading: pdfLoading }) => (
                                             <button className="btn-secondary" disabled={pdfLoading} style={{ width: '100%', height: '100%' }}>
                                                 <Download size={18} />
-                                                {pdfLoading ? 'Loading PDF...' : 'Download PDF'}
+                                                {pdfLoading ? '...' : 'PDF'}
                                             </button>
                                         )}
                                     </PDFDownloadLink>
@@ -282,7 +295,7 @@ const HRPayrollPage = () => {
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
-        </Layout>
+        </>
     );
 };
 

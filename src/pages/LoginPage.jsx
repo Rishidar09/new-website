@@ -12,7 +12,17 @@ const LoginPage = () => {
     const [error, setError] = useState(null);
     const [successMsg, setSuccessMsg] = useState(null);
     const navigate = useNavigate();
-    const { login, signup } = useAuth();
+    const { login, signup, user, profile } = useAuth();
+
+    React.useEffect(() => {
+        if (user && profile) {
+            if (profile.role === 'hr') {
+                navigate('/hr/dashboard');
+            } else {
+                navigate('/employee/dashboard');
+            }
+        }
+    }, [user, profile, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -91,7 +101,7 @@ const LoginPage = () => {
                         <LayoutDashboard size={24} />
                     </div>
                     <span style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)' }}>
-                        Work<span style={{ color: 'var(--primary)' }}>Nest</span>
+                        Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
                     </span>
                 </div>
 

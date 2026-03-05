@@ -35,13 +35,34 @@ router.get('/', auth, authorize(['hr']), async (req, res) => {
       LIMIT 5
     `, [currentMonth]);
 
+        // 5. Avg Tenure
+        const avgTenure = await pool.query(`
+            SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), joining_date))) as avg_tenure 
+            FROM employees 
+            WHERE status = 'Active'
+        `);
+
+        // 6. Joining Trend (Last 6 months)
+        const joiningTrend = await pool.query(`
+            SELECT 
+                TO_CHAR(joining_date, 'Mon') as month,
+                COUNT(*) as joining,
+                (SELECT COUNT(*) FROM employees WHERE status = 'Inactive' AND TO_CHAR(joining_date, 'Mon') = TO_CHAR(e.joining_date, 'Mon')) as exit
+            FROM employees e
+            WHERE joining_date >= NOW() - INTERVAL '6 months'
+            GROUP BY TO_CHAR(joining_date, 'Mon'), DATE_TRUNC('month', joining_date)
+            ORDER BY DATE_TRUNC('month', joining_date)
+        `);
+
         res.json({
             headcount: parseInt(headcount.rows[0].count),
             deptData: deptBreakdown.rows,
             leaveData: leaveBreakdown.rows,
             absentees: absentees.rows,
-            attrition: 4.2, // Mock for now
-            openPositions: 12 // Mock for now
+            attrition: 3.5, // Realistic mock for now
+            openPositions: 8,
+            avgTenure: parseFloat(avgTenure.rows[0].avg_tenure || 0).toFixed(1),
+            trendData: joiningTrend.rows
         });
     } catch (err) {
         console.error(err.message);

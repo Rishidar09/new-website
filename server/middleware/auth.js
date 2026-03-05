@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
 
-const auth = (req, res, next) => {
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+/**
+ * authenticateToken — verifies JWT and checks against blacklist
+ */
+const auth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
@@ -9,13 +15,30 @@ const auth = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Check if token is blacklisted (logged out)
+        const blacklisted = await pool.query(
+            'SELECT id FROM token_blacklist WHERE token = $1 AND expires_at > NOW()',
+            [token]
+        );
+        if (blacklisted.rows.length > 0) {
+            return res.status(401).json({ error: 'Token has been invalidated. Please log in again.' });
+        }
+
         req.user = decoded;
+        req.token = token; // Attach token so logout route can blacklist it
         next();
     } catch (err) {
-        res.status(401).json({ error: 'Token is not valid' });
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Session expired. Please log in again.' });
+        }
+        res.status(401).json({ error: 'Invalid token' });
     }
 };
 
+/**
+ * authorize — role-based access control
+ */
 const authorize = (roles = []) => {
     return (req, res, next) => {
         if (roles.length && !roles.includes(req.user.role)) {

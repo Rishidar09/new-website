@@ -1,0 +1,229 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
+import {
+    MessageSquare,
+    Plus,
+    Send,
+    Shield,
+    ShieldOff,
+    Loader2,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    Paperclip
+} from 'lucide-react';
+
+const EmployeeComplaintsPage = () => {
+    const [complaints, setComplaints] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        category: 'HR',
+        description: '',
+        attachment_url: '',
+        is_anonymous: false
+    });
+
+    useEffect(() => {
+        fetchComplaints();
+    }, []);
+
+    const fetchComplaints = async () => {
+        try {
+            setLoading(true);
+            const data = await api.get('/complaints');
+            setComplaints(data || []);
+        } catch (error) {
+            console.error('Error fetching complaints:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setSubmitting(true);
+            await api.post('/complaints', formData);
+            alert('Your concern has been submitted successfully.');
+            setFormData({ category: 'HR', description: '', attachment_url: '', is_anonymous: false });
+            fetchComplaints();
+        } catch (error) {
+            alert(error.message || 'Failed to submit complaint');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'Resolved': return <CheckCircle2 size={16} color="#10B981" />;
+            case 'In-Review': return <Clock size={16} color="#F59E0B" />;
+            default: return <AlertCircle size={16} color="#3B82F6" />;
+        }
+    };
+
+    return (
+        <>
+            <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', color: 'var(--text-main)', fontWeight: '700' }}>Complaint Box</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Raise your concerns securely and track their resolution status.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '32px', alignItems: 'start' }}>
+                {/* Form Section */}
+                <div className="card" style={{ padding: '32px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <div style={{ padding: '8px', background: 'var(--primary-light)', borderRadius: '8px', color: 'var(--primary)' }}>
+                            <Plus size={20} />
+                        </div>
+                        <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Submit New Concern</h3>
+                    </div>
+
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>CATEGORY</label>
+                            <select
+                                className="input-field"
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            >
+                                <option>HR</option>
+                                <option>Harassment</option>
+                                <option>Workload</option>
+                                <option>Technical</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>DESCRIPTION</label>
+                            <textarea
+                                className="input-field"
+                                rows="5"
+                                placeholder="Describe your concern in detail..."
+                                required
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                style={{ resize: 'none' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>ATTACHMENT (OPTIONAL LINK)</label>
+                            <div style={{ position: 'relative' }}>
+                                <Paperclip size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    placeholder="Paste URL to document or screenshot..."
+                                    style={{ paddingLeft: '40px' }}
+                                    value={formData.attachment_url}
+                                    onChange={(e) => setFormData({ ...formData, attachment_url: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div
+                            onClick={() => setFormData({ ...formData, is_anonymous: !formData.is_anonymous })}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '16px',
+                                background: formData.is_anonymous ? '#EEF2FF' : '#F9FAFB',
+                                border: `1px solid ${formData.is_anonymous ? 'var(--primary)' : 'var(--border)'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {formData.is_anonymous ? <Shield size={24} color="var(--primary)" /> : <ShieldOff size={24} color="#94A3B8" />}
+                            <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '14px', fontWeight: '700', color: formData.is_anonymous ? 'var(--primary)' : 'var(--text-main)' }}>Submit Anonymously</p>
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>HR will not see your name or profile details.</p>
+                            </div>
+                            <div style={{
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                border: `2px solid ${formData.is_anonymous ? 'var(--primary)' : '#CBD5E1'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {formData.is_anonymous && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="btn-primary"
+                            style={{ padding: '14px', borderRadius: '12px', fontWeight: '700' }}
+                        >
+                            {submitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                            {submitting ? 'Submitting Signal...' : 'Submit Complaint'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* History Section */}
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Submission History</h3>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', background: '#F1F5F9', padding: '4px 8px', borderRadius: '4px' }}>
+                            {complaints.length} Records
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="animate-spin" color="var(--primary)" /></div>
+                        ) : complaints.length === 0 ? (
+                            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <MessageSquare size={40} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+                                <p>No complaints submitted yet.</p>
+                            </div>
+                        ) : complaints.map(c => (
+                            <div key={c.id} className="card" style={{ padding: '20px', borderLeft: `4px solid ${c.status === 'Resolved' ? '#10B981' : c.status === 'In-Review' ? '#F59E0B' : '#3B82F6'}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        fontWeight: '800',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        background: '#F1F5F9',
+                                        color: '#475569',
+                                        textTransform: 'uppercase'
+                                    }}>
+                                        {c.category}
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
+                                        {getStatusIcon(c.status)}
+                                        {c.status}
+                                    </div>
+                                </div>
+                                <p style={{ fontSize: '14px', color: 'var(--text-main)', marginBottom: '12px', lineHeight: '1.5' }}>
+                                    {c.description.length > 100 ? `${c.description.substring(0, 100)}...` : c.description}
+                                </p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                        {new Date(c.created_at).toLocaleDateString()}
+                                    </span>
+                                    {c.is_anonymous && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--primary)', fontWeight: '600' }}>
+                                            <Shield size={12} /> Anonymous
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default EmployeeComplaintsPage;

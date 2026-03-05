@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import {
     Users,
@@ -60,15 +59,7 @@ const HRAnalyticsPage = () => {
             setDeptData(data.deptData || []);
             setLeaveData(data.leaveData || []);
             setAbsentees(data.absentees || []);
-
-            setTrendData([
-                { month: 'Jan', joining: 4, exit: 1 },
-                { month: 'Feb', joining: 6, exit: 2 },
-                { month: 'Mar', joining: 8, exit: 3 },
-                { month: 'Apr', joining: 5, exit: 1 },
-                { month: 'May', joining: 9, exit: 2 },
-                { month: 'Jun', joining: 7, exit: 1 },
-            ]);
+            setTrendData(data.trendData || []);
         } catch (error) {
             console.error('Error fetching analytics:', error);
         } finally {
@@ -78,16 +69,14 @@ const HRAnalyticsPage = () => {
 
     if (loading) {
         return (
-            <Layout>
-                <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 className="animate-spin" color="var(--primary)" size={48} />
-                </div>
-            </Layout>
+            <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Loader2 className="animate-spin" color="var(--primary)" size={48} />
+            </div>
         );
     }
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '24px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <TrendingUp size={24} color="var(--primary)" /> HR Analytics
@@ -216,7 +205,7 @@ const HRAnalyticsPage = () => {
                 .animate-spin { animation: spin 1s linear infinite; }
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             `}</style>
-        </Layout>
+        </>
     );
 };
 

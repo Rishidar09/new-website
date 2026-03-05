@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import HolidayCalendar from '../components/Holidays/HolidayCalendar';
 import { api } from '../lib/api';
 import { Calendar as CalendarIcon, Loader2, PartyPopper } from 'lucide-react';
@@ -26,7 +25,7 @@ const EmployeeHolidaysPage = () => {
     const upcomingHolidays = holidays.filter(h => new Date(h.date) >= new Date()).slice(0, 5);
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '24px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <CalendarIcon size={24} color="var(--primary)" /> Holiday Calendar
@@ -91,7 +90,7 @@ const EmployeeHolidaysPage = () => {
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
-        </Layout>
+        </>
     );
 };
 

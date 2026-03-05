@@ -1,12 +1,11 @@
 import React from 'react';
-import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 
 const EmployeeDashboard = () => {
     const { profile } = useAuth();
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '24px', color: 'var(--text-main)' }}>IndusInnovate Employee Portal</h1>
                 <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
@@ -27,7 +26,7 @@ const EmployeeDashboard = () => {
                     pay slips, and leave records here.
                 </p>
             </div>
-        </Layout>
+        </>
     );
 };
 

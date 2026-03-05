@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import HRLayout from './components/HRLayout';
+import EmployeeLayout from './components/EmployeeLayout';
+import { useAuth } from './context/AuthContext';
 import HRDashboard from './pages/HRDashboard';
 import EmployeesPage from './pages/EmployeesPage';
 import EmployeeProfilePage from './pages/EmployeeProfilePage';
@@ -15,83 +18,111 @@ import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
 import HRDocumentsPage from './pages/HRDocumentsPage';
 import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
 import HRAnalyticsPage from './pages/HRAnalyticsPage';
+import HRAttendancePage from './pages/HRAttendancePage';
+import HRProjectsPage from './pages/HRProjectsPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import EmployeeAttendancePage from './pages/EmployeeAttendancePage';
+import EmployeeProjectsPage from './pages/EmployeeProjectsPage';
+import OfferLetterPage from './pages/OfferLetterPage';
+import EmployeeIDCardPage from './pages/EmployeeIDCardPage';
+import EmployeeComplaintsPage from './pages/EmployeeComplaintsPage';
+import HRComplaintsPage from './pages/HRComplaintsPage';
+import HRAuditLogsPage from './pages/HRAuditLogsPage';
+import ChatPage from './pages/ChatPage';
+import MeetingsPage from './pages/MeetingsPage';
+import MeetingRoomPage from './pages/MeetingRoomPage';
+import DrivePage from './pages/DrivePage';
+import { Toaster } from 'react-hot-toast';
 import './index.css';
+
+const CommonLayoutWrapper = ({ children }) => {
+  const { profile } = useAuth();
+  if (profile?.role === 'hr') {
+    return <HRLayout>{children}</HRLayout>;
+  }
+  return <EmployeeLayout>{children}</EmployeeLayout>;
+};
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <Toaster position="top-right" />
         <Routes>
           {/* Public Route */}
           <Route path="/login" element={<LoginPage />} />
 
           {/* HR Routes */}
-          <Route path="/hr/dashboard" element={
+          <Route path="/hr/*" element={
             <ProtectedRoute requiredRole="hr">
-              <HRDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/employees" element={
-            <ProtectedRoute requiredRole="hr">
-              <EmployeesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/employees/:id" element={
-            <ProtectedRoute requiredRole="hr">
-              <EmployeeProfilePage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/leaves" element={
-            <ProtectedRoute requiredRole="hr">
-              <HRLeavesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/holidays" element={
-            <ProtectedRoute requiredRole="hr">
-              <HRHolidaysPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/payroll" element={
-            <ProtectedRoute requiredRole="hr">
-              <HRPayrollPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/documents" element={
-            <ProtectedRoute requiredRole="hr">
-              <HRDocumentsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/hr/analytics" element={
-            <ProtectedRoute requiredRole="hr">
-              <HRAnalyticsPage />
+              <HRLayout>
+                <Routes>
+                  <Route path="dashboard" element={<HRDashboard />} />
+                  <Route path="employees" element={<EmployeesPage />} />
+                  <Route path="employees/:id" element={<EmployeeProfilePage />} />
+                  <Route path="leaves" element={<HRLeavesPage />} />
+                  <Route path="attendance" element={<HRAttendancePage />} />
+                  <Route path="projects" element={<HRProjectsPage />} />
+                  <Route path="holidays" element={<HRHolidaysPage />} />
+                  <Route path="offer-letters" element={<OfferLetterPage />} />
+                  <Route path="payroll" element={<HRPayrollPage />} />
+                  <Route path="documents" element={<HRDocumentsPage />} />
+                  <Route path="analytics" element={<HRAnalyticsPage />} />
+                  <Route path="complaints" element={<HRComplaintsPage />} />
+                  <Route path="audit-logs" element={<HRAuditLogsPage />} />
+                  <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
+                </Routes>
+              </HRLayout>
             </ProtectedRoute>
           } />
 
           {/* Employee Routes */}
-          <Route path="/employee/dashboard" element={
+          <Route path="/employee/*" element={
             <ProtectedRoute requiredRole="employee">
-              <EmployeeDashboard />
+              <EmployeeLayout>
+                <Routes>
+                  <Route path="dashboard" element={<EmployeeDashboard />} />
+                  <Route path="attendance" element={<EmployeeAttendancePage />} />
+                  <Route path="projects" element={<EmployeeProjectsPage />} />
+                  <Route path="apply-leave" element={<ApplyLeavePage />} />
+                  <Route path="holidays" element={<EmployeeHolidaysPage />} />
+                  <Route path="payslips" element={<EmployeePayslipsPage />} />
+                  <Route path="documents" element={<EmployeeDocumentsPage />} />
+                  <Route path="id-card" element={<EmployeeIDCardPage />} />
+                  <Route path="complaints" element={<EmployeeComplaintsPage />} />
+                  <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
+                </Routes>
+              </EmployeeLayout>
             </ProtectedRoute>
           } />
-          <Route path="/employee/apply-leave" element={
-            <ProtectedRoute requiredRole="employee">
-              <ApplyLeavePage />
+
+          {/* Common Routes with Dynamic Layout */}
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <CommonLayoutWrapper>
+                <ChatPage />
+              </CommonLayoutWrapper>
             </ProtectedRoute>
           } />
-          <Route path="/employee/holidays" element={
-            <ProtectedRoute requiredRole="employee">
-              <EmployeeHolidaysPage />
+          <Route path="/meetings" element={
+            <ProtectedRoute>
+              <CommonLayoutWrapper>
+                <MeetingsPage />
+              </CommonLayoutWrapper>
             </ProtectedRoute>
           } />
-          <Route path="/employee/payslips" element={
-            <ProtectedRoute requiredRole="employee">
-              <EmployeePayslipsPage />
+          <Route path="/meetings/:id" element={
+            <ProtectedRoute>
+              <CommonLayoutWrapper>
+                <MeetingRoomPage />
+              </CommonLayoutWrapper>
             </ProtectedRoute>
           } />
-          <Route path="/employee/documents" element={
-            <ProtectedRoute requiredRole="employee">
-              <EmployeeDocumentsPage />
+          <Route path="/drive" element={
+            <ProtectedRoute>
+              <CommonLayoutWrapper>
+                <DrivePage />
+              </CommonLayoutWrapper>
             </ProtectedRoute>
           } />
 

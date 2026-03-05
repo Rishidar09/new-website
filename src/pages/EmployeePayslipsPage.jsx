@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipPDF from '../components/Payroll/PayslipPDF';
@@ -40,7 +39,7 @@ const EmployeePayslipsPage = () => {
     };
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '24px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <FileText size={24} color="var(--primary)" /> My Payslips
@@ -116,7 +115,7 @@ const EmployeePayslipsPage = () => {
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
-        </Layout>
+        </>
     );
 };
 

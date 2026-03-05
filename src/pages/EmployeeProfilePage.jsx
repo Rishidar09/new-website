@@ -50,7 +50,7 @@ const EmployeeProfilePage = () => {
 
     if (loading) {
         return (
-            <Layout>
+            <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
                     <Loader2 size={48} className="animate-spin" style={{ color: 'var(--primary)' }} />
                     <style>{`
@@ -58,23 +58,23 @@ const EmployeeProfilePage = () => {
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
           `}</style>
                 </div>
-            </Layout>
+            </>
         );
     }
 
     if (!employee) {
         return (
-            <Layout>
+            <>
                 <div style={{ padding: '40px', textAlign: 'center' }}>
                     <h2>Employee not found</h2>
                     <button onClick={() => navigate('/hr/employees')}>Back to list</button>
                 </div>
-            </Layout>
+            </>
         );
     }
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '24px' }}>
                 <button
                     onClick={() => navigate('/hr/employees')}
@@ -167,7 +167,7 @@ const EmployeeProfilePage = () => {
         .status-badge.active { background: #D1FAE5; color: #059669; }
         .status-badge.on-leave { background: #FEF3C7; color: #D97706; }
       `}</style>
-        </Layout>
+        </>
     );
 };
 

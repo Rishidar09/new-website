@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
 
     if (requiredRole && profile?.role !== requiredRole) {
-        // Redirect unauthorized users to their respective dashboards
+        // Rule 1 & 2: Redirect unauthorized users to their respective dashboards
         const target = profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard';
         return <Navigate to={target} replace />;
     }

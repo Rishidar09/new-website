@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import {
     Check,
@@ -15,15 +14,16 @@ const HRLeavesPage = () => {
     const [loading, setLoading] = useState(true);
     const [requests, setRequests] = useState([]);
     const [filter, setFilter] = useState('All');
+    const [deptFilter, setDeptFilter] = useState('All');
 
     useEffect(() => {
         fetchRequests();
-    }, [filter]);
+    }, [filter, deptFilter]);
 
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const data = await api.get(`/leaves?status=${filter}`);
+            const data = await api.get(`/leaves?status=${filter}&department=${deptFilter}`);
             setRequests(data || []);
         } catch (error) {
             console.error(error.message);
@@ -35,6 +35,7 @@ const HRLeavesPage = () => {
     const handleAction = async (id, status) => {
         try {
             await api.patch(`/leaves/${id}`, { status });
+            alert(`Request ${status} successfully.`);
             fetchRequests();
         } catch (error) {
             alert(error.message);
@@ -42,26 +43,39 @@ const HRLeavesPage = () => {
     };
 
     return (
-        <Layout>
-            <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <>
+            <div style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '24px', color: 'var(--text-main)' }}>Leave Requests</h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Review and manage employee leave applications.</p>
+                    <h1 style={{ fontSize: '28px', color: 'var(--text-main)', fontWeight: '700' }}>Mission Control: Leaves</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Review, filter, and moderate team time-off requests.</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>STATUS</span>
                         <select
                             className="select-field"
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            style={{ paddingLeft: '40px' }}
                         >
-                            <option value="All">All Status</option>
+                            <option value="All">All Requests</option>
                             <option value="Pending">Pending</option>
                             <option value="Approved">Approved</option>
                             <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>DEPARTMENT</span>
+                        <select
+                            className="select-field"
+                            value={deptFilter}
+                            onChange={(e) => setDeptFilter(e.target.value)}
+                        >
+                            <option value="All">All Departments</option>
+                            <option value="Engineering">Engineering</option>
+                            <option value="Product">Product</option>
+                            <option value="Design">Design</option>
+                            <option value="Operations">Operations</option>
                         </select>
                     </div>
                 </div>
@@ -89,10 +103,10 @@ const HRLeavesPage = () => {
                                 <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <img src={req.employees?.avatar_url || `https://i.pravatar.cc/150?u=${req.employee_id}`} alt="Avatar" className="avatar" />
+                                            <img src={req.avatar_url || `https://i.pravatar.cc/150?u=${req.employee_id}`} alt="Avatar" className="avatar" />
                                             <div>
-                                                <p style={{ fontWeight: '600', fontSize: '14px' }}>{req.employees?.full_name}</p>
-                                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{req.employees?.department}</p>
+                                                <p style={{ fontWeight: '600', fontSize: '14px' }}>{req.full_name}</p>
+                                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{req.department}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -174,7 +188,7 @@ const HRLeavesPage = () => {
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
-        </Layout>
+        </>
     );
 };
 

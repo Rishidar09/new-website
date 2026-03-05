@@ -4,112 +4,118 @@ import {
     LayoutDashboard,
     Users,
     CalendarCheck,
+    Briefcase,
     ClipboardList,
     CreditCard,
-    Briefcase,
-    BarChart3,
     Files,
+    BarChart3,
     Mail,
     History,
     MessageSquare,
-    Settings,
-    Send,
-    CalendarDays,
-    FileText,
     LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const Sidebar = () => {
+const HRSidebar = () => {
     const { signOut } = useAuth();
     const location = useLocation();
+
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/hr/dashboard' },
         { icon: <Users size={20} />, label: 'Employees', path: '/hr/employees' },
         { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/hr/attendance' },
         { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
-        { icon: <CalendarDays size={20} />, label: 'Holidays', path: '/hr/holidays' },
-        { icon: <Send size={20} />, label: 'Apply Leave', path: '/employee/apply-leave' },
-        { icon: <CalendarDays size={20} />, label: 'Employee Holidays', path: '/employee/holidays' },
-        { icon: <FileText size={20} />, label: 'My Payslips', path: '/employee/payslips' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
         { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
-        { icon: <Files size={20} />, label: 'My Documents', path: '/employee/documents' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
-        { icon: <Settings size={20} />, label: 'Settings', path: '/hr/settings' },
     ];
 
     return (
         <div style={{
-            width: '240px',
+            width: '260px',
             height: '100vh',
             background: 'white',
-            borderRight: '1px solid var(--border)',
+            borderRight: '1px solid #E5E7EB',
             display: 'flex',
             flexDirection: 'column',
-            padding: '24px 16px',
+            padding: '24px 0',
             position: 'fixed',
             left: 0,
             top: 0,
             zIndex: 100
         }}>
+            {/* Logo */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '12px',
                 marginBottom: '32px',
-                paddingLeft: '12px'
+                padding: '0 24px'
             }}>
                 <div style={{
-                    width: '32px',
-                    height: '32px',
-                    background: 'var(--primary)',
-                    borderRadius: '6px',
+                    width: '36px',
+                    height: '36px',
+                    background: '#4A90D9',
+                    borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white'
                 }}>
-                    <LayoutDashboard size={20} />
+                    <LayoutDashboard size={24} />
                 </div>
-                <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-main)' }}>
-                    Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
+                <span style={{ fontSize: '24px', fontWeight: '800', color: '#111827' }}>
+                    Indus<span style={{ color: '#4A90D9' }}>Innovate</span>
                 </span>
             </div>
 
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {/* Navigation */}
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {menuItems.map((item, index) => {
-                    const isActive = location.pathname.startsWith(item.path);
+                    const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                     return (
                         <Link
                             key={index}
                             to={item.path}
-                            className={`sidebar-item ${isActive ? 'active' : ''}`}
-                            style={{ textDecoration: 'none' }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '12px 24px',
+                                textDecoration: 'none',
+                                color: isActive ? '#4A90D9' : '#6B7280',
+                                background: isActive ? '#EEF4FF' : 'transparent',
+                                borderLeft: isActive ? '4px solid #4A90D9' : '4px solid transparent',
+                                fontSize: '15px',
+                                fontWeight: isActive ? '600' : '500',
+                                transition: 'all 0.2s'
+                            }}
                         >
-                            {item.icon}
+                            {React.cloneElement(item.icon, { color: isActive ? '#4A90D9' : '#6B7280' })}
                             <span>{item.label}</span>
                         </Link>
                     );
                 })}
             </nav>
+
+            {/* Logout */}
             <div
                 onClick={signOut}
-                className="sidebar-item"
                 style={{
                     marginTop: 'auto',
-                    borderTop: '1px solid var(--border)',
-                    paddingTop: '16px',
+                    borderTop: '1px solid #E5E7EB',
+                    padding: '16px 24px 0',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    padding: '12px',
-                    color: 'var(--text-muted)'
+                    color: '#6B7280',
+                    fontSize: '15px',
+                    fontWeight: '500'
                 }}
             >
                 <LogOut size={20} />
@@ -119,4 +125,4 @@ const Sidebar = () => {
     );
 };
 
-export default Sidebar;
+export default HRSidebar;

@@ -3,9 +3,10 @@ import { Search, Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 
-const EmployeeTable = ({ onAddClick }) => {
+const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
+    const [departmentFilter, setDepartmentFilter] = useState('All');
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -18,6 +19,7 @@ const EmployeeTable = ({ onAddClick }) => {
             setLoading(true);
             const data = await api.get('/employees');
             setEmployees(data || []);
+            if (onDataLoaded) onDataLoaded(data || []);
         } catch (error) {
             console.error('Error fetching employees:', error.message);
         } finally {
@@ -25,11 +27,15 @@ const EmployeeTable = ({ onAddClick }) => {
         }
     };
 
-    const filteredEmployees = employees.filter(emp =>
-        emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.department?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredEmployees = employees.filter(emp => {
+        const matchesSearch = emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emp.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emp.department?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesDept = departmentFilter === 'All' || emp.department === departmentFilter;
+
+        return matchesSearch && matchesDept;
+    });
 
     return (
         <div className="card" style={{ padding: '0' }}>
@@ -52,21 +58,27 @@ const EmployeeTable = ({ onAddClick }) => {
                     />
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'white',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}>
-                        <Filter size={18} />
-                        Filters
-                    </button>
+                    <select
+                        value={departmentFilter}
+                        onChange={(e) => setDepartmentFilter(e.target.value)}
+                        style={{
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border)',
+                            background: 'white',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            outline: 'none'
+                        }}
+                    >
+                        <option value="All">All Departments</option>
+                        <option>Engineering</option>
+                        <option>Sales</option>
+                        <option>Marketing</option>
+                        <option>Design</option>
+                        <option>Human Resources</option>
+                    </select>
                     <button
                         onClick={onAddClick}
                         style={{
@@ -137,7 +149,10 @@ const EmployeeTable = ({ onAddClick }) => {
                                         >
                                             <Eye size={18} />
                                         </button>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}>
+                                        <button
+                                            onClick={() => onEditClick(emp)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
+                                        >
                                             <Edit2 size={18} />
                                         </button>
                                     </div>

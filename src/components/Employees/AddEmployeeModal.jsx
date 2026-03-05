@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
+import toast from 'react-hot-toast';
 
-const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
+const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) => {
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(employeeData || {
         full_name: '',
         email: '',
         role: '',
@@ -13,6 +14,12 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
         joining_date: '',
         salary: ''
     });
+
+    React.useEffect(() => {
+        if (employeeData) {
+            setFormData(employeeData);
+        }
+    }, [employeeData]);
 
     if (!isOpen) return null;
 
@@ -25,20 +32,28 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
         e.preventDefault();
         try {
             setLoading(true);
-            await api.post('/employees', formData);
+            if (employeeData) {
+                await api.patch(`/employees/${employeeData.id}`, formData);
+                toast.success('Employee profile updated successfully!');
+            } else {
+                await api.post('/employees', formData);
+                toast.success('New employee recruited successfully!');
+            }
             onRefresh();
             onClose();
-            setFormData({
-                full_name: '',
-                email: '',
-                role: '',
-                department: 'Engineering',
-                phone: '',
-                joining_date: '',
-                salary: ''
-            });
+            if (!employeeData) {
+                setFormData({
+                    full_name: '',
+                    email: '',
+                    role: '',
+                    department: 'Engineering',
+                    phone: '',
+                    joining_date: '',
+                    salary: ''
+                });
+            }
         } catch (error) {
-            alert('Error adding employee: ' + error.message);
+            toast.error('Action failed: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -60,7 +75,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
         }}>
             <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ fontSize: '20px' }}>Add New Employee</h2>
+                    <h2 style={{ fontSize: '20px' }}>{employeeData ? 'Edit Employee Profile' : 'Add New Employee'}</h2>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                         <X size={24} />
                     </button>
@@ -180,7 +195,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh }) => {
                             opacity: loading ? 0.7 : 1
                         }}>
                             {loading && <Loader2 size={18} className="animate-spin" />}
-                            {loading ? 'Creating...' : 'Create Employee'}
+                            {loading ? (employeeData ? 'Updating...' : 'Creating...') : (employeeData ? 'Update Profile' : 'Create Employee')}
                         </button>
                     </div>
                 </form>

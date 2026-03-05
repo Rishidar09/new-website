@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const getHeaders = () => {
     const token = localStorage.getItem('token');
@@ -34,6 +34,27 @@ export const api = {
             method: 'PATCH',
             headers: getHeaders(),
             body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'API Error');
+        return data;
+    },
+
+    put: async (endpoint, body) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'API Error');
+        return data;
+    },
+
+    delete: async (endpoint) => {
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'DELETE',
+            headers: getHeaders()
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'API Error');

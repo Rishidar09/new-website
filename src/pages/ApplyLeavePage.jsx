@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
 import { api } from '../lib/api';
 import {
     Calendar,
@@ -11,6 +10,8 @@ import {
     CalendarDays,
     Loader2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import EmptyState from '../components/EmptyState';
 
 const ApplyLeavePage = () => {
     const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ const ApplyLeavePage = () => {
         end_date: '',
         reason: '',
     });
+    const [file, setFile] = useState(null);
 
     // For demo/simplicity, we'll assume a fixed employee_id or fetch the first one from employees
     const [employeeId, setEmployeeId] = useState(null);
@@ -51,44 +53,62 @@ const ApplyLeavePage = () => {
             setLoading(true);
             const start = new Date(formData.start_date);
             const end = new Date(formData.end_date);
+
+            if (end < start) {
+                toast.error('End date cannot be before start date');
+                return;
+            }
+
             const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
-            await api.post('/leaves', {
-                ...formData,
-                days
+            const submitData = new FormData();
+            submitData.append('leave_type', formData.leave_type);
+            submitData.append('start_date', formData.start_date);
+            submitData.append('end_date', formData.end_date);
+            submitData.append('reason', formData.reason);
+            submitData.append('days', days);
+            if (file) {
+                submitData.append('attachment', file);
+            }
+
+            await api.post('/leaves', submitData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             });
 
-            alert('Leave application submitted!');
+            toast.success('Leave application submitted successfully!');
             setFormData({ leave_type: 'Casual', start_date: '', end_date: '', reason: '' });
+            setFile(null);
             fetchData();
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message || 'Failed to submit leave request');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Layout>
+        <>
             <div style={{ marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '24px', color: 'var(--text-main)' }}>Apply for Leave</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Request time off and track your leave history.</p>
+                <h1 style={{ fontSize: '28px', color: 'var(--text-main)', fontWeight: '700' }}>Time Off Hub</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Submit requests, attach documents, and track your balances.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '32px' }}>
-                <BalanceCard title="Casual Leave" count={balances.casual} color="#3B82F6" />
-                <BalanceCard title="Sick Leave" count={balances.sick} color="#EF4444" />
-                <BalanceCard title="Earned Leave" count={balances.earned} color="#10B981" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+                <BalanceCard title="Casual Leave" count={balances.casual} total={12} color="#3B82F6" />
+                <BalanceCard title="Sick Leave" count={balances.sick} total={8} color="#EF4444" />
+                <BalanceCard title="Earned Leave" count={balances.earned} total={18} color="#10B981" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px' }}>
-                <div className="card" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={20} color="var(--primary)" /> Apply New Leave
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px', alignItems: 'start' }}>
+                <div className="card" style={{ padding: '32px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Plus size={20} color="var(--primary)" /> Apply New Leave
                     </h3>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Leave Type</label>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>LEAVE CATEGORY</label>
                             <select
                                 className="input-field"
                                 value={formData.leave_type}
@@ -100,8 +120,8 @@ const ApplyLeavePage = () => {
                             </select>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: '500' }}>Start Date</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>START DATE</label>
                                 <input
                                     type="date"
                                     className="input-field"
@@ -110,8 +130,8 @@ const ApplyLeavePage = () => {
                                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                 />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: '500' }}>End Date</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>END DATE</label>
                                 <input
                                     type="date"
                                     className="input-field"
@@ -121,21 +141,43 @@ const ApplyLeavePage = () => {
                                 />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Reason</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>REASON / REMARKS</label>
                             <textarea
                                 className="input-field"
-                                rows="4"
-                                placeholder="Briefly explain the reason for your leave..."
+                                rows="3"
+                                placeholder="State your reason for leave..."
                                 required
                                 value={formData.reason}
                                 onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                                 style={{ resize: 'none' }}
                             />
                         </div>
-                        <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '800', color: '#64748B' }}>ATTACHMENT (OPTIONAL)</label>
+                            <div style={{
+                                border: '1px dashed var(--border)',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                textAlign: 'center',
+                                background: '#F9FAFB',
+                                cursor: 'pointer'
+                            }}>
+                                <input
+                                    type="file"
+                                    id="leave-attachment"
+                                    onChange={(e) => setFile(e.target.files[0])}
+                                    style={{ display: 'none' }}
+                                />
+                                <label htmlFor="leave-attachment" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                                    <FileText size={18} />
+                                    {file ? file.name : 'Click to upload proof'}
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: '8px', padding: '14px' }}>
                             {loading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                            {loading ? 'Submitting...' : 'Submit Request'}
+                            {loading ? 'Processing Mission...' : 'Submit Request'}
                         </button>
                     </form>
                 </div>
@@ -168,13 +210,15 @@ const ApplyLeavePage = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {history.length === 0 && (
-                                    <tr>
-                                        <td colSpan="3" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No leave history found.</td>
-                                    </tr>
-                                )}
                             </tbody>
                         </table>
+                        {history.length === 0 && (
+                            <EmptyState
+                                title="No Leave History"
+                                message="Your leave applications will appear here once submitted."
+                                icon={<Calendar size={48} />}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
@@ -206,14 +250,21 @@ const ApplyLeavePage = () => {
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
-        </Layout>
+        </>
     );
 };
 
-const BalanceCard = ({ title, count, color }) => (
-    <div className="card" style={{ padding: '24px', borderLeft: `4px solid ${color}` }}>
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>{title}</p>
-        <h2 style={{ fontSize: '28px', color: 'var(--text-main)', fontWeight: '700' }}>{count} <span style={{ fontSize: '14px', fontWeight: '500' }}>days</span></h2>
+const BalanceCard = ({ title, count, total, color }) => (
+    <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color }}></div>
+        <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '12px' }}>{title}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '32px', color: 'var(--text-main)', fontWeight: '800' }}>{count}</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>of {total} days</p>
+        </div>
+        <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: color, transition: 'width 0.5s' }}></div>
+        </div>
     </div>
 );
 
