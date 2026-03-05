@@ -9,6 +9,8 @@ import HRHolidaysPage from './pages/HRHolidaysPage';
 import EmployeeHolidaysPage from './pages/EmployeeHolidaysPage';
 import HRPayrollPage from './pages/HRPayrollPage';
 import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
+import HRDocumentsPage from './pages/HRDocumentsPage';
+import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
 import './index.css';
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
         <Route path="/employee/holidays" element={<EmployeeHolidaysPage />} />
         <Route path="/hr/payroll" element={<HRPayrollPage />} />
         <Route path="/employee/payslips" element={<EmployeePayslipsPage />} />
+        <Route path="/hr/documents" element={<HRDocumentsPage />} />
+        <Route path="/employee/documents" element={<EmployeeDocumentsPage />} />
         <Route path="/" element={<Navigate to="/hr/dashboard" replace />} />
         {/* Fallback for components in progress */}
         <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />

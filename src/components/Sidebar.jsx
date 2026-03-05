@@ -33,6 +33,7 @@ const Sidebar = () => {
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
         { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
+        { icon: <Files size={20} />, label: 'My Documents', path: '/employee/documents' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
