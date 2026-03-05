@@ -14,6 +14,7 @@ import {
     Clock,
     Plus,
     X,
+    Files,
     Loader2
 } from 'lucide-react';
 
