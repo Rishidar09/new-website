@@ -7,6 +7,8 @@ import ApplyLeavePage from './pages/ApplyLeavePage';
 import HRLeavesPage from './pages/HRLeavesPage';
 import HRHolidaysPage from './pages/HRHolidaysPage';
 import EmployeeHolidaysPage from './pages/EmployeeHolidaysPage';
+import HRPayrollPage from './pages/HRPayrollPage';
+import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
 import './index.css';
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
         <Route path="/hr/leaves" element={<HRLeavesPage />} />
         <Route path="/hr/holidays" element={<HRHolidaysPage />} />
         <Route path="/employee/holidays" element={<EmployeeHolidaysPage />} />
+        <Route path="/hr/payroll" element={<HRPayrollPage />} />
+        <Route path="/employee/payslips" element={<EmployeePayslipsPage />} />
         <Route path="/" element={<Navigate to="/hr/dashboard" replace />} />
         {/* Fallback for components in progress */}
         <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />

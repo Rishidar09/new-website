@@ -14,7 +14,8 @@ import {
     MessageSquare,
     Settings,
     Send,
-    CalendarDays
+    CalendarDays,
+    FileText
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -27,6 +28,7 @@ const Sidebar = () => {
         { icon: <CalendarDays size={20} />, label: 'Holidays', path: '/hr/holidays' },
         { icon: <Send size={20} />, label: 'Apply Leave', path: '/employee/apply-leave' },
         { icon: <CalendarDays size={20} />, label: 'Employee Holidays', path: '/employee/holidays' },
+        { icon: <FileText size={20} />, label: 'My Payslips', path: '/employee/payslips' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
