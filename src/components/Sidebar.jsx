@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
@@ -11,7 +12,9 @@ import {
     Mail,
     History,
     MessageSquare,
-    Settings
+    Settings,
+    Send,
+    CalendarDays
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -20,7 +23,10 @@ const Sidebar = () => {
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/hr/dashboard' },
         { icon: <Users size={20} />, label: 'Employees', path: '/hr/employees' },
         { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/hr/attendance' },
-        { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leave-requests' },
+        { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
+        { icon: <CalendarDays size={20} />, label: 'Holidays', path: '/hr/holidays' },
+        { icon: <Send size={20} />, label: 'Apply Leave', path: '/employee/apply-leave' },
+        { icon: <CalendarDays size={20} />, label: 'Employee Holidays', path: '/employee/holidays' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
