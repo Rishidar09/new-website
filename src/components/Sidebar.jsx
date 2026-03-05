@@ -15,10 +15,13 @@ import {
     Settings,
     Send,
     CalendarDays,
-    FileText
+    FileText,
+    LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
+    const { signOut } = useAuth();
     const location = useLocation();
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/hr/dashboard' },
@@ -94,6 +97,24 @@ const Sidebar = () => {
                     );
                 })}
             </nav>
+            <div
+                onClick={signOut}
+                className="sidebar-item"
+                style={{
+                    marginTop: 'auto',
+                    borderTop: '1px solid var(--border)',
+                    paddingTop: '16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    color: 'var(--text-muted)'
+                }}
+            >
+                <LogOut size={20} />
+                <span>Logout</span>
+            </div>
         </div>
     );
 };
