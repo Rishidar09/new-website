@@ -53,7 +53,7 @@ def add_user():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO profiles (email, password_hash, role, status) VALUES (%s, %s, %s, 'Active')", (email, hashed, role))
+        cur.execute("INSERT INTO profiles (email, password_hash, role, status) VALUES (%s, %s, %s, 'active')", (email, hashed, role))
         conn.commit()
         print(f"✅ User {email} added successfully!")
     except Exception as e:

@@ -14,10 +14,13 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
         joining_date: '',
         salary: ''
     });
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(employeeData?.avatar_url || null);
 
     React.useEffect(() => {
         if (employeeData) {
             setFormData(employeeData);
+            setPreviewUrl(employeeData.avatar_url);
         }
     }, [employeeData]);
 
@@ -28,15 +31,35 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setAvatarFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             setLoading(true);
+            const data = new FormData();
+            Object.keys(formData).forEach(key => {
+                data.append(key, formData[key]);
+            });
+            if (avatarFile) {
+                data.append('avatar', avatarFile);
+            }
+
             if (employeeData) {
-                await api.patch(`/employees/${employeeData.id}`, formData);
+                await api.patch(`/employees/${employeeData.id}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
                 toast.success('Employee profile updated successfully!');
             } else {
-                await api.post('/employees', formData);
+                await api.post('/employees', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
                 toast.success('New employee recruited successfully!');
             }
             onRefresh();
@@ -51,6 +74,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                     joining_date: '',
                     salary: ''
                 });
+                setAvatarFile(null);
+                setPreviewUrl(null);
             }
         } catch (error) {
             toast.error('Action failed: ' + error.message);
@@ -167,6 +192,34 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 value={formData.salary}
                                 onChange={handleChange}
                             />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Employee Photo</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '50%',
+                                    background: '#F3F4F6',
+                                    overflow: 'hidden',
+                                    border: '2px solid var(--border)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {previewUrl ? (
+                                        <img src={previewUrl.startsWith('blob:') ? previewUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${previewUrl}`} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No Photo</span>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    style={{ fontSize: '14px' }}
+                                />
+                            </div>
                         </div>
                     </div>
 

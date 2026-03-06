@@ -125,7 +125,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                             <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '12px 24px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <img src={emp.avatar_url || `https://i.pravatar.cc/150?u=${emp.id}`} alt={emp.full_name} className="avatar" />
+                                        <img src={emp.avatar_url ? (emp.avatar_url.startsWith('http') ? emp.avatar_url : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.avatar_url}`) : `https://i.pravatar.cc/150?u=${emp.id}`} alt={emp.full_name} className="avatar" />
                                         <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>{emp.full_name}</span>
                                     </div>
                                 </td>
