@@ -29,7 +29,7 @@ const ChatPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const socket = useRef(null);
-    const scrollRef = useRef(null);
+    const messageContainerRef = useRef(null);
     const { profile: currentUser } = useAuth();
 
     useEffect(() => {
@@ -67,7 +67,12 @@ const ChatPage = () => {
     }, [activeChat, currentUser]);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messageContainerRef.current) {
+            messageContainerRef.current.scrollTo({
+                top: messageContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }, [messages]);
 
     const fetchInitialData = async () => {
@@ -119,15 +124,16 @@ const ChatPage = () => {
     return (
         <>
             <div style={{
-                height: 'calc(100vh - 140px)',
+                height: 'calc(100vh - 118px)',
                 display: 'grid',
-                gridTemplateColumns: '320px 1fr',
+                gridTemplateColumns: 'minmax(320px, 320px) 1fr',
                 background: 'var(--card-bg)',
                 color: 'var(--text-main)',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                position: 'relative'
             }}>
                 {/* Left Panel */}
                 <div style={{
@@ -221,7 +227,14 @@ const ChatPage = () => {
                 </div>
 
                 {/* Right Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--main-bg)', height: '100%', minWidth: 0 }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'var(--main-bg)',
+                    height: '100%',
+                    minWidth: 0,
+                    overflow: 'hidden' // Force child containers to handle overflow
+                }}>
                     {activeChat ? (
                         <>
                             {/* Header */}
@@ -251,15 +264,18 @@ const ChatPage = () => {
                             </div>
 
                             {/* Chat Window */}
-                            <div style={{
-                                flex: 1,
-                                padding: '24px',
-                                overflowY: 'auto',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '16px',
-                                minHeight: 0 // Prevents child content from pushing the container
-                            }}>
+                            <div
+                                ref={messageContainerRef}
+                                style={{
+                                    flex: 1,
+                                    padding: '24px',
+                                    overflowY: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '16px',
+                                    minHeight: 0 // CRITICAL: Allows flex child to overflow and scroll
+                                }}
+                            >
                                 {messages.map((m, idx) => {
                                     const trulyMe = String(m.sender_id) === String(currentUser?.employee_uuid);
 
@@ -291,7 +307,7 @@ const ChatPage = () => {
                                         </div>
                                     );
                                 })}
-                                <div ref={scrollRef} />
+
                             </div>
 
                             {/* Input Bar */}
