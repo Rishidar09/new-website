@@ -15,7 +15,6 @@ import EmptyState from '../components/EmptyState';
 
 const ApplyLeavePage = () => {
     const [loading, setLoading] = useState(false);
-    const [balances, setBalances] = useState({ casual: 0, sick: 0, earned: 0 });
     const [history, setHistory] = useState([]);
     const [formData, setFormData] = useState({
         leave_type: 'Casual',
@@ -38,21 +37,7 @@ const ApplyLeavePage = () => {
             const leaves = await api.get('/leaves');
             setHistory(leaves || []);
 
-            // Calculate days USED — only Approved leaves count
-            const used = { Casual: 0, Sick: 0, Earned: 0 };
-
-            (leaves || []).forEach(l => {
-                if (l.status === 'Approved' && used[l.leave_type] !== undefined) {
-                    used[l.leave_type] += parseInt(l.days) || 0;
-                }
-            });
-
-            // Store USED days (rejected = 0 used, approved = actual days taken)
-            setBalances({
-                casual: used.Casual,
-                sick: used.Sick,
-                earned: used.Earned
-            });
+            // Store only leave history — balance cards removed (no entitlement system yet)
         } catch (err) {
             console.error(err);
         } finally {
@@ -105,11 +90,6 @@ const ApplyLeavePage = () => {
                 <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Submit requests, attach documents, and track your balances.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-                <BalanceCard title="Casual Leave" used={balances.casual} total={12} color="#3B82F6" />
-                <BalanceCard title="Sick Leave" used={balances.sick} total={8} color="#EF4444" />
-                <BalanceCard title="Earned Leave" used={balances.earned} total={18} color="#10B981" />
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px', alignItems: 'start' }}>
                 <div className="card" style={{ padding: '32px' }}>
@@ -261,24 +241,6 @@ const ApplyLeavePage = () => {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
         </>
-    );
-};
-
-const BalanceCard = ({ title, used, total, color }) => {
-    const remaining = Math.max(0, total - used);
-    return (
-        <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color }}></div>
-            <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '12px' }}>{title}</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
-                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', fontWeight: '800' }}>{used}</h2>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>used of {total} days</p>
-            </div>
-            <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px' }}>{remaining} days remaining</p>
-            <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${(used / total) * 100}%`, height: '100%', background: color, transition: 'width 0.5s' }}></div>
-            </div>
-        </div>
     );
 };
 
