@@ -118,10 +118,17 @@ router.post('/message', auth, async (req, res) => {
 
         if (!sender_id) return res.status(404).json({ error: 'Profile not found' });
 
-        const result = await pool.query(
-            'INSERT INTO messages (sender_id, receiver_id, group_id, content, attachment_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [sender_id, receiver_id || null, group_id || null, content, attachment_url || null]
-        );
+        // Insert and immediately enrich with sender_name
+        const result = await pool.query(`
+            WITH inserted AS (
+                INSERT INTO messages (sender_id, receiver_id, group_id, content, attachment_url) 
+                VALUES ($1, $2, $3, $4, $5) 
+                RETURNING *
+            )
+            SELECT i.*, e.full_name as sender_name 
+            FROM inserted i
+            JOIN employees e ON i.sender_id = e.id
+        `, [sender_id, receiver_id || null, group_id || null, content, attachment_url || null]);
 
         const message = result.rows[0];
 
