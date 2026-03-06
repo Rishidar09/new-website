@@ -28,7 +28,7 @@ router.get('/', auth, async (req, res) => {
                 console.log(`Fetching holidays for ${year} from API...`);
                 try {
                     const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/IN`);
-                    if (response.ok) {
+                    if (response.status === 200) {
                         const data = await response.json();
                         for (const h of data) {
                             await pool.query(
@@ -36,6 +36,8 @@ router.get('/', auth, async (req, res) => {
                                 [h.localName, h.date, 'National']
                             );
                         }
+                    } else if (response.status === 204) {
+                        console.log(`No holiday data found for ${year} (Status 204)`);
                     }
                 } catch (apiErr) {
                     console.error(`Failed to fetch holidays for ${year}:`, apiErr);
