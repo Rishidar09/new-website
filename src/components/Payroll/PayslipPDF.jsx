@@ -2,15 +2,15 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
 Font.register({
-    family: 'Roboto',
-    src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.ttf'
+    family: 'Noto Sans',
+    src: 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@master/hinted/ttf/NotoSans/NotoSans-Regular.ttf'
 });
 
 const styles = StyleSheet.create({
     page: {
         padding: 40,
         fontSize: 12,
-        fontFamily: 'Roboto',
+        fontFamily: 'Noto Sans',
         color: '#333',
     },
     header: {
@@ -133,9 +133,9 @@ const PayslipPDF = ({ payslip, employee }) => {
                         <Text style={styles.label}>Payslip Period</Text>
                         <Text style={styles.value}>{payslip.month} {payslip.year}</Text>
                         <Text style={styles.label}>Employee ID</Text>
-                        <Text style={styles.value}>{employee.id.slice(0, 8)}</Text>
+                        <Text style={styles.value}>{String(employee.id || '').slice(0, 8)}</Text>
                         <Text style={styles.label}>Pay Date</Text>
-                        <Text style={styles.value}>{new Date(payslip.created_at).toLocaleDateString()}</Text>
+                        <Text style={styles.value}>{payslip.created_at ? new Date(payslip.created_at).toLocaleDateString() : 'N/A'}</Text>
                     </View>
                 </View>
 
@@ -145,19 +145,19 @@ const PayslipPDF = ({ payslip, employee }) => {
                         <Text style={styles.tableHeader}>EARNINGS</Text>
                         <View style={styles.row}>
                             <Text>Basic Salary</Text>
-                            <Text>{'\u20B9'}{payslip.basic_salary}</Text>
+                            <Text>{'\u20B9 '}{payslip.basic_salary}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text>HRA</Text>
-                            <Text>{'\u20B9'}{payslip.hra}</Text>
+                            <Text>{'\u20B9 '}{payslip.hra}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text>Allowances</Text>
-                            <Text>{'\u20B9'}{payslip.allowances}</Text>
+                            <Text>{'\u20B9 '}{payslip.allowances}</Text>
                         </View>
                         <View style={[styles.row, { borderBottom: 0, fontWeight: 'bold', marginTop: 10 }]}>
                             <Text>Gross Earnings</Text>
-                            <Text>{'\u20B9'}{payslip.gross_salary}</Text>
+                            <Text>{'\u20B9 '}{payslip.gross_salary}</Text>
                         </View>
                     </View>
 
@@ -166,15 +166,15 @@ const PayslipPDF = ({ payslip, employee }) => {
                         <Text style={styles.tableHeader}>DEDUCTIONS</Text>
                         <View style={styles.row}>
                             <Text>Provident Fund (PF)</Text>
-                            <Text>{'\u20B9'}{payslip.pf}</Text>
+                            <Text>{'\u20B9 '}{payslip.pf}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text>TDS / Tax</Text>
-                            <Text>{'\u20B9'}{payslip.tds}</Text>
+                            <Text>{'\u20B9 '}{payslip.tds}</Text>
                         </View>
                         <View style={[styles.row, { borderBottom: 0, fontWeight: 'bold', marginTop: 10 }]}>
                             <Text>Total Deductions</Text>
-                            <Text>{'\u20B9'}{payslip.deductions}</Text>
+                            <Text>{'\u20B9 '}{payslip.deductions}</Text>
                         </View>
                     </View>
                 </View>
@@ -182,7 +182,7 @@ const PayslipPDF = ({ payslip, employee }) => {
                 <View style={styles.summarySection}>
                     <View style={styles.netSalaryBlock}>
                         <Text style={styles.label}>Net Take Home</Text>
-                        <Text style={styles.netSalaryValue}>{'\u20B9'}{payslip.net_salary}</Text>
+                        <Text style={styles.netSalaryValue}>{'\u20B9 '}{payslip.net_salary}</Text>
                     </View>
                 </View>
 

@@ -31,7 +31,7 @@ const EmployeesPage = () => {
 
     return (
         <>
-            <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="no-print" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 style={{ fontSize: '24px', color: 'var(--text-main)', fontWeight: '700' }}>Workforce Management</h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
@@ -51,7 +51,7 @@ const EmployeesPage = () => {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+            <div className="no-print" style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
                 <button
                     onClick={() => setActiveTab('list')}
                     style={{
@@ -99,17 +99,19 @@ const EmployeesPage = () => {
                     onDataLoaded={handleDataLoaded}
                 />
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px', padding: '16px 0' }}>
+                <div className="id-cards-print-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px', padding: '16px 0' }}>
                     {employees.map(emp => (
-                        <div key={emp.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                        <div key={emp.id} className="id-card-print-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                             <IDCard employee={emp} />
                             <button
                                 onClick={() => window.print()}
+                                className="no-print"
                                 style={{
                                     padding: '8px 16px',
                                     borderRadius: '8px',
                                     border: '1px solid var(--border)',
                                     background: 'white',
+                                    color: '#000000',
                                     fontSize: '13px',
                                     fontWeight: '600',
                                     cursor: 'pointer'
@@ -141,7 +143,7 @@ const EmployeesPage = () => {
                     gap: 8px;
                     padding: 10px 20px;
                     background: var(--primary);
-                    color: white;
+                    color: #000000;
                     border: none;
                     border-radius: 8px;
                     font-weight: 600;
@@ -149,13 +151,29 @@ const EmployeesPage = () => {
                     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                 }
                 @media print {
-                    header, nav, .btn-bulk, button, h1, p, [role="tablist"] { display: none !important; }
+                    header, .btn-bulk, [role="tablist"], button, .no-print { display: none !important; }
                     body { background: white !important; padding: 0 !important; margin: 0 !important; }
-                    .main-content { padding: 0 !important; margin: 0 !important; }
+                    
+                    .id-cards-print-container {
+                        display: block !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+
+                    .id-card-print-wrapper {
+                        display: flex !important;
+                        justify-content: center !important;
+                        align-items: center !important;
+                        width: 100% !important;
+                        height: 100vh !important;
+                        page-break-after: always !important;
+                        break-after: page !important;
+                    }
+
                     #digital-id-card { 
-                        margin: 20px auto !important; 
+                        margin: 0 !important; 
                         box-shadow: none !important; 
-                        page-break-after: always;
+                        transform: scale(1.1); /* Slightly larger for print if needed */
                     }
                 }
             `}</style>

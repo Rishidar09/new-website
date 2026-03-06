@@ -137,12 +137,12 @@ const OfferLetterPage = () => {
 
     return (
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <header className="no-print" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '4px' }}>Document Generator</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Draft, preview, and transmit professional employment letters.</p>
                 </div>
-                <div style={{ display: 'flex', background: 'white', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div className="no-print" style={{ display: 'flex', background: 'white', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
                     <button
                         onClick={() => setLetterType('offer')}
                         style={{
@@ -164,7 +164,7 @@ const OfferLetterPage = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '32px' }}>
                 {/* Form Column */}
-                <div className="card" style={{ padding: '32px' }}>
+                <div className="card no-print" style={{ padding: '32px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FileText size={18} color="var(--primary)" /> Candidate Details
                     </h3>
@@ -276,7 +276,7 @@ const OfferLetterPage = () => {
             </div>
 
             {/* History List */}
-            <div style={{ marginTop: '48px' }}>
+            <div className="no-print" style={{ marginTop: '48px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <History size={18} color="var(--primary)" /> Generation History
                 </h3>
@@ -317,6 +317,13 @@ const OfferLetterPage = () => {
                     </table>
                 </div>
             </div>
+            <style>{`
+                @media print {
+                    .card { border: none !important; box-shadow: none !important; }
+                    h1, p, header { display: none !important; }
+                    .main-content { padding: 0 !important; }
+                }
+            `}</style>
         </div>
     );
 };

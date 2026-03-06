@@ -28,6 +28,15 @@ const HRPayrollPage = () => {
         fetchEmployees();
     }, []);
 
+    // Sync payslip preview whenever employee, month or year changes
+    useEffect(() => {
+        if (selectedEmp) {
+            setPayslip(calculatePayslip(selectedEmp));
+        } else {
+            setPayslip(null);
+        }
+    }, [selectedEmp, month, year]);
+
     const fetchEmployees = async () => {
         try {
             setLoading(true);
@@ -69,7 +78,6 @@ const HRPayrollPage = () => {
 
     const handleSelectEmployee = (emp) => {
         setSelectedEmp(emp);
-        setPayslip(calculatePayslip(emp));
     };
 
     const generatePayslip = async () => {
@@ -77,6 +85,8 @@ const HRPayrollPage = () => {
 
         try {
             setGenerating(true);
+            // Longer delay to ensure color change is visible to user
+            await new Promise(resolve => setTimeout(resolve, 1500));
             await api.post('/payroll', {
                 employee_id: selectedEmp.id,
                 ...payslip
@@ -86,6 +96,27 @@ const HRPayrollPage = () => {
             toast.error(error.message);
         } finally {
             setGenerating(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!selectedEmp || !payslip) {
+            toast.error('Please select an employee first');
+            return;
+        }
+
+        try {
+            const { pdf } = await import('@react-pdf/renderer');
+            const blob = await pdf(<PayslipPDF payslip={payslip} employee={selectedEmp} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Payslip_${selectedEmp.full_name}_${month}_${year}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+            toast.error('Failed to generate PDF');
         }
     };
 
@@ -146,7 +177,7 @@ const HRPayrollPage = () => {
 
                 {/* Main: Preview and Generate */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {selectedEmp ? (
+                    {selectedEmp && payslip ? (
                         <>
                             <div className="card" style={{ padding: '24px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -197,10 +228,10 @@ const HRPayrollPage = () => {
 
                                 <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
                                     <button
+                                        id="confirm-save-btn"
                                         onClick={generatePayslip}
                                         disabled={generating}
-                                        className="btn-primary"
-                                        style={{ flex: 1.5 }}
+                                        className={generating ? "generating" : "normal"}
                                     >
                                         {generating ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
                                         {generating ? 'Generating...' : 'Confirm & Save Payslip'}
@@ -219,18 +250,13 @@ const HRPayrollPage = () => {
                                         <Send size={18} /> Send Email
                                     </button>
 
-                                    <PDFDownloadLink
-                                        document={<PayslipPDF payslip={payslip} employee={selectedEmp} />}
-                                        fileName={`Payslip_${selectedEmp.full_name}_${month}_${year}.pdf`}
-                                        style={{ flex: 1, textDecoration: 'none' }}
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        className="btn-secondary"
+                                        style={{ flex: 1, background: '#F3F4F6', color: '#000000' }}
                                     >
-                                        {({ loading: pdfLoading }) => (
-                                            <button className="btn-secondary" disabled={pdfLoading} style={{ width: '100%', height: '100%', background: '#F3F4F6', color: '#000000' }}>
-                                                <Download size={18} />
-                                                {pdfLoading ? '...' : 'PDF'}
-                                            </button>
-                                        )}
-                                    </PDFDownloadLink>
+                                        <Download size={18} /> PDF
+                                    </button>
                                 </div>
                             </div>
                         </>
@@ -246,6 +272,34 @@ const HRPayrollPage = () => {
                 </div>
             </div>
 
+            <style>{`
+                #confirm-save-btn {
+                    flex: 1.5;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    transition: none !important;
+                }
+                #confirm-save-btn.normal {
+                    background-color: #3B82F6 !important;
+                    color: #000000 !important;
+                    cursor: pointer;
+                }
+                #confirm-save-btn.generating {
+                    background-color: #6B7280 !important;
+                    color: #FFFFFF !important;
+                    cursor: not-allowed;
+                }
+                #confirm-save-btn:disabled {
+                    background-color: #6B7280 !important;
+                    color: #FFFFFF !important;
+                }
+            `}</style>
         </>
     );
 };
