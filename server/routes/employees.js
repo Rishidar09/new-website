@@ -61,6 +61,16 @@ router.get('/dashboard-stats', auth, async (req, res) => {
     }
 
     try {
+        // Validate that employeeId is a valid UUID before querying tables where employee_id is UUID type
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(employeeId)) {
+            return res.json({
+                attendanceCount: 0,
+                leavesCount: 0,
+                projects: []
+            });
+        }
+
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
