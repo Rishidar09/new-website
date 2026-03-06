@@ -18,7 +18,7 @@ import {
     Hash
 } from 'lucide-react';
 
-const SOCKET_URL = 'http://localhost:5001';
+const SOCKET_URL = `http://${window.location.hostname}:5001`;
 
 const ChatPage = () => {
     const [contacts, setContacts] = useState([]);
@@ -36,7 +36,12 @@ const ChatPage = () => {
         // Initialize socket
         socket.current = io(SOCKET_URL);
 
+        socket.current.on('connect', () => {
+            console.log('Connected to socket server');
+        });
+
         socket.current.on('receive_message', (message) => {
+            console.log('New message received:', message);
             setMessages(prev => [...prev, message]);
         });
 
@@ -51,14 +56,15 @@ const ChatPage = () => {
         if (activeChat && currentUser) {
             fetchHistory();
             // Join room
-            const myEmployeeId = currentUser?.employee_uuid || currentUser?.id; // fallback if employee_uuid isn't set
+            const myEmployeeId = currentUser?.employee_uuid || currentUser?.id;
             const roomId = activeChat.type === 'group'
                 ? activeChat.id
                 : [myEmployeeId, activeChat.id].sort().join('_');
 
+            console.log('Joining room:', roomId);
             socket.current.emit('join_room', roomId);
         }
-    }, [activeChat]);
+    }, [activeChat, currentUser]);
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -233,9 +239,7 @@ const ChatPage = () => {
                             {/* Chat Window */}
                             <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {messages.map((m, idx) => {
-                                    const isMe = String(m.sender_id) === String(currentUser?.employee_uuid);
-                                    const isReceiverMe = m.receiver_id ? String(m.receiver_id) === String(currentUser?.employee_uuid) : false;
-                                    const trulyMe = isMe || m.sender_name === currentUser?.full_name;
+                                    const trulyMe = String(m.sender_id) === String(currentUser?.employee_uuid);
 
                                     return (
                                         <div key={idx} style={{
