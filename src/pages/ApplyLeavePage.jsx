@@ -10,6 +10,7 @@ import {
     CalendarDays,
     Loader2
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import EmptyState from '../components/EmptyState';
 
@@ -83,14 +84,46 @@ const ApplyLeavePage = () => {
         }
     };
 
+    // Compute leave summary stats from history
+    const approvedLeaves = history.filter(l => l.status === 'Approved');
+    const totalDaysTaken = approvedLeaves.reduce((sum, l) => sum + (parseInt(l.days) || 0), 0);
+    const leaveByType = [
+        { type: 'Casual', days: approvedLeaves.filter(l => l.leave_type === 'Casual').reduce((s, l) => s + (parseInt(l.days) || 0), 0), color: '#3B82F6' },
+        { type: 'Sick', days: approvedLeaves.filter(l => l.leave_type === 'Sick').reduce((s, l) => s + (parseInt(l.days) || 0), 0), color: '#EF4444' },
+        { type: 'Earned', days: approvedLeaves.filter(l => l.leave_type === 'Earned').reduce((s, l) => s + (parseInt(l.days) || 0), 0), color: '#10B981' },
+    ];
+
     return (
         <>
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '28px', color: 'var(--text-main)', fontWeight: '700' }}>Time Off Hub</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Submit requests, attach documents, and track your balances.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Submit requests, attach documents, and track your leave.</p>
             </div>
 
+            {/* ── Leave Summary Row ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '24px', marginBottom: '32px' }}>
+                {/* Total Days Taken Card */}
+                <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                    <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '8px' }}>Total Days Taken</p>
+                    <h2 style={{ fontSize: '48px', fontWeight: '900', color: 'var(--primary)', lineHeight: 1 }}>{totalDaysTaken}</h2>
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>approved leave days</p>
+                </div>
 
+                {/* Leave Breakdown Chart */}
+                <div className="card" style={{ padding: '24px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '16px' }}>Leave Breakdown by Type</p>
+                    <ResponsiveContainer width="100%" height={120}>
+                        <BarChart data={leaveByType} barSize={40}>
+                            <XAxis dataKey="type" tick={{ fontSize: 13, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(v) => [`${v} days`, 'Approved']} contentStyle={{ borderRadius: '8px', fontSize: '13px' }} />
+                            <Bar dataKey="days" radius={[6, 6, 0, 0]}>
+                                {leaveByType.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px', alignItems: 'start' }}>
                 <div className="card" style={{ padding: '32px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
