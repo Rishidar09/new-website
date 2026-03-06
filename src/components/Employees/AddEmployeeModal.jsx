@@ -175,7 +175,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                             padding: '10px 20px',
                             borderRadius: '8px',
                             border: '1px solid var(--border)',
-                            background: 'white',
+                            background: '#F3F4F6',
+                            color: '#000000',
                             fontWeight: '500',
                             cursor: 'pointer'
                         }}>
@@ -200,27 +201,6 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                     </div>
                 </form>
             </div>
-            <style>{`
-        .input-field {
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          outline: none;
-          font-size: 14px;
-          width: 100%;
-        }
-        .input-field:focus {
-          border-color: var(--primary);
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
         </div>
     );
 };

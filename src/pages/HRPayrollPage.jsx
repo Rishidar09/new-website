@@ -152,10 +152,10 @@ const HRPayrollPage = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                                     <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Payslip Preview</h3>
                                     <div style={{ display: 'flex', gap: '12px' }}>
-                                        <select className="select-field" value={month} onChange={(e) => setMonth(e.target.value)}>
+                                        <select className="input-field" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: '8px 12px', width: 'auto' }}>
                                             {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => <option key={m}>{m}</option>)}
                                         </select>
-                                        <select className="select-field" value={year} onChange={(e) => setYear(e.target.value)}>
+                                        <select className="input-field" value={year} onChange={(e) => setYear(e.target.value)} style={{ padding: '8px 12px', width: 'auto' }}>
                                             {['2025', '2026', '2027'].map(y => <option key={y}>{y}</option>)}
                                         </select>
                                     </div>
@@ -214,7 +214,7 @@ const HRPayrollPage = () => {
                                             } catch (err) { }
                                         }}
                                         className="btn-secondary"
-                                        style={{ flex: 1 }}
+                                        style={{ flex: 1, background: '#F3F4F6', color: '#000000' }}
                                     >
                                         <Send size={18} /> Send Email
                                     </button>
@@ -225,7 +225,7 @@ const HRPayrollPage = () => {
                                         style={{ flex: 1, textDecoration: 'none' }}
                                     >
                                         {({ loading: pdfLoading }) => (
-                                            <button className="btn-secondary" disabled={pdfLoading} style={{ width: '100%', height: '100%' }}>
+                                            <button className="btn-secondary" disabled={pdfLoading} style={{ width: '100%', height: '100%', background: '#F3F4F6', color: '#000000' }}>
                                                 <Download size={18} />
                                                 {pdfLoading ? '...' : 'PDF'}
                                             </button>
@@ -246,55 +246,6 @@ const HRPayrollPage = () => {
                 </div>
             </div>
 
-            <style>{`
-        .input-field, .select-field {
-          padding: 8px 12px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          outline: none;
-          font-size: 14px;
-        }
-        .pay-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
-          font-size: 14px;
-          border-bottom: 1px solid #F3F4F6;
-        }
-        .pay-row.total {
-          border-bottom: 0;
-          font-weight: 700;
-          margin-top: 8px;
-        }
-        .btn-primary {
-          background: var(--primary);
-          color: white;
-          border: none;
-          padding: 12px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-        .btn-secondary {
-          background: white;
-          color: var(--text-main);
-          border: 1px solid var(--border);
-          padding: 12px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-        .animate-spin { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
         </>
     );
 };
