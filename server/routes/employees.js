@@ -137,6 +137,16 @@ router.post('/', auth, authorize(['hr']), upload.single('avatar'), async (req, r
     try {
         await client.query('BEGIN');
 
+        // 0. Check for existing email in profiles or employees
+        const existingEmailCheck = await client.query(
+            `SELECT email FROM profiles WHERE email = $1 UNION SELECT email FROM employees WHERE email = $1`,
+            [email]
+        );
+        if (existingEmailCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Email already exists in the system' });
+        }
+
         // 1. Create Employee Record
         const newEmployee = await client.query(
             'INSERT INTO employees (full_name, email, role, department, phone, joining_date, salary, avatar_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',

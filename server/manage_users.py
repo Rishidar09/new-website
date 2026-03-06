@@ -57,6 +57,12 @@ def add_user():
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # Step 0: Check if email already exists
+        cur.execute("SELECT email FROM profiles WHERE email = %s UNION SELECT email FROM employees WHERE email = %s", (email, email))
+        if cur.fetchone():
+            print(f"❌ Error: Email '{email}' is already registered in the system.")
+            return
+
         # Step 1: Create Employee Record
         cur.execute(
             "INSERT INTO employees (full_name, email, role, department, employee_id, status) VALUES (%s, %s, %s, %s, %s, 'Active')",
