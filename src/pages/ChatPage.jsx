@@ -53,10 +53,11 @@ const ChatPage = () => {
         if (activeChat) {
             fetchHistory();
             // Join room
-            const myId = JSON.parse(localStorage.getItem('user'))?.id;
+            const user = JSON.parse(localStorage.getItem('user'));
+            const myEmployeeId = user?.employee_uuid || user?.id; // fallback if employee_uuid isn't set
             const roomId = activeChat.type === 'group'
                 ? activeChat.id
-                : [myId, activeChat.id].sort().join('_');
+                : [myEmployeeId, activeChat.id].sort().join('_');
 
             socket.current.emit('join_room', roomId);
         }
@@ -235,9 +236,9 @@ const ChatPage = () => {
                             {/* Chat Window */}
                             <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {messages.map((m, idx) => {
-                                    const isMe = String(m.sender_id) === String(currentUser?.full_name === m.sender_name ? m.sender_id : (currentUser?.email === m.sender_id || (m.sender_name === currentUser?.full_name))); // Simplified check
-                                    const isReceiverMe = m.receiver_id ? String(m.receiver_id) === String(currentUser?.id) : false;
-                                    const trulyMe = m.sender_name === currentUser?.full_name || m.sender_id === currentUser?.id;
+                                    const isMe = String(m.sender_id) === String(currentUser?.employee_uuid);
+                                    const isReceiverMe = m.receiver_id ? String(m.receiver_id) === String(currentUser?.employee_uuid) : false;
+                                    const trulyMe = isMe || m.sender_name === currentUser?.full_name;
 
                                     return (
                                         <div key={idx} style={{

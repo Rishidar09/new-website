@@ -30,6 +30,7 @@ const HRSidebar = () => {
         { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
+        { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
     ];
 

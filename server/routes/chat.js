@@ -10,6 +10,9 @@ const pool = new Pool({
 // @route   GET api/chat/contacts
 router.get('/contacts', auth, async (req, res) => {
     try {
+        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const myUuid = emp.rows[0]?.id;
+
         // Fetch all employees except self to chat with
         const result = await pool.query(`
             SELECT id, full_name, role, department, email, 
@@ -18,7 +21,7 @@ router.get('/contacts', auth, async (req, res) => {
             FROM employees 
             WHERE email != $2
             ORDER BY last_time DESC NULLS LAST, full_name ASC
-        `, [req.user.employee_id || null, req.user.email]);
+        `, [myUuid, req.user.email]);
 
         // Note: For real online status, we'd need a heartbeat or redis. 
         // For now, let's mock some as online.
