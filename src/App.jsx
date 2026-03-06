@@ -13,12 +13,9 @@ import EmployeesPage from './pages/EmployeesPage';
 import EmployeeProfilePage from './pages/EmployeeProfilePage';
 import ApplyLeavePage from './pages/ApplyLeavePage';
 import HRLeavesPage from './pages/HRLeavesPage';
-import HRHolidaysPage from './pages/HRHolidaysPage';
-import EmployeeHolidaysPage from './pages/EmployeeHolidaysPage';
+import CalendarPage from './pages/CalendarPage';
 import HRPayrollPage from './pages/HRPayrollPage';
 import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
-import HRDocumentsPage from './pages/HRDocumentsPage';
-import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
 import HRAttendancePage from './pages/HRAttendancePage';
 import HRProjectsPage from './pages/HRProjectsPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
@@ -67,10 +64,9 @@ function App() {
                   <Route path="leaves" element={<HRLeavesPage />} />
                   <Route path="attendance" element={<HRAttendancePage />} />
                   <Route path="projects" element={<HRProjectsPage />} />
-                  <Route path="holidays" element={<HRHolidaysPage />} />
+                  <Route path="calendar" element={<CalendarPage />} />
                   <Route path="offer-letters" element={<OfferLetterPage />} />
                   <Route path="payroll" element={<HRPayrollPage />} />
-                  <Route path="documents" element={<HRDocumentsPage />} />
                   <Route path="complaints" element={<HRComplaintsPage />} />
                   <Route path="audit-logs" element={<HRAuditLogsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
@@ -89,9 +85,8 @@ function App() {
                   <Route path="attendance" element={<EmployeeAttendancePage />} />
                   <Route path="projects" element={<EmployeeProjectsPage />} />
                   <Route path="apply-leave" element={<ApplyLeavePage />} />
-                  <Route path="holidays" element={<EmployeeHolidaysPage />} />
+                  <Route path="calendar" element={<CalendarPage />} />
                   <Route path="payslips" element={<EmployeePayslipsPage />} />
-                  <Route path="documents" element={<EmployeeDocumentsPage />} />
                   <Route path="id-card" element={<EmployeeIDCardPage />} />
                   <Route path="complaints" element={<EmployeeComplaintsPage />} />
                   <Route path="settings" element={<SettingsPage />} />

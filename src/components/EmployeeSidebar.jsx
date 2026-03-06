@@ -24,7 +24,7 @@ const EmployeeSidebar = () => {
         { icon: <Send size={20} />, label: 'Apply Leave', path: '/employee/apply-leave' },
         { icon: <FileText size={20} />, label: 'My Payslips', path: '/employee/payslips' },
         { icon: <Briefcase size={20} />, label: 'My Projects', path: '/employee/projects' },
-        { icon: <Files size={20} />, label: 'My Documents', path: '/employee/documents' },
+        { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/employee/calendar' },
         { icon: <MessageSquare size={20} />, label: 'Complaint Box', path: '/employee/complaints' },
         { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
         { icon: <HardDrive size={20} />, label: 'Drive', path: '/drive' },

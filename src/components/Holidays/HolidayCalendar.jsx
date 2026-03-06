@@ -125,7 +125,10 @@ const HolidayCalendar = ({ holidays, onHolidaysChange }) => {
                                 gap: '4px'
                             }} title={h.name}>
                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444' }}></div>
-                                {h.name}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span>{h.name}</span>
+                                    {h.label && <span style={{ fontSize: '9px', opacity: 0.8, fontStyle: 'italic' }}>({h.label})</span>}
+                                </div>
                             </div>
                         ))}
                     </div>

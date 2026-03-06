@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import HolidayCalendar from '../components/Holidays/HolidayCalendar';
 import { api } from '../lib/api';
 import { Plus, X, Calendar as CalendarIcon, Loader2, PartyPopper } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const HRHolidaysPage = () => {
+const CalendarPage = () => {
+    const { profile } = useAuth();
+    const isHR = profile?.role === 'hr';
+
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -40,7 +44,7 @@ const HRHolidaysPage = () => {
             setShowAddModal(false);
             setFormData({ name: '', date: '', type: 'National', label: '' });
         } catch (error) {
-            alert('Error adding holiday: ' + error.message);
+            alert('Error adding event: ' + error.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -53,31 +57,33 @@ const HRHolidaysPage = () => {
             <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 style={{ fontSize: '24px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <CalendarIcon size={24} color="var(--primary)" /> Holiday Calendar
+                        <CalendarIcon size={24} color="var(--primary)" /> Calendar
                     </h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
-                        Manage public holidays and company-specific events.
+                        {isHR ? 'Manage public holidays and company-specific events.' : 'View upcoming holidays and plan your time.'}
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'var(--primary)',
-                        color: 'white',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}
-                >
-                    <Plus size={18} />
-                    Add Holiday
-                </button>
+                {isHR && (
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                        }}
+                    >
+                        <Plus size={18} />
+                        Add Event
+                    </button>
+                )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '32px' }}>
@@ -94,11 +100,11 @@ const HRHolidaysPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div className="card" style={{ padding: '24px' }}>
                         <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <PartyPopper size={18} color="#EF4444" /> Upcoming Holidays
+                            <PartyPopper size={18} color="#EF4444" /> Upcoming Events
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {upcomingHolidays.map((holiday) => (
-                                <div key={holiday.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+                                <div key={holiday.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--input-bg)', borderRadius: '8px' }}>
                                     <div style={{
                                         width: '40px',
                                         height: '40px',
@@ -120,12 +126,12 @@ const HRHolidaysPage = () => {
                                     </div>
                                     <div>
                                         <p style={{ fontSize: '14px', fontWeight: '600' }}>{holiday.name}</p>
-                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{holiday.type}</p>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{holiday.label || holiday.type}</p>
                                     </div>
                                 </div>
                             ))}
                             {upcomingHolidays.length === 0 && !loading && (
-                                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', padding: '20px' }}>No upcoming holidays.</p>
+                                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', padding: '20px' }}>No upcoming events.</p>
                             )}
                         </div>
                     </div>
@@ -142,14 +148,14 @@ const HRHolidaysPage = () => {
                 }}>
                     <div className="card" style={{ width: '100%', maxWidth: '450px', padding: '0' }}>
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Add New Holiday</h2>
+                            <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Add New Event</h2>
                             <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                                 <X size={20} />
                             </button>
                         </div>
                         <form onSubmit={handleAddHoliday} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: '600' }}>Holiday Name</label>
+                                <label style={{ fontSize: '14px', fontWeight: '600' }}>Event Name</label>
                                 <input
                                     type="text"
                                     className="input-field"
@@ -177,7 +183,7 @@ const HRHolidaysPage = () => {
                                     onChange={e => setFormData({ ...formData, type: e.target.value })}
                                 >
                                     <option value="National">National Holiday</option>
-                                    <option value="Custom">Custom Holiday</option>
+                                    <option value="Custom">Custom Event</option>
                                 </select>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -190,20 +196,20 @@ const HRHolidaysPage = () => {
                                     onChange={e => setFormData({ ...formData, label: e.target.value })}
                                 />
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                            <div style={{ display: 'gap: 12px', marginTop: '8px' }}>
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
-                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer', marginRight: '12px' }}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Holiday'}
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Event'}
                                 </button>
                             </div>
                         </form>
@@ -226,4 +232,4 @@ const HRHolidaysPage = () => {
     );
 };
 
-export default HRHolidaysPage;
+export default CalendarPage;

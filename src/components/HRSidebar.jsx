@@ -27,7 +27,7 @@ const HRSidebar = () => {
         { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
-        { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
+        { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/hr/calendar' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
         { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
