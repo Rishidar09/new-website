@@ -130,8 +130,14 @@ const ChatPage = () => {
                 border: '1px solid var(--border)'
             }}>
                 {/* Left Panel */}
-                <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{
+                    borderRight: '1px solid var(--border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minWidth: 0,
+                    height: '100%'
+                }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                         <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>Messages</h2>
                         <div style={{ position: 'relative' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -215,11 +221,19 @@ const ChatPage = () => {
                 </div>
 
                 {/* Right Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--main-bg)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--main-bg)', height: '100%', minWidth: 0 }}>
                     {activeChat ? (
                         <>
                             {/* Header */}
-                            <div style={{ padding: '16px 24px', background: 'var(--card-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{
+                                padding: '16px 24px',
+                                background: 'var(--card-bg)',
+                                borderBottom: '1px solid var(--border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexShrink: 0
+                            }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: '700' }}>
                                         {activeChat.name.charAt(0)}
@@ -237,7 +251,15 @@ const ChatPage = () => {
                             </div>
 
                             {/* Chat Window */}
-                            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{
+                                flex: 1,
+                                padding: '24px',
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '16px',
+                                minHeight: 0 // Prevents child content from pushing the container
+                            }}>
                                 {messages.map((m, idx) => {
                                     const trulyMe = String(m.sender_id) === String(currentUser?.employee_uuid);
 
@@ -273,7 +295,7 @@ const ChatPage = () => {
                             </div>
 
                             {/* Input Bar */}
-                            <div style={{ padding: '24px', background: 'var(--card-bg)', borderTop: '1px solid var(--border)' }}>
+                            <div style={{ padding: '24px', background: 'var(--card-bg)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
                                 <form onSubmit={handleSendMessage} style={{
                                     display: 'flex',
                                     gap: '12px',
