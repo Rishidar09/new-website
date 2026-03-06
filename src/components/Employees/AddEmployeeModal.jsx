@@ -226,7 +226,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                     justifyContent: 'center'
                                 }}>
                                     {previewUrl ? (
-                                        <img src={previewUrl.startsWith('blob:') ? previewUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${previewUrl}`} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <img src={previewUrl.startsWith('blob:') ? previewUrl : `${previewUrl}`} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
                                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No Photo</span>
                                     )}

@@ -63,7 +63,7 @@ const DrivePage = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const res = await fetch('http://localhost:5001/api/drive/upload', {
+            const res = await fetch('/api/drive/upload', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
@@ -237,7 +237,7 @@ const DrivePage = () => {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                                             <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatSize(file.size)}</p>
                                             <a
-                                                href={`http://localhost:5001/api/drive/download/${file.id}`}
+                                                href={`/api/drive/download/${file.id}`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}

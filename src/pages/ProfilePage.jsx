@@ -199,7 +199,7 @@ const ProfilePage = () => {
                                 <Loader2 className="animate-spin" size={40} />
                             ) : displayPhoto ? (
                                 <img
-                                    src={displayPhoto.startsWith('http') ? displayPhoto : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${displayPhoto}`}
+                                    src={displayPhoto.startsWith('http') ? displayPhoto : `${displayPhoto}`}
                                     alt="User"
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     key={displayPhoto} // Force refresh image

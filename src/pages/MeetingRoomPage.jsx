@@ -20,7 +20,7 @@ import {
     Send
 } from 'lucide-react';
 
-const SOCKET_URL = 'http://localhost:5001';
+const SOCKET_URL = window.location.origin;
 
 const MeetingRoomPage = () => {
     const { id } = useParams();

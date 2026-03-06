@@ -21,7 +21,7 @@ import {
     X
 } from 'lucide-react';
 
-const SOCKET_URL = `http://${window.location.hostname}:5001`;
+const SOCKET_URL = window.location.origin;
 
 const AnnouncementsModal = ({ isOpen, onClose, onSuccess }) => {
     const [title, setTitle] = useState('');
@@ -123,11 +123,22 @@ const ChatPage = () => {
     const { profile: currentUser } = useAuth();
 
     useEffect(() => {
-        // Initialize socket
-        socket.current = io(SOCKET_URL);
+        if (!currentUser) return;
+
+        // Initialize socket with explicit options to respect HTTPS proxy
+        socket.current = io({
+            path: '/socket.io',
+            transports: ['polling', 'websocket'],
+            secure: true
+        });
 
         socket.current.on('connect', () => {
-            console.log('Connected to socket server');
+            console.log('Successfully connected to socket server via proxy');
+            const myId = currentUser.employee_uuid || currentUser.id;
+            if (myId) {
+                console.log('Identifying as:', myId);
+                socket.current.emit('identify', myId);
+            }
         });
 
         socket.current.on('receive_message', (message) => {
@@ -136,7 +147,7 @@ const ChatPage = () => {
         });
 
         socket.current.on('incoming_call', (data) => {
-            console.log('Incoming call:', data);
+            console.log('Incoming call event received:', data);
             setCallConfig({
                 type: data.type,
                 remoteUser: { id: data.from, name: data.caller_name },
@@ -147,15 +158,10 @@ const ChatPage = () => {
 
         fetchInitialData();
 
-        if (currentUser) {
-            const myId = currentUser.employee_uuid || currentUser.id;
-            socket.current.emit('identify', myId);
-        }
-
         return () => {
             if (socket.current) socket.current.disconnect();
         };
-    }, []);
+    }, [currentUser]);
 
     useEffect(() => {
         if (activeChat && currentUser) {

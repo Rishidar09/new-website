@@ -65,7 +65,7 @@ const IDCard = ({ employee, idRef }) => {
                 zIndex: 1
             }}>
                 <img
-                    src={employee.avatar_url ? (employee.avatar_url.startsWith('http') ? employee.avatar_url : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${employee.avatar_url}`) : `https://i.pravatar.cc/150?u=${employee.id}`}
+                    src={employee.avatar_url ? (employee.avatar_url.startsWith('http') ? employee.avatar_url : `${employee.avatar_url}`) : `https://i.pravatar.cc/150?u=${employee.id}`}
                     alt={employee.full_name}
                     style={{
                         width: '100%',

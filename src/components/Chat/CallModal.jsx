@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, X, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react';
+import { Phone, X, Mic, MicOff, Video, VideoOff, PhoneOff, Loader2 } from 'lucide-react';
 
 const CallModal = ({
     isOpen,
@@ -12,9 +12,10 @@ const CallModal = ({
     currentUser
 }) => {
     const [callStarted, setCallStarted] = useState(false);
-    const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(type === 'voice');
+    const [isMuted, setIsMuted] = useState(false);
     const [error, setError] = useState(null);
+    const [isMediaLoading, setIsMediaLoading] = useState(false);
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const peerConnection = useRef(null);
@@ -59,6 +60,9 @@ const CallModal = ({
 
     const startCall = async () => {
         try {
+            console.log('Starting call, requested media...');
+            setIsMediaLoading(true);
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('Your browser does not support media access or you are not in a secure context (HTTPS or localhost).');
             }
@@ -109,6 +113,8 @@ const CallModal = ({
         } catch (err) {
             console.error('Failed to start call:', err);
             setError(err.message);
+        } finally {
+            setIsMediaLoading(false);
         }
     };
 
@@ -263,6 +269,12 @@ const CallModal = ({
                                         {remoteUser.name.charAt(0)}
                                     </div>
                                     <h3>{isIncoming ? `Call from ${remoteUser.name}` : `Calling ${remoteUser.name}...`}</h3>
+                                    {isMediaLoading && (
+                                        <p style={{ marginTop: '10px', opacity: 0.7, fontSize: '14px' }}>
+                                            <Loader2 style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }} className="animate-spin" size={16} />
+                                            Requesting Camera/Microphone...
+                                        </p>
+                                    )}
                                 </>
                             )}
                         </div>
