@@ -102,7 +102,8 @@ const HRHolidaysPage = () => {
                                     <div style={{
                                         width: '40px',
                                         height: '40px',
-                                        background: 'white',
+                                        background: 'var(--card-bg)',
+                                        color: 'var(--text-main)',
                                         borderRadius: '8px',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -193,7 +194,7 @@ const HRHolidaysPage = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
-                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer' }}
                                 >
                                     Cancel
                                 </button>

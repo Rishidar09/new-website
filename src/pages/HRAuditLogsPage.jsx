@@ -220,7 +220,7 @@ const HRAuditLogsPage = () => {
                                     </td>
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'white', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 <User size={14} color="#64748B" />
                                             </div>
                                             <div>
@@ -236,7 +236,7 @@ const HRAuditLogsPage = () => {
                                         </div>
                                     </td>
                                     <td style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--text-main)' }}>
-                                        <span style={{ padding: '4px 8px', background: 'white', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '11px', fontWeight: '600' }}>
+                                        <span style={{ padding: '4px 8px', background: 'var(--input-bg)', color: 'var(--text-main)', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '11px', fontWeight: '600' }}>
                                             {l.module}
                                         </span>
                                     </td>
@@ -246,7 +246,7 @@ const HRAuditLogsPage = () => {
                                     <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                                         <button
                                             title={l.details}
-                                            style={{ background: 'white', border: '1px solid var(--border)', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#64748B' }}
+                                            style={{ background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
                                         >
                                             <Eye size={14} />
                                         </button>

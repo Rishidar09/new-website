@@ -118,7 +118,8 @@ const ChatPage = () => {
                 height: 'calc(100vh - 140px)',
                 display: 'grid',
                 gridTemplateColumns: '320px 1fr',
-                background: 'white',
+                background: 'var(--card-bg)',
+                color: 'var(--text-main)',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
@@ -134,7 +135,7 @@ const ChatPage = () => {
                                 type="text"
                                 placeholder="Search people..."
                                 className="input-field"
-                                style={{ paddingLeft: '40px', background: '#F8FAFC' }}
+                                style={{ paddingLeft: '40px', background: 'var(--input-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -157,7 +158,7 @@ const ChatPage = () => {
                                         alignItems: 'center',
                                         gap: '12px',
                                         cursor: 'pointer',
-                                        background: activeChat?.id === c.id ? '#F1F5F9' : 'transparent',
+                                        background: activeChat?.id === c.id ? 'var(--input-bg)' : 'transparent',
                                         transition: 'all 0.2s'
                                     }}
                                 >
@@ -210,11 +211,11 @@ const ChatPage = () => {
                 </div>
 
                 {/* Right Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: '#F8FAFC' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--main-bg)' }}>
                     {activeChat ? (
                         <>
                             {/* Header */}
-                            <div style={{ padding: '16px 24px', background: 'white', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ padding: '16px 24px', background: 'var(--card-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: '700' }}>
                                         {activeChat.name.charAt(0)}
@@ -252,7 +253,7 @@ const ChatPage = () => {
                                                 borderRadius: '16px',
                                                 borderBottomRightRadius: trulyMe ? '2px' : '16px',
                                                 borderBottomLeftRadius: trulyMe ? '16px' : '2px',
-                                                background: trulyMe ? 'var(--primary)' : 'white',
+                                                background: trulyMe ? 'var(--primary)' : 'var(--input-bg)',
                                                 color: trulyMe ? 'white' : 'var(--text-main)',
                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                                                 fontSize: '14px',
@@ -270,12 +271,12 @@ const ChatPage = () => {
                             </div>
 
                             {/* Input Bar */}
-                            <div style={{ padding: '24px', background: 'white', borderTop: '1px solid var(--border)' }}>
+                            <div style={{ padding: '24px', background: 'var(--card-bg)', borderTop: '1px solid var(--border)' }}>
                                 <form onSubmit={handleSendMessage} style={{
                                     display: 'flex',
                                     gap: '12px',
                                     alignItems: 'center',
-                                    background: '#F8FAFC',
+                                    background: 'var(--input-bg)',
                                     padding: '8px',
                                     paddingLeft: '16px',
                                     borderRadius: '12px',
@@ -312,7 +313,7 @@ const ChatPage = () => {
                         </>
                     ) : (
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                            <div style={{ padding: '20px', background: 'white', borderRadius: '50%', marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                            <div style={{ padding: '20px', background: 'var(--input-bg)', borderRadius: '50%', marginBottom: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                                 <MessageSquare size={48} color="var(--primary)" style={{ opacity: 0.5 }} />
                             </div>
                             <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '8px' }}>Select a chat to start messaging</h3>

@@ -33,8 +33,8 @@ const EmployeesPage = () => {
         <>
             <div className="no-print" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 style={{ fontSize: '24px', color: 'var(--text-main)', fontWeight: '700' }}>Workforce Management</h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+                    <h1 style={{ fontSize: 'var(--font-3xl)', color: 'var(--text-main)', fontWeight: '700' }}>Workforce Management</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-md)', marginTop: '4px' }}>
                         Manage employees, view details, and issue digital identity cards.
                     </p>
                 </div>
@@ -56,7 +56,7 @@ const EmployeesPage = () => {
                     onClick={() => setActiveTab('list')}
                     style={{
                         padding: '12px 4px',
-                        fontSize: '14px',
+                        fontSize: 'var(--font-md)',
                         fontWeight: '600',
                         color: activeTab === 'list' ? 'var(--primary)' : 'var(--text-muted)',
                         border: 'none',
@@ -75,7 +75,7 @@ const EmployeesPage = () => {
                     onClick={() => setActiveTab('id-cards')}
                     style={{
                         padding: '12px 4px',
-                        fontSize: '14px',
+                        fontSize: 'var(--font-md)',
                         fontWeight: '600',
                         color: activeTab === 'id-cards' ? 'var(--primary)' : 'var(--text-muted)',
                         border: 'none',
@@ -110,9 +110,9 @@ const EmployeesPage = () => {
                                     padding: '8px 16px',
                                     borderRadius: '8px',
                                     border: '1px solid var(--border)',
-                                    background: 'white',
-                                    color: '#000000',
-                                    fontSize: '13px',
+                                    background: 'var(--card-bg)',
+                                    color: 'var(--text-main)',
+                                    fontSize: 'var(--font-sm)',
                                     fontWeight: '600',
                                     cursor: 'pointer'
                                 }}

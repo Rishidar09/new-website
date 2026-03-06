@@ -53,7 +53,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                             borderRadius: '8px',
                             border: '1px solid var(--border)',
                             outline: 'none',
-                            fontSize: '14px'
+                            fontSize: 'var(--font-md)'
                         }}
                     />
                 </div>
@@ -65,10 +65,11 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                             padding: '10px 16px',
                             borderRadius: '8px',
                             border: '1px solid var(--border)',
-                            background: 'white',
+                            background: 'var(--card-bg)',
+                            color: 'var(--text-main)',
                             fontWeight: '500',
                             cursor: 'pointer',
-                            fontSize: '14px',
+                            fontSize: 'var(--font-md)',
                             outline: 'none'
                         }}
                     >
@@ -92,7 +93,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                             color: 'white',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            fontSize: '14px'
+                            fontSize: 'var(--font-md)'
                         }}
                     >
                         <Plus size={18} />
@@ -103,13 +104,13 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
 
             <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-                    <thead style={{ background: '#F9FAFB', borderBottom: '1px solid var(--border)' }}>
+                    <thead style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--border)' }}>
                         <tr>
-                            <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Employee</th>
-                            <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Role & Department</th>
-                            <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</th>
-                            <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Joined Date</th>
-                            <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                            <th style={{ padding: '16px 24px', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Employee</th>
+                            <th style={{ padding: '16px 24px', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Role & Department</th>
+                            <th style={{ padding: '16px 24px', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</th>
+                            <th style={{ padding: '16px 24px', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Joined Date</th>
+                            <th style={{ padding: '16px 24px', fontSize: 'var(--font-xs)', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,19 +127,19 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                                 <td style={{ padding: '12px 24px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <img src={emp.avatar_url ? (emp.avatar_url.startsWith('http') ? emp.avatar_url : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.avatar_url}`) : `https://i.pravatar.cc/150?u=${emp.id}`} alt={emp.full_name} className="avatar" />
-                                        <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>{emp.full_name}</span>
+                                        <span style={{ fontWeight: '600', fontSize: 'var(--font-md)', color: 'var(--text-main)' }}>{emp.full_name}</span>
                                     </div>
                                 </td>
                                 <td style={{ padding: '12px 24px' }}>
-                                    <p style={{ fontSize: '14px', fontWeight: '500' }}>{emp.role}</p>
-                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{emp.department}</p>
+                                    <p style={{ fontSize: 'var(--font-md)', fontWeight: '500' }}>{emp.role}</p>
+                                    <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{emp.department}</p>
                                 </td>
                                 <td style={{ padding: '12px 24px' }}>
                                     <span className={`status-badge ${(emp.status || 'Active').toLowerCase().replace(' ', '-')}`}>
                                         {emp.status || 'Active'}
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px 24px', fontSize: '14px', color: 'var(--text-muted)' }}>
+                                <td style={{ padding: '12px 24px', fontSize: 'var(--font-md)', color: 'var(--text-muted)' }}>
                                     {new Date(emp.joining_date).toLocaleDateString()}
                                 </td>
                                 <td style={{ padding: '12px 24px', textAlign: 'right' }}>
@@ -163,8 +164,8 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                 </table>
             </div>
             <style>{`
-        .status-badge.on-leave { background: #FEF3C7; color: #D97706; }
-        .status-badge.active { background: #D1FAE5; color: #059669; }
+        .status-badge.on-leave { background: var(--status-pending-bg); color: var(--status-pending-text); }
+        .status-badge.active { background: var(--status-approved-bg); color: var(--status-approved-text); }
       `}</style>
         </div>
     );

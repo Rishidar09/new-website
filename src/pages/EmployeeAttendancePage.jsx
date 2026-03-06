@@ -66,13 +66,13 @@ const EmployeeAttendancePage = () => {
 
     const getStatusColor = (dateString) => {
         const record = attendance.find(rec => rec.check_in.startsWith(dateString));
-        if (!record) return '#E5E7EB'; // Default gray
+        if (!record) return 'var(--input-bg)';
         switch (record.status) {
-            case 'Present': return '#10B981'; // Green
-            case 'Late': return '#F59E0B';    // Orange
-            case 'Absent': return '#EF4444';  // Red
-            case 'Half-Day': return '#6366F1'; // blue
-            default: return '#10B981';
+            case 'Present': return 'var(--status-approved-text)';
+            case 'Late': return 'var(--status-pending-text)';
+            case 'Absent': return 'var(--status-rejected-text)';
+            case 'Half-Day': return 'var(--primary)';
+            default: return 'var(--status-approved-text)';
         }
     };
 
@@ -140,7 +140,7 @@ const EmployeeAttendancePage = () => {
                             <Square fill="white" size={20} /> Check-Out
                         </button>
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10B981', fontWeight: '600' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-approved-text)', fontWeight: '600' }}>
                             <CheckCircle size={24} /> Work Completed for Today
                         </div>
                     )}
@@ -167,20 +167,20 @@ const EmployeeAttendancePage = () => {
 
                 {/* Summary Stats */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div className="card" style={{ background: 'white', borderLeft: '4px solid #F59E0B' }}>
+                    <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '4px solid #F59E0B' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Hours Worked (Today)</p>
-                                <h3 style={{ fontSize: '24px', marginTop: '4px' }}>{todayRecord ? calculateHours(todayRecord.check_in, todayRecord.check_out) : '0.0'}h</h3>
+                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>{todayRecord ? calculateHours(todayRecord.check_in, todayRecord.check_out) : '0.0'}h</h3>
                             </div>
                             <Timer color="#F59E0B" size={32} />
                         </div>
                     </div>
-                    <div className="card" style={{ background: 'white', borderLeft: '4px solid var(--primary)' }}>
+                    <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '4px solid var(--primary)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Present (Month)</p>
-                                <h3 style={{ fontSize: '24px', marginTop: '4px' }}>
+                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>
                                     {attendance.filter(r => r.status === 'Present' || r.status === 'Late').length}
                                 </h3>
                             </div>
@@ -193,16 +193,16 @@ const EmployeeAttendancePage = () => {
             {/* Heatmap Calendar */}
             <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '18px' }}>Attendance History</h3>
+                    <h3 style={{ fontSize: '18px', color: 'var(--text-main)' }}>Attendance History</h3>
                     <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: '#10B981', borderRadius: '2px' }}></div> Present
+                            <div style={{ width: '12px', height: '12px', background: 'var(--status-approved-text)', borderRadius: '2px' }}></div> Present
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: '#F59E0B', borderRadius: '2px' }}></div> Late
+                            <div style={{ width: '12px', height: '12px', background: 'var(--status-pending-text)', borderRadius: '2px' }}></div> Late
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: '#EF4444', borderRadius: '2px' }}></div> Absent
+                            <div style={{ width: '12px', height: '12px', background: 'var(--status-rejected-text)', borderRadius: '2px' }}></div> Absent
                         </div>
                     </div>
                 </div>
@@ -232,7 +232,7 @@ const EmployeeAttendancePage = () => {
                                     borderRadius: '6px',
                                     fontSize: '14px',
                                     fontWeight: '500',
-                                    color: getStatusColor(dateString) === '#E5E7EB' ? '#111827' : 'white',
+                                    color: getStatusColor(dateString) === 'var(--input-bg)' ? 'var(--text-main)' : 'white',
                                     cursor: 'pointer'
                                 }}
                                 title={dateString}

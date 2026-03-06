@@ -4,7 +4,7 @@ import Navbar from './Navbar';
 
 const EmployeeLayout = ({ children }) => {
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#F0F2F5' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--main-bg)' }}>
             <EmployeeSidebar />
             <div style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column' }}>
                 <Navbar />

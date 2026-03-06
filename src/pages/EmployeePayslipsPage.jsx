@@ -57,7 +57,7 @@ const EmployeePayslipsPage = () => {
                         <div key={ps.id} className="card" style={{ padding: '0', overflow: 'hidden' }}>
                             <div style={{ padding: '20px', background: '#F9FAFB', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ background: 'white', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <div style={{ background: 'var(--card-bg)', color: 'var(--text-main)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                         <Calendar size={20} color="var(--primary)" />
                                     </div>
                                     <div>
@@ -81,7 +81,7 @@ const EmployeePayslipsPage = () => {
                                         </button>
                                     )}
                                 </PDFDownloadLink>
-                                <button className="btn-action" style={{ background: 'white', border: '1px solid var(--border)' }}>
+                                <button className="btn-action" style={{ background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}>
                                     <Eye size={16} />
                                     Preview
                                 </button>

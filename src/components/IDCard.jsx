@@ -46,7 +46,7 @@ const IDCard = ({ employee, idRef }) => {
 
             {/* Header: Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', zIndex: 1 }}>
-                <div style={{ width: '24px', height: '24px', background: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '24px', height: '24px', background: 'var(--card-bg)', color: 'var(--primary)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: '14px', height: '14px', background: '#3B82F6', borderRadius: '2px' }}></div>
                 </div>
                 <span style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px' }}>
@@ -72,7 +72,8 @@ const IDCard = ({ employee, idRef }) => {
                         height: '100%',
                         borderRadius: '50%',
                         objectFit: 'cover',
-                        background: 'white'
+                        background: 'var(--card-bg)',
+                        color: 'var(--text-main)'
                     }}
                 />
             </div>
@@ -99,7 +100,8 @@ const IDCard = ({ employee, idRef }) => {
             {/* Footer: QR Code */}
             <div style={{
                 marginTop: 'auto',
-                background: 'white',
+                background: 'var(--card-bg)',
+                color: 'var(--text-main)',
                 padding: '12px',
                 borderRadius: '16px',
                 display: 'flex',

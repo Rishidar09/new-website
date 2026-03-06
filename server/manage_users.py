@@ -59,19 +59,21 @@ def add_user():
     try:
         # Step 1: Create Employee Record
         cur.execute(
-            "INSERT INTO employees (full_name, email, role, department, employee_id, status) VALUES (%s, %s, %s, %s, %s, 'Active')",
+            "INSERT INTO employees (full_name, email, role, department, employee_id, status) VALUES (%s, %s, %s, %s, %s, 'Active') RETURNING id",
             (full_name, email, role.capitalize(), department, employee_id)
         )
+        new_emp_id = cur.fetchone()[0]
         
         # Step 2: Create Login Profile
+        # We store the integer primary key in the profiles.employee_id column for database linking
         cur.execute(
             "INSERT INTO profiles (email, password_hash, role, employee_id, status) VALUES (%s, %s, %s, %s, 'active')", 
-            (email, hashed, role, employee_id)
+            (email, hashed, role, new_emp_id)
         )
         
         conn.commit()
         print(f"✅ User {email} added successfully!")
-        print(f"✅ Employee record for {full_name} created. (Now visible in Dashboard)")
+        print(f"✅ Employee record for {full_name} created with ID {new_emp_id}. (Now visible in Dashboard)")
     except Exception as e:
         conn.rollback()
         print(f"❌ Error adding user: {e}")

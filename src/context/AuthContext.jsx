@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
-const AuthContext = createContext({});
+const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -9,6 +9,11 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const theme = localStorage.getItem('theme') || 'light';
+        const fontSize = localStorage.getItem('fontSize') || 'medium';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-font-size', fontSize);
+
         const initAuth = async () => {
             const token = localStorage.getItem('token');
             if (token) {
@@ -40,11 +45,21 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
     };
 
+    const value = { user, profile, loading, login, signOut };
+    console.log('AuthProvider rendered with value:', value);
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, login, signOut }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        console.error('useAuth must be used within an AuthProvider');
+        return {};
+    }
+    return context;
+};

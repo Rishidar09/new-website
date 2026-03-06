@@ -49,9 +49,9 @@ const ResetPasswordPage = () => {
 
     if (success) {
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', padding: '24px' }}>
-                <div style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px', textAlign: 'center' }}>
-                    <div style={{ width: '64px', height: '64px', background: '#F0FDF4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', color: '#10B981' }}>
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--main-bg)', padding: '24px' }}>
+                <div style={{ width: '100%', maxWidth: '440px', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px', textAlign: 'center' }}>
+                    <div style={{ width: '64px', height: '64px', background: 'var(--status-approved-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', color: 'var(--status-approved-text)' }}>
                         <CheckCircle size={32} />
                     </div>
                     <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '12px' }}>Password Reset!</h2>
@@ -67,8 +67,8 @@ const ResetPasswordPage = () => {
     }
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', padding: '24px' }}>
-            <div style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--main-bg)', padding: '24px' }}>
+            <div style={{ width: '100%', maxWidth: '440px', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
                         <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
@@ -83,7 +83,7 @@ const ResetPasswordPage = () => {
                 </div>
 
                 {error && !token && (
-                    <div style={{ textAlign: 'center', color: '#EF4444', background: '#FEF2F2', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                    <div style={{ textAlign: 'center', color: 'var(--status-rejected-text)', background: 'var(--status-rejected-bg)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
                         <AlertCircle size={24} style={{ margin: '0 auto 8px' }} />
                         <p>{error}</p>
                         <Link to="/login" style={{ color: 'var(--primary)', fontSize: '14px', marginTop: '12px', display: 'block', fontWeight: '600' }}>Back to Login</Link>
@@ -102,7 +102,7 @@ const ResetPasswordPage = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    style={{ width: '100%', paddingLeft: '40px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none', fontSize: '14px' }}
+                                    style={{ width: '100%', paddingLeft: '40px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none', fontSize: '14px', background: 'var(--card-bg)', color: 'var(--text-main)' }}
                                 />
                             </div>
                         </div>
@@ -117,13 +117,13 @@ const ResetPasswordPage = () => {
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
-                                    style={{ width: '100%', paddingLeft: '40px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none', fontSize: '14px' }}
+                                    style={{ width: '100%', paddingLeft: '40px', paddingRight: '12px', paddingTop: '10px', paddingBottom: '10px', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none', fontSize: '14px', background: 'var(--card-bg)', color: 'var(--text-main)' }}
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div style={{ fontSize: '13px', color: '#EF4444', background: '#FEF2F2', padding: '10px', borderRadius: '6px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '13px', color: 'var(--status-rejected-text)', background: 'var(--status-rejected-bg)', padding: '10px', borderRadius: '6px', textAlign: 'center' }}>
                                 {error}
                             </div>
                         )}

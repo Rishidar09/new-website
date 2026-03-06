@@ -4,7 +4,7 @@ import Navbar from './Navbar';
 
 const HRLayout = ({ children }) => {
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#F0F2F5' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--main-bg)' }}>
             <div className="no-print">
                 <HRSidebar />
             </div>

@@ -35,8 +35,8 @@ const EmployeeSidebar = () => {
         <div style={{
             width: '260px',
             height: '100vh',
-            background: 'white',
-            borderRight: '1px solid #E5E7EB',
+            background: 'var(--sidebar-bg)',
+            borderRight: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
             padding: '24px 0',
@@ -56,7 +56,7 @@ const EmployeeSidebar = () => {
                 <div style={{
                     width: '36px',
                     height: '36px',
-                    background: '#4A90D9',
+                    background: 'var(--primary)',
                     borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -65,8 +65,8 @@ const EmployeeSidebar = () => {
                 }}>
                     <LayoutDashboard size={24} />
                 </div>
-                <span style={{ fontSize: '24px', fontWeight: '800', color: '#111827' }}>
-                    Indus<span style={{ color: '#4A90D9' }}>Innovate</span>
+                <span style={{ fontSize: 'var(--font-3xl)', fontWeight: '800', color: 'var(--text-main)' }}>
+                    Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
                 </span>
             </div>
 
@@ -84,15 +84,15 @@ const EmployeeSidebar = () => {
                                 gap: '12px',
                                 padding: '12px 24px',
                                 textDecoration: 'none',
-                                color: isActive ? '#4A90D9' : '#6B7280',
-                                background: isActive ? '#EEF4FF' : 'transparent',
-                                borderLeft: isActive ? '4px solid #4A90D9' : '4px solid transparent',
-                                fontSize: '15px',
+                                color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                                background: isActive ? 'var(--input-bg)' : 'transparent',
+                                borderLeft: isActive ? '4px solid var(--primary)' : '4px solid transparent',
+                                fontSize: 'var(--font-lg)',
                                 fontWeight: isActive ? '600' : '500',
                                 transition: 'all 0.2s'
                             }}
                         >
-                            {React.cloneElement(item.icon, { color: isActive ? '#4A90D9' : '#6B7280' })}
+                            {React.cloneElement(item.icon, { color: isActive ? 'var(--primary)' : 'var(--text-muted)' })}
                             <span>{item.label}</span>
                         </Link>
                     );
@@ -104,14 +104,14 @@ const EmployeeSidebar = () => {
                 onClick={signOut}
                 style={{
                     marginTop: 'auto',
-                    borderTop: '1px solid #E5E7EB',
+                    borderTop: '1px solid var(--border)',
                     padding: '16px 24px 0',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    color: '#6B7280',
-                    fontSize: '15px',
+                    color: 'var(--text-muted)',
+                    fontSize: 'var(--font-lg)',
                     fontWeight: '500'
                 }}
             >

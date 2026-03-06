@@ -52,13 +52,13 @@ const LoginPage = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#F9FAFB',
+            background: 'var(--main-bg)',
             padding: '24px'
         }}>
             <div style={{
                 width: '100%',
                 maxWidth: '440px',
-                background: 'white',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                 padding: '40px'
@@ -99,7 +99,7 @@ const LoginPage = () => {
                 {/* Tab Selector */}
                 <div style={{
                     display: 'flex',
-                    background: '#F3F4F6',
+                    background: 'var(--input-bg)',
                     padding: '4px',
                     borderRadius: '8px',
                     marginBottom: '24px'
@@ -114,7 +114,7 @@ const LoginPage = () => {
                             fontSize: '14px',
                             fontWeight: '500',
                             cursor: 'pointer',
-                            background: role === 'hr' ? 'white' : 'transparent',
+                            background: role === 'hr' ? 'var(--card-bg)' : 'transparent',
                             color: role === 'hr' ? 'var(--text-main)' : 'var(--text-muted)',
                             boxShadow: role === 'hr' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                             transition: 'all 0.2s'
@@ -132,7 +132,7 @@ const LoginPage = () => {
                             fontSize: '14px',
                             fontWeight: '500',
                             cursor: 'pointer',
-                            background: role === 'employee' ? 'white' : 'transparent',
+                            background: role === 'employee' ? 'var(--card-bg)' : 'transparent',
                             color: role === 'employee' ? 'var(--text-main)' : 'var(--text-muted)',
                             boxShadow: role === 'employee' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                             transition: 'all 0.2s'
@@ -225,8 +225,8 @@ const LoginPage = () => {
                     {error && (
                         <div style={{
                             fontSize: '13px',
-                            color: '#EF4444',
-                            background: '#FEF2F2',
+                            color: 'var(--status-rejected-text)',
+                            background: 'var(--status-rejected-bg)',
                             padding: '10px',
                             borderRadius: '6px',
                             textAlign: 'center'

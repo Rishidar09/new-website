@@ -194,7 +194,7 @@ const HRProjectsPage = () => {
             {selectedProject && projectDetail && (
                 <div style={{
                     position: 'fixed', right: 0, top: 0, width: '40%', height: '100vh',
-                    background: 'white', borderLeft: '1px solid var(--border)', zIndex: 100,
+                    background: 'var(--card-bg)', borderLeft: '1px solid var(--border)', zIndex: 100,
                     padding: '40px', overflowY: 'auto', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
@@ -240,7 +240,7 @@ const HRProjectsPage = () => {
                                     <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: '#64748B', marginBottom: '12px' }}>{status}</p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {projectDetail.tasks.filter(t => t.status === status).map((t, i) => (
-                                            <div key={i} style={{ padding: '10px', background: 'white', borderRadius: '8px', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                            <div key={i} style={{ padding: '10px', background: 'var(--input-bg)', color: 'var(--text-main)', borderRadius: '8px', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                                                 {t.title}
                                             </div>
                                         ))}

@@ -22,7 +22,7 @@ const Navbar = () => {
     return (
         <div style={{
             height: '70px',
-            background: 'white',
+            background: 'var(--navbar-bg)',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
@@ -50,7 +50,7 @@ const Navbar = () => {
                                 height: '10px',
                                 background: '#EF4444',
                                 borderRadius: '50%',
-                                border: '2px solid white'
+                                border: '2px solid var(--navbar-bg)'
                             }}></span>
                         )}
                     </button>
@@ -64,19 +64,21 @@ const Navbar = () => {
                             padding: '16px',
                             zIndex: 1000,
                             maxHeight: '400px',
-                            overflowY: 'auto'
+                            overflowY: 'auto',
+                            background: 'var(--card-bg)',
+                            color: 'var(--text-main)'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <h4 style={{ fontSize: '15px', fontWeight: '700' }}>Notifications</h4>
-                                <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer' }}>Mark all as read</span>
+                                <h4 style={{ fontSize: 'var(--font-lg)', fontWeight: '700', color: 'var(--text-main)' }}>Notifications</h4>
+                                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer' }}>Mark all as read</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {notifications.map(n => (
                                     <div key={n.id} style={{ display: 'flex', gap: '12px', padding: '8px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }} className="hover-bg">
                                         <div style={{ marginTop: '2px' }}>{n.icon}</div>
                                         <div>
-                                            <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: '1.4' }}>{n.text}</p>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{n.time}</span>
+                                            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-main)', lineHeight: '1.4' }}>{n.text}</p>
+                                            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{n.time}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -96,7 +98,7 @@ const Navbar = () => {
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            background: 'var(--primary-light)',
+                            background: 'var(--input-bg)',
                             color: 'var(--primary)',
                             display: 'flex',
                             alignItems: 'center',
@@ -106,8 +108,8 @@ const Navbar = () => {
                             {profile?.full_name?.charAt(0) || 'U'}
                         </div>
                         <div style={{ display: 'none', md: 'block' }}>
-                            <p style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '-2px' }}>{profile?.full_name}</p>
-                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>{profile?.role}</p>
+                            <p style={{ fontSize: 'var(--font-md)', fontWeight: '700', color: 'var(--text-main)', marginBottom: '-2px' }}>{profile?.full_name}</p>
+                            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>{profile?.role}</p>
                         </div>
                         <ChevronDown size={14} color="var(--text-muted)" />
                     </div>
@@ -119,13 +121,18 @@ const Navbar = () => {
                             top: '50px',
                             width: '200px',
                             padding: '8px',
-                            zIndex: 1000
+                            zIndex: 1000,
+                            background: 'var(--card-bg)',
+                            color: 'var(--text-main)'
                         }}>
                             <button onClick={() => navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard')} className="dropdown-item">
                                 <User size={16} />
                                 View Profile
                             </button>
-                            <button className="dropdown-item">
+                            <button
+                                onClick={() => navigate(profile?.role === 'hr' ? '/hr/settings' : '/employee/settings')}
+                                className="dropdown-item"
+                            >
                                 <Settings size={16} />
                                 Settings
                             </button>
@@ -140,24 +147,23 @@ const Navbar = () => {
             </div>
 
             <style>{`
-                .hover-bg:hover { background: #F8FAFC; }
+                .hover-bg:hover { background: var(--input-bg); }
                 .dropdown-item {
                     display: flex;
                     align-items: center;
                     gap: 12px;
                     width: 100%;
-                    padding: '10px 12px';
+                    padding: 10px;
                     border: none;
                     background: none;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: var(--font-md);
                     color: var(--text-main);
                     border-radius: 6px;
                     transition: all 0.2s;
                     font-weight: 600;
-                    padding: 10px;
                 }
-                .dropdown-item:hover { background: #F1F5F9; color: var(--primary); }
+                .dropdown-item:hover { background: var(--input-bg); color: var(--primary); }
                 .shadow-lg { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
             `}</style>
         </div>

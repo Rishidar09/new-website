@@ -57,7 +57,8 @@ const EmployeeHolidaysPage = () => {
                                     <div style={{
                                         width: '40px',
                                         height: '40px',
-                                        background: 'white',
+                                        background: 'var(--card-bg)',
+                                        color: 'var(--text-main)',
                                         borderRadius: '8px',
                                         display: 'flex',
                                         flexDirection: 'column',

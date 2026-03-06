@@ -142,7 +142,7 @@ const OfferLetterPage = () => {
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '4px' }}>Document Generator</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Draft, preview, and transmit professional employment letters.</p>
                 </div>
-                <div className="no-print" style={{ display: 'flex', background: 'white', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div className="no-print" style={{ display: 'flex', background: 'var(--card-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)' }}>
                     <button
                         onClick={() => setLetterType('offer')}
                         style={{
@@ -246,7 +246,7 @@ const OfferLetterPage = () => {
                                     <button
                                         disabled={loading}
                                         style={{
-                                            width: '100%', padding: '14px', background: 'white', color: 'var(--primary)',
+                                            width: '100%', padding: '14px', background: 'var(--card-bg)', color: 'var(--primary)',
                                             border: '1.5px solid var(--primary)', borderRadius: '12px', fontWeight: '700', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                                         }}

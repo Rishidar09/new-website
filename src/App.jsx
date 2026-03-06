@@ -34,6 +34,7 @@ import ChatPage from './pages/ChatPage';
 import MeetingsPage from './pages/MeetingsPage';
 import MeetingRoomPage from './pages/MeetingRoomPage';
 import DrivePage from './pages/DrivePage';
+import SettingsPage from './pages/SettingsPage';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
@@ -74,6 +75,7 @@ function App() {
                   <Route path="analytics" element={<HRAnalyticsPage />} />
                   <Route path="complaints" element={<HRComplaintsPage />} />
                   <Route path="audit-logs" element={<HRAuditLogsPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
                 </Routes>
               </HRLayout>
@@ -94,6 +96,7 @@ function App() {
                   <Route path="documents" element={<EmployeeDocumentsPage />} />
                   <Route path="id-card" element={<EmployeeIDCardPage />} />
                   <Route path="complaints" element={<EmployeeComplaintsPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
                 </Routes>
               </EmployeeLayout>
