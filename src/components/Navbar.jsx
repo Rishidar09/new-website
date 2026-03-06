@@ -125,7 +125,19 @@ const Navbar = () => {
                             background: 'var(--card-bg)',
                             color: 'var(--text-main)'
                         }}>
-                            <button onClick={() => navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard')} className="dropdown-item">
+                            <button
+                                onClick={() => {
+                                    setShowProfile(false);
+                                    // Use employee_uuid (real DB UUID from employees table) for navigation
+                                    const empId = profile?.employee_uuid || profile?.employee_id;
+                                    if (empId) {
+                                        navigate(profile?.role === 'hr' ? `/hr/employees/${empId}` : `/employee/profile/${empId}`);
+                                    } else {
+                                        navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard');
+                                    }
+                                }}
+                                className="dropdown-item"
+                            >
                                 <User size={16} />
                                 View Profile
                             </button>

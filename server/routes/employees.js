@@ -53,7 +53,7 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// @route   GET api/employees/dashboard-stats
+// @route   GET api/employees/dashboard-stats  ← MUST be before /:id
 router.get('/dashboard-stats', auth, async (req, res) => {
     const employeeId = req.user.employee_id;
     if (!employeeId) {
@@ -61,6 +61,16 @@ router.get('/dashboard-stats', auth, async (req, res) => {
     }
 
     try {
+        // Validate that employeeId is a valid UUID before querying tables where employee_id is UUID type
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(employeeId)) {
+            return res.json({
+                attendanceCount: 0,
+                leavesCount: 0,
+                projects: []
+            });
+        }
+
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -102,6 +112,23 @@ router.get('/dashboard-stats', auth, async (req, res) => {
     }
 });
 
+// @route   GET api/employees/:id — lookup by UUID id or employee_id string
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `SELECT * FROM employees WHERE id::text = $1 OR employee_id = $1 LIMIT 1`,
+            [id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
 router.post('/', auth, authorize(['hr']), upload.single('avatar'), async (req, res) => {
     const { full_name, email, role, department, phone, joining_date, salary } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;
@@ -109,6 +136,16 @@ router.post('/', auth, authorize(['hr']), upload.single('avatar'), async (req, r
 
     try {
         await client.query('BEGIN');
+
+        // 0. Check for existing email in profiles or employees
+        const existingEmailCheck = await client.query(
+            `SELECT email FROM profiles WHERE email = $1 UNION SELECT email FROM employees WHERE email = $1`,
+            [email]
+        );
+        if (existingEmailCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Email already exists in the system' });
+        }
 
         // 1. Create Employee Record
         const newEmployee = await client.query(

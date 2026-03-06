@@ -57,6 +57,12 @@ def add_user():
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # Step 0: Check if email already exists
+        cur.execute("SELECT email FROM profiles WHERE email = %s UNION SELECT email FROM employees WHERE email = %s", (email, email))
+        if cur.fetchone():
+            print(f"❌ Error: Email '{email}' is already registered in the system.")
+            return
+
         # Step 1: Create Employee Record
         cur.execute(
             "INSERT INTO employees (full_name, email, role, department, employee_id, status) VALUES (%s, %s, %s, %s, %s, 'Active') RETURNING id",
@@ -90,9 +96,11 @@ def delete_user(email):
     cur = conn.cursor()
     try:
         cur.execute("DELETE FROM profiles WHERE email = %s", (email,))
+        cur.execute("DELETE FROM employees WHERE email = %s", (email,))
         conn.commit()
-        print(f"✅ User {email} deleted successfully!")
+        print(f"✅ User {email} deleted successfully from profiles and employees!")
     except Exception as e:
+        conn.rollback()
         print(f"❌ Error deleting user: {e}")
     finally:
         cur.close()

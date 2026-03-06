@@ -210,7 +210,12 @@ router.post('/forgot-password', async (req, res) => {
             [user.id, token, expiresAt]
         );
 
-        const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+        // Use the actual request origin if available so it works across network IPs, fallback to env or localhost
+        let baseURL = req.headers.origin || req.headers.referer?.replace(/\/$/, '');
+        if (!baseURL || process.env.CLIENT_URL && process.env.CLIENT_URL !== '*') {
+            baseURL = baseURL || process.env.CLIENT_URL || 'http://localhost:5173';
+        }
+        const resetLink = `${baseURL}/reset-password?token=${token}`;
 
         // Get employee name if available
         const emp = await pool.query('SELECT full_name FROM employees WHERE email = $1', [email]);
@@ -271,9 +276,13 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT p.id, p.email, p.role, p.employee_id, p.is_first_login, p.status, e.full_name, e.department, e.avatar_url
+            SELECT p.id, p.email, p.role, p.employee_id, p.is_first_login, p.status,
+                   COALESCE(e.full_name, p.email) AS full_name,
+                   e.department, e.avatar_url,
+                   e.id AS employee_uuid
             FROM profiles p
             LEFT JOIN employees e ON p.email = e.email
+                                  OR (p.employee_id IS NOT NULL AND p.employee_id::text = e.id::text)
             WHERE p.id = $1
         `, [req.user.id]);
         res.json(result.rows[0]);
