@@ -31,6 +31,7 @@ import MeetingsPage from './pages/MeetingsPage';
 import MeetingRoomPage from './pages/MeetingRoomPage';
 import DrivePage from './pages/DrivePage';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
@@ -89,6 +90,7 @@ function App() {
                   <Route path="payslips" element={<EmployeePayslipsPage />} />
                   <Route path="id-card" element={<EmployeeIDCardPage />} />
                   <Route path="complaints" element={<EmployeeComplaintsPage />} />
+                  <Route path="profile/:id" element={<EmployeeProfilePage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
                 </Routes>
@@ -122,6 +124,13 @@ function App() {
             <ProtectedRoute>
               <CommonLayoutWrapper>
                 <DrivePage />
+              </CommonLayoutWrapper>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <CommonLayoutWrapper>
+                <ProfilePage />
               </CommonLayoutWrapper>
             </ProtectedRoute>
           } />

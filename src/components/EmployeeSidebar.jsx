@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const EmployeeSidebar = () => {
+const EmployeeSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
     const { signOut } = useAuth();
     const location = useLocation();
 
@@ -32,7 +32,7 @@ const EmployeeSidebar = () => {
     ];
 
     return (
-        <div style={{
+        <div className={`sidebar-fixed ${isOpen ? 'sidebar-open' : ''}`} style={{
             width: '260px',
             height: '100vh',
             background: 'var(--sidebar-bg)',
@@ -43,16 +43,11 @@ const EmployeeSidebar = () => {
             position: 'fixed',
             left: 0,
             top: 0,
-            zIndex: 100
+            zIndex: 100,
+            transition: 'transform 0.3s ease-in-out'
         }}>
             {/* Logo */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '32px',
-                padding: '0 24px'
-            }}>
+            <Link to="/employee/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', padding: '0 24px' }}>
                 <div style={{
                     width: '36px',
                     height: '36px',
@@ -68,9 +63,23 @@ const EmployeeSidebar = () => {
                 <span style={{ fontSize: 'var(--font-3xl)', fontWeight: '800', color: 'var(--text-main)' }}>
                     Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
                 </span>
-            </div>
+            </Link>
 
             {/* Navigation */}
+            <nav style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                overflowY: 'auto',
+                scrollbarWidth: 'none', // For Firefox
+                msOverflowStyle: 'none' // For Internet Explorer
+            }}>
+                <style>{`
+                    nav::-webkit-scrollbar {
+                        display: none; /* For Chrome, Safari, and Opera */
+                    }
+                `}</style>
             <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
                 {menuItems.map((item, index) => {
                     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
@@ -78,6 +87,7 @@ const EmployeeSidebar = () => {
                         <Link
                             key={index}
                             to={item.path}
+                            onClick={() => isMobile && toggleSidebar()}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',

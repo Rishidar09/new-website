@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
     };
 
-    const value = { user, profile, loading, login, signOut };
+    const value = { user, profile, loading, login, signOut, setProfile };
     console.log('AuthProvider rendered with value:', value);
 
     return (
