@@ -71,7 +71,7 @@ const EmployeeSidebar = () => {
             </div>
 
             {/* Navigation */}
-            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
                 {menuItems.map((item, index) => {
                     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                     return (

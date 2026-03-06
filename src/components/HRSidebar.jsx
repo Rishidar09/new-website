@@ -27,7 +27,6 @@ const HRSidebar = () => {
         { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
-        { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
         { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
@@ -74,7 +73,7 @@ const HRSidebar = () => {
             </div>
 
             {/* Navigation */}
-            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
                 {menuItems.map((item, index) => {
                     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                     return (

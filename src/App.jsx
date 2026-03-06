@@ -19,7 +19,6 @@ import HRPayrollPage from './pages/HRPayrollPage';
 import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
 import HRDocumentsPage from './pages/HRDocumentsPage';
 import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
-import HRAnalyticsPage from './pages/HRAnalyticsPage';
 import HRAttendancePage from './pages/HRAttendancePage';
 import HRProjectsPage from './pages/HRProjectsPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
@@ -72,7 +71,6 @@ function App() {
                   <Route path="offer-letters" element={<OfferLetterPage />} />
                   <Route path="payroll" element={<HRPayrollPage />} />
                   <Route path="documents" element={<HRDocumentsPage />} />
-                  <Route path="analytics" element={<HRAnalyticsPage />} />
                   <Route path="complaints" element={<HRComplaintsPage />} />
                   <Route path="audit-logs" element={<HRAuditLogsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
