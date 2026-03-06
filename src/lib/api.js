@@ -6,12 +6,19 @@ const getBaseUrl = () => {
 
 const API_URL = getBaseUrl();
 
-const getHeaders = () => {
+const getHeaders = (body) => {
     const token = localStorage.getItem('token');
-    return {
-        'Content-Type': 'application/json',
+    const headers = {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
+
+    // Only set Content-Type if it's not FormData
+    // Browser automatically sets Content-Type for FormData with boundary
+    if (!(body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
 };
 
 export const api = {
@@ -27,8 +34,8 @@ export const api = {
     post: async (endpoint, body) => {
         const res = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(body)
+            headers: getHeaders(body),
+            body: body instanceof FormData ? body : JSON.stringify(body)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'API Error');
@@ -38,8 +45,8 @@ export const api = {
     patch: async (endpoint, body) => {
         const res = await fetch(`${API_URL}${endpoint}`, {
             method: 'PATCH',
-            headers: getHeaders(),
-            body: JSON.stringify(body)
+            headers: getHeaders(body),
+            body: body instanceof FormData ? body : JSON.stringify(body)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'API Error');
@@ -49,8 +56,8 @@ export const api = {
     put: async (endpoint, body) => {
         const res = await fetch(`${API_URL}${endpoint}`, {
             method: 'PUT',
-            headers: getHeaders(),
-            body: JSON.stringify(body)
+            headers: getHeaders(body),
+            body: body instanceof FormData ? body : JSON.stringify(body)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'API Error');

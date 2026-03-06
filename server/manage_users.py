@@ -42,6 +42,9 @@ def list_users():
 def add_user():
     print("\n--- Add New User ---")
     email = input("Email: ").strip()
+    full_name = input("Full Name: ").strip()
+    employee_id = input("Employee ID (e.g., IIT-EMP-0XX): ").strip()
+    department = input("Department (e.g., Engineering, Sales): ").strip() or "Engineering"
     password = input("Password: ").strip()
     role = input("Role (hr/employee): ").strip().lower()
     
@@ -54,10 +57,23 @@ def add_user():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO profiles (email, password_hash, role, status) VALUES (%s, %s, %s, 'active')", (email, hashed, role))
+        # Step 1: Create Employee Record
+        cur.execute(
+            "INSERT INTO employees (full_name, email, role, department, employee_id, status) VALUES (%s, %s, %s, %s, %s, 'Active')",
+            (full_name, email, role.capitalize(), department, employee_id)
+        )
+        
+        # Step 2: Create Login Profile
+        cur.execute(
+            "INSERT INTO profiles (email, password_hash, role, employee_id, status) VALUES (%s, %s, %s, %s, 'active')", 
+            (email, hashed, role, employee_id)
+        )
+        
         conn.commit()
         print(f"✅ User {email} added successfully!")
+        print(f"✅ Employee record for {full_name} created. (Now visible in Dashboard)")
     except Exception as e:
+        conn.rollback()
         print(f"❌ Error adding user: {e}")
     finally:
         cur.close()
