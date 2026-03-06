@@ -10,7 +10,11 @@ const pool = new Pool({
 // @route   GET api/chat/contacts
 router.get('/contacts', auth, async (req, res) => {
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
         const myUuid = emp.rows[0]?.id;
 
         // Fetch all employees except self to chat with
@@ -60,7 +64,11 @@ router.get('/history/:targetId', auth, async (req, res) => {
     const { targetId } = req.params;
 
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
         const myId = emp.rows[0]?.id;
 
         if (!myId) return res.status(404).json({ error: 'Profile not found' });
@@ -101,7 +109,11 @@ router.get('/history/:targetId', auth, async (req, res) => {
 router.post('/message', auth, async (req, res) => {
     const { content, receiver_id, group_id, attachment_url } = req.body;
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
         const sender_id = emp.rows[0]?.id;
 
         if (!sender_id) return res.status(404).json({ error: 'Profile not found' });
