@@ -171,7 +171,14 @@ const HRAttendancePage = () => {
                                 <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '16px', fontWeight: '500' }}>{row.full_name}</td>
                                     <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{row.department}</td>
-                                    <td style={{ padding: '16px' }}>{new Date(row.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td style={{ padding: '16px' }}>
+                                        <div>{new Date(row.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                        {row.location && (
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                📍 {row.location}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={{ padding: '16px' }}>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
                                     <td style={{ padding: '16px' }}>{calculateHours(row.check_in, row.check_out)}h</td>
                                     <td style={{ padding: '16px' }}>

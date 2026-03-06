@@ -93,7 +93,7 @@ router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
     try {
         const result = await pool.query(
             'UPDATE leaves SET status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3 RETURNING *',
-            [status, req.user.id, req.params.id]
+            [status, req.user.employee_id, req.params.id]
         );
         const updatedLeave = result.rows[0];
 

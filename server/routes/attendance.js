@@ -11,17 +11,24 @@ const pool = new Pool({
 // @desc    Record check-in
 router.post('/check-in', auth, async (req, res) => {
     try {
-        const employee_id = req.user.id;
+        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
+        const employee_id = profileInfo.rows[0]?.employee_id;
+
+        if (!employee_id) {
+            return res.status(400).json({ error: 'Employee profile not perfectly linked. Contact HR.' });
+        }
+
+        const { location } = req.body;
         const now = new Date();
 
-        // Check if already checked in today
+        // Check if there is an active check-in (without checkout)
         const existing = await pool.query(
-            "SELECT * FROM attendance WHERE employee_id = $1 AND DATE(check_in) = CURRENT_DATE",
+            "SELECT * FROM attendance WHERE employee_id = $1 AND DATE(check_in) = CURRENT_DATE AND check_out IS NULL",
             [employee_id]
         );
 
         if (existing.rows.length > 0) {
-            return res.status(400).json({ error: 'Already checked in today' });
+            return res.status(400).json({ error: 'You are already checked in. Please check out first.' });
         }
 
         // Determine status (Late if after 9:15 AM)
@@ -30,8 +37,8 @@ router.post('/check-in', auth, async (req, res) => {
         const status = checkInTime > lateTime ? 'Late' : 'Present';
 
         const result = await pool.query(
-            "INSERT INTO attendance (employee_id, check_in, status) VALUES ($1, $2, $3) RETURNING *",
-            [employee_id, now, status]
+            "INSERT INTO attendance (employee_id, check_in, status, location) VALUES ($1, $2, $3, $4) RETURNING *",
+            [employee_id, now, status, location]
         );
 
         res.json(result.rows[0]);
@@ -45,7 +52,8 @@ router.post('/check-in', auth, async (req, res) => {
 // @desc    Record check-out
 router.post('/check-out', auth, async (req, res) => {
     try {
-        const employee_id = req.user.id;
+        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
+        const employee_id = profileInfo.rows[0]?.employee_id;
         const now = new Date();
 
         const result = await pool.query(
@@ -68,9 +76,12 @@ router.post('/check-out', auth, async (req, res) => {
 // @desc    Get current user's attendance
 router.get('/my', auth, async (req, res) => {
     try {
+        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
+        const employee_id = profileInfo.rows[0]?.employee_id;
+
         const result = await pool.query(
             "SELECT * FROM attendance WHERE employee_id = $1 ORDER BY check_in DESC",
-            [req.user.id]
+            [employee_id]
         );
         res.json(result.rows);
     } catch (err) {

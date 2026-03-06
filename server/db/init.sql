@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS attendance (
 
 DO $$ BEGIN
   ALTER TABLE attendance ADD COLUMN IF NOT EXISTS hours_worked NUMERIC;
+  ALTER TABLE attendance ADD COLUMN IF NOT EXISTS location TEXT;
 END $$;
 
 -- ─── 9. Projects ────────────────────────────────────────────────
