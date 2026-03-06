@@ -17,7 +17,8 @@ def get_connection():
         sys.exit(1)
 
 def hash_password(password):
-    salt = bcrypt.gensalt()
+    # Use prefix=b"2a" to ensure compatibility with bcryptjs used in the Node.js backend
+    salt = bcrypt.gensalt(prefix=b"2a")
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def list_users():
