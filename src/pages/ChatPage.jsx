@@ -15,10 +15,94 @@ import {
     MessageSquare,
     Phone,
     Video,
-    Hash
+    Hash,
+    Megaphone,
+    X
 } from 'lucide-react';
 
 const SOCKET_URL = `http://${window.location.hostname}:5001`;
+
+const AnnouncementsModal = ({ isOpen, onClose, onSuccess }) => {
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setLoading(true);
+            await api.post('/announcements', { title, content });
+            onSuccess();
+            onClose();
+            setTitle('');
+            setContent('');
+        } catch (error) {
+            console.error('Failed to post announcement', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+        }}>
+            <div className="card" style={{ width: '100%', maxWidth: '500px', background: 'var(--main-bg)', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '18px' }}>Create Announcement</h3>
+                    <X size={20} style={{ cursor: 'pointer' }} onClick={onClose} />
+                </div>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>Title</label>
+                        <input
+                            type="text"
+                            className="input-field"
+                            style={{ width: '100%' }}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>Content</label>
+                        <textarea
+                            className="input-field"
+                            style={{ width: '100%', minHeight: '120px', resize: 'none' }}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                        }}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Post Announcement'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const ChatPage = () => {
     const [contacts, setContacts] = useState([]);
@@ -28,6 +112,7 @@ const ChatPage = () => {
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
     const socket = useRef(null);
     const messageContainerRef = useRef(null);
     const { profile: currentUser } = useAuth();
@@ -144,7 +229,29 @@ const ChatPage = () => {
                     height: '100%'
                 }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>Messages</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: '700' }}>Messages</h2>
+                            <button
+                                onClick={() => setIsAnnounceModalOpen(true)}
+                                style={{
+                                    background: 'var(--primary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '6px 10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                                title="Create Announcement"
+                            >
+                                <Megaphone size={14} />
+                                Announcement
+                            </button>
+                        </div>
                         <div style={{ position: 'relative' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                             <input
@@ -362,6 +469,14 @@ const ChatPage = () => {
                     )}
                 </div>
             </div>
+            <AnnouncementsModal
+                isOpen={isAnnounceModalOpen}
+                onClose={() => setIsAnnounceModalOpen(false)}
+                onSuccess={() => {
+                    // Could add a toast here
+                    console.log('Announcement posted!');
+                }}
+            />
         </>
     );
 };
