@@ -28,6 +28,14 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // Phone number validation: Allow only +, space, and digits
+        if (name === 'phone') {
+            const cleanedValue = value.replace(/[^\d+ ]/g, '');
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -41,6 +49,14 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Final phone validation: pattern check (+ country code followed by 10 digits)
+        const phoneRegex = /^\+\d+\s\d{10}$|^\+\d{12}$/;
+        if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s+/g, ''))) {
+            toast.error('Invalid phone format. Please use: +[CountryCode] [10 Digits]');
+            return;
+        }
+
         try {
             setLoading(true);
             const data = new FormData();
@@ -165,9 +181,11 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 name="phone"
                                 type="tel"
                                 className="input-field"
-                                placeholder="+1 234 567 890"
+                                placeholder="+1 2345678901"
+                                required
                                 value={formData.phone}
                                 onChange={handleChange}
+                                title="Please enter country code followed by 10 digits (e.g., +1 1234567890)"
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
