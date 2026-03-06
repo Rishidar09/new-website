@@ -311,19 +311,46 @@ const HRProjectsPage = () => {
                             </div>
                             <div style={{ marginBottom: '32px' }}>
                                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>ASSIGN TEAM</label>
-                                <select
-                                    multiple
-                                    className="input-field"
-                                    style={{ height: '100px' }}
-                                    onChange={e => {
-                                        const vals = Array.from(e.target.selectedOptions, option => option.value);
-                                        setNewProject({ ...newProject, team: vals });
-                                    }}
-                                >
+                                <div style={{
+                                    height: '150px',
+                                    overflowY: 'auto',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
+                                    padding: '8px',
+                                    background: '#F3F4F6',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px'
+                                }}>
                                     {employees.map(emp => (
-                                        <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.department})</option>
+                                        <label key={emp.id} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            padding: '8px 12px',
+                                            cursor: 'pointer',
+                                            borderRadius: '6px',
+                                            transition: 'background 0.2s',
+                                            fontSize: '14px',
+                                            color: '#000000',
+                                            backgroundColor: newProject.team.includes(emp.id.toString()) ? '#E5E7EB' : 'transparent'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={newProject.team.includes(emp.id.toString())}
+                                                onChange={e => {
+                                                    const id = emp.id.toString();
+                                                    const newTeam = e.target.checked
+                                                        ? [...newProject.team, id]
+                                                        : newProject.team.filter(t => t !== id);
+                                                    setNewProject({ ...newProject, team: newTeam });
+                                                }}
+                                                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                            />
+                                            <span>{emp.full_name} ({emp.department})</span>
+                                        </label>
                                     ))}
-                                </select>
+                                </div>
                             </div>
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <button type="submit" style={{ flex: 1, padding: '12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600' }}>Create Project</button>
