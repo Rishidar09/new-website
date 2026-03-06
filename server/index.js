@@ -47,6 +47,7 @@ app.use('/api/audit', require('./routes/audit'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/drive', require('./routes/drive'));
+app.use('/api/user', require('./routes/user'));
 
 // Socket.io Logic
 io.on('connection', (socket) => {

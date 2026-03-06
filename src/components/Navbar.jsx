@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, User, Settings, LogOut, ChevronDown, CheckCircle2, AlertCircle, MessageSquare, Video } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, User, Settings, LogOut, ChevronDown, CheckCircle2, AlertCircle, MessageSquare, Video, Menu, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick, isMobile }) => {
     const { profile, signOut } = useAuth();
     const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [notifications, setNotifications] = useState([]);
+
+    const notificationRef = useRef(null);
+    const profileRef = useRef(null);
 
     // Mock notifications for demonstration
     useEffect(() => {
@@ -19,6 +22,23 @@ const Navbar = () => {
         ]);
     }, []);
 
+    // Close dropdowns on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setShowProfile(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     return (
         <div style={{
             height: '70px',
@@ -26,16 +46,37 @@ const Navbar = () => {
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            padding: '0 32px',
+            justifyContent: 'space-between',
+            padding: isMobile ? '0 16px' : '0 32px',
             position: 'sticky',
             top: 0,
             zIndex: 90,
             width: '100%'
         }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {isMobile && (
+                    <button
+                        onClick={onMenuClick}
+                        style={{
+                            border: 'none',
+                            background: 'white',
+                            cursor: 'pointer',
+                            color: 'var(--text-main)',
+                            padding: '8px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <MoreHorizontal size={24} />
+                    </button>
+                )}
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                 {/* Notification Bell */}
-                <div style={{ position: 'relative' }}>
+                <div ref={notificationRef} style={{ position: 'relative' }}>
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', position: 'relative' }}
@@ -88,7 +129,7 @@ const Navbar = () => {
                 </div>
 
                 {/* Profile Toggle */}
-                <div style={{ position: 'relative' }}>
+                <div ref={profileRef} style={{ position: 'relative' }}>
                     <div
                         onClick={() => setShowProfile(!showProfile)}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '4px 8px', borderRadius: '8px' }}
@@ -128,13 +169,7 @@ const Navbar = () => {
                             <button
                                 onClick={() => {
                                     setShowProfile(false);
-                                    // Use employee_uuid (real DB UUID from employees table) for navigation
-                                    const empId = profile?.employee_uuid || profile?.employee_id;
-                                    if (empId) {
-                                        navigate(profile?.role === 'hr' ? `/hr/employees/${empId}` : `/employee/profile/${empId}`);
-                                    } else {
-                                        navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard');
-                                    }
+                                    navigate('/profile');
                                 }}
                                 className="dropdown-item"
                             >

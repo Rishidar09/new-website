@@ -77,7 +77,7 @@ const EmployeeProfilePage = () => {
         <>
             <div style={{ marginBottom: '24px' }}>
                 <button
-                    onClick={() => navigate('/hr/employees')}
+                    onClick={() => navigate(profile?.role === 'hr' ? '/hr/employees' : '/employee/dashboard')}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -92,7 +92,7 @@ const EmployeeProfilePage = () => {
                     }}
                 >
                     <ArrowLeft size={18} />
-                    Back to Employees
+                    {profile?.role === 'hr' ? 'Back to Employees' : 'Back to Dashboard'}
                 </button>
             </div>
 
