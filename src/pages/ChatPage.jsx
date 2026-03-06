@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
 import {
     Search,
     Send,
@@ -29,12 +30,9 @@ const ChatPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const socket = useRef(null);
     const scrollRef = useRef(null);
-    const [currentUser, setCurrentUser] = useState(null);
+    const { profile: currentUser } = useAuth();
 
     useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user'));
-        setCurrentUser(user);
-
         // Initialize socket
         socket.current = io(SOCKET_URL);
 
@@ -50,11 +48,10 @@ const ChatPage = () => {
     }, []);
 
     useEffect(() => {
-        if (activeChat) {
+        if (activeChat && currentUser) {
             fetchHistory();
             // Join room
-            const user = JSON.parse(localStorage.getItem('user'));
-            const myEmployeeId = user?.employee_uuid || user?.id; // fallback if employee_uuid isn't set
+            const myEmployeeId = currentUser?.employee_uuid || currentUser?.id; // fallback if employee_uuid isn't set
             const roomId = activeChat.type === 'group'
                 ? activeChat.id
                 : [myEmployeeId, activeChat.id].sort().join('_');
