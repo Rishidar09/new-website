@@ -53,6 +53,55 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
+// @route   GET api/employees/dashboard-stats
+router.get('/dashboard-stats', auth, async (req, res) => {
+    const employeeId = req.user.employee_id;
+    if (!employeeId) {
+        return res.status(404).json({ error: 'Employee profile not linked to this user' });
+    }
+
+    try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+
+        const attendance = await pool.query(
+            `SELECT COUNT(*) FROM attendance 
+             WHERE employee_id = $1 
+             AND EXTRACT(MONTH FROM check_in) = $2 
+             AND EXTRACT(YEAR FROM check_in) = $3`,
+            [employeeId, month, year]
+        );
+
+        const leaves = await pool.query(
+            `SELECT COUNT(*) FROM leaves 
+             WHERE employee_id = $1 
+             AND status = 'Approved'
+             AND (EXTRACT(MONTH FROM start_date) = $2 OR EXTRACT(MONTH FROM end_date) = $2)
+             AND (EXTRACT(YEAR FROM start_date) = $3 OR EXTRACT(YEAR FROM end_date) = $3)`,
+            [employeeId, month, year]
+        );
+
+        const projects = await pool.query(
+            `SELECT p.name, p.status, p.progress 
+             FROM projects p 
+             JOIN project_members pm ON p.id = pm.project_id 
+             WHERE pm.employee_id = $1 AND p.status = 'Active'
+             ORDER BY p.created_at DESC`,
+            [employeeId]
+        );
+
+        res.json({
+            attendanceCount: parseInt(attendance.rows[0].count),
+            leavesCount: parseInt(leaves.rows[0].count),
+            projects: projects.rows
+        });
+    } catch (err) {
+        console.error('[Dashboard Stats Error]:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 router.post('/', auth, authorize(['hr']), upload.single('avatar'), async (req, res) => {
     const { full_name, email, role, department, phone, joining_date, salary } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;

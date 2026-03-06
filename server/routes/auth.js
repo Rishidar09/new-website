@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 const { Pool } = require('pg');
 const { logManualAction } = require('../middleware/auditLogger');
 const { auth } = require('../middleware/auth');
@@ -31,6 +31,7 @@ router.post('/login', async (req, res) => {
         `, [email]);
 
         if (result.rows.length === 0) {
+            console.log(`[Login Debug] Email not found: ${email}`);
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
@@ -58,6 +59,7 @@ router.post('/login', async (req, res) => {
         // ── Password Check ──────────────────────────────────────
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
+            console.log(`[Login Debug] Password mismatch for: ${email}`);
             const newAttempts = (user.failed_login_attempts || 0) + 1;
             if (newAttempts >= MAX_FAILED_ATTEMPTS) {
                 await pool.query(
