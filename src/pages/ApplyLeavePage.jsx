@@ -71,7 +71,15 @@ const ApplyLeavePage = () => {
                 submitData.append('attachment', file);
             }
 
-            await api.post('/leaves', submitData);
+            console.log('--- SUBMITTING LEAVE ---');
+            console.log('Sending to api.post(/leaves)');
+            for (let pair of submitData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            const response = await api.post('/leaves', submitData);
+            console.log('Server responded with:', response);
+
 
             toast.success('Leave application submitted successfully!');
             setFormData({ leave_type: 'Casual', start_date: '', end_date: '', reason: '' });

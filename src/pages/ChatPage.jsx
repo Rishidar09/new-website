@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
 import {
     Search,
     Send,
@@ -14,10 +15,94 @@ import {
     MessageSquare,
     Phone,
     Video,
-    Hash
+    Hash,
+    Megaphone,
+    X
 } from 'lucide-react';
 
-const SOCKET_URL = 'http://localhost:5001';
+const SOCKET_URL = `http://${window.location.hostname}:5001`;
+
+const AnnouncementsModal = ({ isOpen, onClose, onSuccess }) => {
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setLoading(true);
+            await api.post('/announcements', { title, content });
+            onSuccess();
+            onClose();
+            setTitle('');
+            setContent('');
+        } catch (error) {
+            console.error('Failed to post announcement', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+        }}>
+            <div className="card" style={{ width: '100%', maxWidth: '500px', background: 'var(--main-bg)', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '18px' }}>Create Announcement</h3>
+                    <X size={20} style={{ cursor: 'pointer' }} onClick={onClose} />
+                </div>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>Title</label>
+                        <input
+                            type="text"
+                            className="input-field"
+                            style={{ width: '100%' }}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>Content</label>
+                        <textarea
+                            className="input-field"
+                            style={{ width: '100%', minHeight: '120px', resize: 'none' }}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600'
+                        }}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Post Announcement'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const ChatPage = () => {
     const [contacts, setContacts] = useState([]);
@@ -27,18 +112,21 @@ const ChatPage = () => {
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
     const socket = useRef(null);
-    const scrollRef = useRef(null);
-    const [currentUser, setCurrentUser] = useState(null);
+    const messageContainerRef = useRef(null);
+    const { profile: currentUser } = useAuth();
 
     useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user'));
-        setCurrentUser(user);
-
         // Initialize socket
         socket.current = io(SOCKET_URL);
 
+        socket.current.on('connect', () => {
+            console.log('Connected to socket server');
+        });
+
         socket.current.on('receive_message', (message) => {
+            console.log('New message received:', message);
             setMessages(prev => [...prev, message]);
         });
 
@@ -50,20 +138,26 @@ const ChatPage = () => {
     }, []);
 
     useEffect(() => {
-        if (activeChat) {
+        if (activeChat && currentUser) {
             fetchHistory();
             // Join room
-            const myId = JSON.parse(localStorage.getItem('user'))?.id;
+            const myEmployeeId = currentUser?.employee_uuid || currentUser?.id;
             const roomId = activeChat.type === 'group'
                 ? activeChat.id
-                : [myId, activeChat.id].sort().join('_');
+                : [myEmployeeId, activeChat.id].sort().join('_');
 
+            console.log('Joining room:', roomId);
             socket.current.emit('join_room', roomId);
         }
-    }, [activeChat]);
+    }, [activeChat, currentUser]);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messageContainerRef.current) {
+            messageContainerRef.current.scrollTo({
+                top: messageContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }, [messages]);
 
     const fetchInitialData = async () => {
@@ -115,20 +209,49 @@ const ChatPage = () => {
     return (
         <>
             <div style={{
-                height: 'calc(100vh - 140px)',
+                height: 'calc(100vh - 118px)',
                 display: 'grid',
-                gridTemplateColumns: '320px 1fr',
+                gridTemplateColumns: 'minmax(320px, 320px) 1fr',
                 background: 'var(--card-bg)',
                 color: 'var(--text-main)',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                position: 'relative'
             }}>
                 {/* Left Panel */}
-                <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>Messages</h2>
+                <div style={{
+                    borderRight: '1px solid var(--border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minWidth: 0,
+                    height: '100%'
+                }}>
+                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: '700' }}>Messages</h2>
+                            <button
+                                onClick={() => setIsAnnounceModalOpen(true)}
+                                style={{
+                                    background: 'var(--primary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '6px 10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                                title="Create Announcement"
+                            >
+                                <Megaphone size={14} />
+                                Announcement
+                            </button>
+                        </div>
                         <div style={{ position: 'relative' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                             <input
@@ -211,11 +334,26 @@ const ChatPage = () => {
                 </div>
 
                 {/* Right Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--main-bg)' }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'var(--main-bg)',
+                    height: '100%',
+                    minWidth: 0,
+                    overflow: 'hidden' // Force child containers to handle overflow
+                }}>
                     {activeChat ? (
                         <>
                             {/* Header */}
-                            <div style={{ padding: '16px 24px', background: 'var(--card-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{
+                                padding: '16px 24px',
+                                background: 'var(--card-bg)',
+                                borderBottom: '1px solid var(--border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexShrink: 0
+                            }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: '700' }}>
                                         {activeChat.name.charAt(0)}
@@ -233,11 +371,20 @@ const ChatPage = () => {
                             </div>
 
                             {/* Chat Window */}
-                            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div
+                                ref={messageContainerRef}
+                                style={{
+                                    flex: 1,
+                                    padding: '24px',
+                                    overflowY: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '16px',
+                                    minHeight: 0 // CRITICAL: Allows flex child to overflow and scroll
+                                }}
+                            >
                                 {messages.map((m, idx) => {
-                                    const isMe = String(m.sender_id) === String(currentUser?.full_name === m.sender_name ? m.sender_id : (currentUser?.email === m.sender_id || (m.sender_name === currentUser?.full_name))); // Simplified check
-                                    const isReceiverMe = m.receiver_id ? String(m.receiver_id) === String(currentUser?.id) : false;
-                                    const trulyMe = m.sender_name === currentUser?.full_name || m.sender_id === currentUser?.id;
+                                    const trulyMe = String(m.sender_id) === String(currentUser?.employee_uuid);
 
                                     return (
                                         <div key={idx} style={{
@@ -267,11 +414,11 @@ const ChatPage = () => {
                                         </div>
                                     );
                                 })}
-                                <div ref={scrollRef} />
+
                             </div>
 
                             {/* Input Bar */}
-                            <div style={{ padding: '24px', background: 'var(--card-bg)', borderTop: '1px solid var(--border)' }}>
+                            <div style={{ padding: '24px', background: 'var(--card-bg)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
                                 <form onSubmit={handleSendMessage} style={{
                                     display: 'flex',
                                     gap: '12px',
@@ -322,6 +469,14 @@ const ChatPage = () => {
                     )}
                 </div>
             </div>
+            <AnnouncementsModal
+                isOpen={isAnnounceModalOpen}
+                onClose={() => setIsAnnounceModalOpen(false)}
+                onSuccess={() => {
+                    // Could add a toast here
+                    console.log('Announcement posted!');
+                }}
+            />
         </>
     );
 };

@@ -6,10 +6,25 @@ const EmployeeAttendancePage = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [attendance, setAttendance] = useState([]);
     const [todayRecord, setTodayRecord] = useState(null);
+    const [todayRecords, setTodayRecords] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeDuration, setActiveDuration] = useState(0);
 
     useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+
+            // Update active session duration every second
+            setTodayRecord(currentActive => {
+                if (currentActive && !currentActive.check_out) {
+                    const diffSeconds = Math.floor((new Date() - new Date(currentActive.check_in)) / 1000);
+                    setActiveDuration(diffSeconds > 0 ? diffSeconds : 0);
+                } else {
+                    setActiveDuration(0);
+                }
+                return currentActive;
+            });
+        }, 1000);
         fetchAttendance();
         return () => clearInterval(timer);
     }, []);
@@ -19,10 +34,16 @@ const EmployeeAttendancePage = () => {
             const data = await api.get('/attendance/my');
             setAttendance(data);
 
-            // Check if there's a record for today
+            // Get all records for today
             const today = new Date().toISOString().split('T')[0];
-            const found = data.find(rec => rec.check_in.startsWith(today));
-            setTodayRecord(found);
+            const foundToday = data.filter(rec => rec.check_in.startsWith(today));
+            setTodayRecords(foundToday);
+
+            // Find an active session (not checked out) or the most recent one
+            const activeSession = foundToday.find(rec => !rec.check_out);
+            const mostRecentSession = foundToday.length > 0 ? foundToday[0] : null;
+
+            setTodayRecord(activeSession || mostRecentSession || null);
         } catch (err) {
             console.error('Failed to fetch attendance', err);
         } finally {
@@ -32,18 +53,64 @@ const EmployeeAttendancePage = () => {
 
     const handleCheckIn = async () => {
         try {
-            const data = await api.post('/attendance/check-in', {});
-            setTodayRecord(data);
+            setLoading(true);
+            let locationString = "Unknown Location";
+
+            // 1. Try Browser Geolocation (GPS)
+            if ("geolocation" in navigator) {
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            timeout: 5000,
+                            enableHighAccuracy: true
+                        });
+                    });
+
+                    const { latitude, longitude } = position.coords;
+
+                    // OpenStreetMap Reverse Geocoding
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                        const data = await res.json();
+                        locationString = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb || data.address?.state_district || "Unknown Location";
+                    } catch (geoErr) {
+                        locationString = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+                    }
+                } catch (posErr) {
+                    console.warn("GPS access denied or failed, falling back to IP...");
+
+                    // 2. IP-based Geolocation Fallback
+                    try {
+                        const ipRes = await fetch('https://ipapi.co/json/');
+                        const ipData = await ipRes.json();
+                        locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} (via IP)`;
+                    } catch (ipErr) {
+                        console.error("IP Geolocaiton also failed", ipErr);
+                    }
+                }
+            } else {
+                // Fallback for browsers without geolocation support
+                try {
+                    const ipRes = await fetch('https://ipapi.co/json/');
+                    const ipData = await ipRes.json();
+                    locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} (via IP)`;
+                } catch (ipErr) {
+                    console.error("IP Geolocaiton failed", ipErr);
+                }
+            }
+
+            await api.post('/attendance/check-in', { location: locationString });
             fetchAttendance();
         } catch (err) {
             alert(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleCheckOut = async () => {
         try {
             const data = await api.post('/attendance/check-out', {});
-            setTodayRecord(data);
             fetchAttendance();
         } catch (err) {
             alert(err.message);
@@ -51,11 +118,22 @@ const EmployeeAttendancePage = () => {
     };
 
     const calculateHours = (start, end) => {
-        if (!start) return '0.0';
+        if (!start) return 0;
         const startTime = new Date(start);
         const endTime = end ? new Date(end) : new Date();
-        const diff = (endTime - startTime) / (1000 * 60 * 60);
-        return diff.toFixed(1);
+        return (endTime - startTime) / (1000 * 60 * 60);
+    };
+
+    const calculateTotalTodayHours = () => {
+        const total = todayRecords.reduce((sum, record) => sum + calculateHours(record.check_in, record.check_out), 0);
+        return total.toFixed(1);
+    };
+
+    const formatDuration = (totalSeconds) => {
+        const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+        const s = (totalSeconds % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${s}`;
     };
 
     // Calendar Heatmap logic
@@ -93,55 +171,66 @@ const EmployeeAttendancePage = () => {
                         {currentTime.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
 
-                    {!todayRecord ? (
+                    {(!todayRecord || todayRecord.check_out) ? (
                         <button
                             onClick={handleCheckIn}
+                            disabled={loading}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '12px',
                                 padding: '16px 40px',
-                                background: 'var(--primary)',
+                                background: loading ? 'var(--text-muted)' : 'var(--primary)',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '50px',
                                 fontSize: '18px',
                                 fontWeight: '600',
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                boxShadow: loading ? 'none' : '0 4px 14px rgba(59, 130, 246, 0.4)',
                                 transition: 'transform 0.2s'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            onMouseOver={(e) => !loading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                            onMouseOut={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
                         >
-                            <Play fill="white" size={20} /> Check-In
-                        </button>
-                    ) : !todayRecord.check_out ? (
-                        <button
-                            onClick={handleCheckOut}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '16px 40px',
-                                background: '#EF4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '50px',
-                                fontSize: '18px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
-                                transition: 'transform 0.2s'
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                            <Square fill="white" size={20} /> Check-Out
+                            <Play fill="white" size={20} /> {loading ? 'Locating...' : 'Check-In'}
                         </button>
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-approved-text)', fontWeight: '600' }}>
-                            <CheckCircle size={24} /> Work Completed for Today
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                            <div style={{
+                                fontSize: '32px',
+                                fontWeight: '700',
+                                color: 'var(--primary)',
+                                fontFamily: 'monospace',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                padding: '12px 24px',
+                                borderRadius: '12px'
+                            }}>
+                                {formatDuration(activeDuration)}
+                            </div>
+                            <button
+                                onClick={handleCheckOut}
+                                disabled={loading}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '16px 40px',
+                                    background: loading ? 'var(--text-muted)' : '#EF4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50px',
+                                    fontSize: '18px',
+                                    fontWeight: '600',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: loading ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.4)',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseOver={(e) => !loading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                                onMouseOut={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
+                            >
+                                <Square fill="white" size={20} /> Check-Out
+                            </button>
                         </div>
                     )}
 
@@ -171,7 +260,7 @@ const EmployeeAttendancePage = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Hours Worked (Today)</p>
-                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>{todayRecord ? calculateHours(todayRecord.check_in, todayRecord.check_out) : '0.0'}h</h3>
+                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>{calculateTotalTodayHours()}h</h3>
                             </div>
                             <Timer color="#F59E0B" size={32} />
                         </div>

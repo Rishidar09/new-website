@@ -27,10 +27,10 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
-        { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/hr/analytics' },
-        { icon: <Files size={20} />, label: 'Documents', path: '/hr/documents' },
+        { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/hr/calendar' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
+        { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
     ];
 
@@ -83,6 +83,7 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                         display: none; /* For Chrome, Safari, and Opera */
                     }
                 `}</style>
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
                 {menuItems.map((item, index) => {
                     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                     return (

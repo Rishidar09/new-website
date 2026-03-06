@@ -80,6 +80,13 @@ const HolidayCalendar = ({ holidays, onHolidaysChange }) => {
         const firstDay = firstDayOfMonth(year, month);
         const cells = [];
 
+        // Helper to normalize dates for comparison
+        const normalizeDate = (d) => {
+            if (!d) return null;
+            const date = new Date(d);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        };
+
         // Empty cells for alignment
         for (let i = 0; i < firstDay; i++) {
             cells.push(<div key={`empty-${i}`} style={{ padding: '20px', border: '1px solid #F3F4F6' }}></div>);
@@ -88,46 +95,51 @@ const HolidayCalendar = ({ holidays, onHolidaysChange }) => {
         // Actual days
         for (let d = 1; d <= totalDays; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayHolidays = filteredHolidays.filter(h => h.date === dateStr);
+            const dayHolidays = filteredHolidays.filter(h => normalizeDate(h.date) === dateStr);
             const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
 
             cells.push(
                 <div key={d} style={{
-                    minHeight: '100px',
-                    padding: '12px',
+                    minHeight: '120px',
+                    padding: '8px 0',
                     border: '1px solid #F3F4F6',
                     position: 'relative',
-                    background: isToday ? '#F0F7FF' : 'transparent'
+                    background: isToday ? '#F0F7FF' : 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
                     <span style={{
-                        fontSize: '14px',
+                        fontSize: '13px',
                         fontWeight: isToday ? '700' : '500',
                         color: isToday ? 'var(--primary)' : 'var(--text-main)',
-                        display: 'block',
-                        marginBottom: '8px'
+                        padding: '0 8px',
+                        marginBottom: '6px'
                     }}>
                         {d}
                     </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {dayHolidays.map((h, i) => (
-                            <div key={i} style={{
-                                background: '#FEE2E2',
-                                color: '#991B1B',
-                                fontSize: '11px',
-                                padding: '4px 8px',
-                                borderRadius: '12px',
-                                fontWeight: '600',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }} title={h.name}>
-                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444' }}></div>
-                                {h.name}
-                            </div>
-                        ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                        {dayHolidays.map((h, i) => {
+                            const isNational = h.type === 'National';
+                            return (
+                                <div key={i} style={{
+                                    background: isNational ? '#FEE2E2' : '#DBEAFE',
+                                    color: isNational ? '#991B1B' : '#1E40AF',
+                                    fontSize: '10px',
+                                    padding: '3px 8px',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    borderLeft: `3px solid ${isNational ? '#EF4444' : '#3B82F6'}`,
+                                    margin: '0 2px'
+                                }} title={h.name}>
+                                    <span>{h.name}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             );

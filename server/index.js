@@ -17,7 +17,12 @@ const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
+app.use((req, res, next) => {
+    console.log(`[Request]: ${req.method} ${req.url}`);
+    next();
+});
 app.use(express.json());
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database Connection
@@ -37,6 +42,7 @@ app.use('/api/employees', require('./routes/employees'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/holidays', require('./routes/holidays'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/attendance', require('./routes/attendance'));

@@ -26,17 +26,20 @@ const HRDashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const data = await api.get('/analytics');
+                const [analyticsData, announceData] = await Promise.all([
+                    api.get('/analytics'),
+                    api.get('/announcements')
+                ]);
                 setStats({
-                    totalEmployees: data.headcount || 0,
-                    newEmployees: data.newEmployeesCount || 0,
-                    activeLeaves: data.activeLeaves || 0,
-                    upcomingBirthdaysCount: (data.upcomingBirthdays || []).length
+                    totalEmployees: analyticsData.headcount || 0,
+                    newEmployees: analyticsData.newEmployeesCount || 0,
+                    activeLeaves: analyticsData.activeLeaves || 0,
+                    upcomingBirthdaysCount: (analyticsData.upcomingBirthdays || []).length
                 });
-                setDeptData(data.deptData || []);
-                setBirthdays(data.upcomingBirthdays || []);
-                setLeaves(data.recentLeaves || []);
-                setAnnouncements(data.announcements || []);
+                setDeptData(analyticsData.deptData || []);
+                setBirthdays(analyticsData.upcomingBirthdays || []);
+                setLeaves(analyticsData.recentLeaves || []);
+                setAnnouncements(announceData || []);
             } catch (error) {
                 console.error('Dashboard fetch failed:', error);
             } finally {

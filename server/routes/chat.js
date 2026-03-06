@@ -10,6 +10,13 @@ const pool = new Pool({
 // @route   GET api/chat/contacts
 router.get('/contacts', auth, async (req, res) => {
     try {
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
+        const myUuid = emp.rows[0]?.id;
+
         // Fetch all employees except self to chat with
         const result = await pool.query(`
             SELECT id, full_name, role, department, email, 
@@ -18,7 +25,7 @@ router.get('/contacts', auth, async (req, res) => {
             FROM employees 
             WHERE email != $2
             ORDER BY last_time DESC NULLS LAST, full_name ASC
-        `, [req.user.employee_id || null, req.user.email]);
+        `, [myUuid, req.user.email]);
 
         // Note: For real online status, we'd need a heartbeat or redis. 
         // For now, let's mock some as online.
@@ -57,7 +64,11 @@ router.get('/history/:targetId', auth, async (req, res) => {
     const { targetId } = req.params;
 
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
         const myId = emp.rows[0]?.id;
 
         if (!myId) return res.status(404).json({ error: 'Profile not found' });
@@ -98,15 +109,26 @@ router.get('/history/:targetId', auth, async (req, res) => {
 router.post('/message', auth, async (req, res) => {
     const { content, receiver_id, group_id, attachment_url } = req.body;
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
         const sender_id = emp.rows[0]?.id;
 
         if (!sender_id) return res.status(404).json({ error: 'Profile not found' });
 
-        const result = await pool.query(
-            'INSERT INTO messages (sender_id, receiver_id, group_id, content, attachment_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [sender_id, receiver_id || null, group_id || null, content, attachment_url || null]
-        );
+        // Insert and immediately enrich with sender_name
+        const result = await pool.query(`
+            WITH inserted AS (
+                INSERT INTO messages (sender_id, receiver_id, group_id, content, attachment_url) 
+                VALUES ($1, $2, $3, $4, $5) 
+                RETURNING *
+            )
+            SELECT i.*, e.full_name as sender_name 
+            FROM inserted i
+            JOIN employees e ON i.sender_id = e.id
+        `, [sender_id, receiver_id || null, group_id || null, content, attachment_url || null]);
 
         const message = result.rows[0];
 
