@@ -39,6 +39,7 @@ DO $$ BEGIN
   ALTER TABLE employees ADD COLUMN IF NOT EXISTS designation TEXT;
   ALTER TABLE employees ADD COLUMN IF NOT EXISTS reporting_manager_id UUID REFERENCES employees(id) ON DELETE SET NULL;
   ALTER TABLE employees ADD COLUMN IF NOT EXISTS employee_id TEXT UNIQUE;
+  ALTER TABLE employees ADD COLUMN IF NOT EXISTS dob DATE;
   ALTER TABLE employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 END $$;
 
@@ -387,6 +388,15 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- ─── 27. Leave Balances with unique idx ──────────────────────────
 -- Already created above, this ensures no dupe index
 CREATE INDEX IF NOT EXISTS idx_leave_bal_emp_year ON leave_balances(employee_id, year);
+
+-- ─── 28. Announcements (NEW) ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS announcements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author_id UUID REFERENCES employees(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- ─── 28. Auto-cleanup old blacklisted tokens ────────────────────
 -- Run periodically; handled in application layer

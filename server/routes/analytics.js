@@ -10,11 +10,11 @@ const pool = new Pool({
 router.get('/', auth, authorize(['hr']), async (req, res) => {
     try {
         // 1. Get Headcount
-        const headcount = await pool.query('SELECT COUNT(*) FROM employees');
+        const headcount = await pool.query('SELECT COUNT(*) FROM employees WHERE status = \'Active\'');
 
         // 2. Get Dept Breakdown
         const deptBreakdown = await pool.query(
-            'SELECT department as name, COUNT(*) as count FROM employees GROUP BY department'
+            'SELECT department as name, COUNT(*) as count FROM employees WHERE status = \'Active\' GROUP BY department'
         );
 
         // 3. Get Leave Stats (Pie chart)
@@ -22,51 +22,52 @@ router.get('/', auth, authorize(['hr']), async (req, res) => {
             'SELECT leave_type as name, COUNT(*) as value FROM leaves GROUP BY leave_type'
         );
 
-        // 4. Get Absentees (Top 5 this month)
-        const currentMonth = new Date().getMonth() + 1;
-        const absentees = await pool.query(`
-      SELECT e.full_name as name, COUNT(*) as count 
-      FROM leaves l 
-      JOIN employees e ON l.employee_id = e.id 
-      WHERE l.status = 'Approved' 
-      AND EXTRACT(MONTH FROM l.start_date) = $1
-      GROUP BY e.full_name
-      ORDER BY count DESC
-      LIMIT 5
-    `, [currentMonth]);
+        // 4. Get New Employees (Last 30 days)
+        const newEmployees = await pool.query(
+            'SELECT COUNT(*) FROM employees WHERE joining_date >= NOW() - INTERVAL \'30 days\''
+        );
 
-        // 5. Avg Tenure
-        const avgTenure = await pool.query(`
-            SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), joining_date))) as avg_tenure 
+        // 5. Get Upcoming Birthdays (Next 30 days)
+        // Note: Using EXTRACT(DOY) to handle year wrap-around is complex, simplified for now
+        const upcomingBirthdays = await pool.query(`
+            SELECT full_name as name, role, TO_CHAR(dob, 'Mon DD') as date, avatar_url as avatar
             FROM employees 
-            WHERE status = 'Active'
+            WHERE dob IS NOT NULL 
+            AND (
+                EXTRACT(MONTH FROM dob) = EXTRACT(MONTH FROM NOW())
+                OR EXTRACT(MONTH FROM dob) = EXTRACT(MONTH FROM (NOW() + INTERVAL '1 month'))
+            )
+            ORDER BY EXTRACT(MONTH FROM dob), EXTRACT(DAY FROM dob)
+            LIMIT 5
         `);
 
-        // 6. Joining Trend (Last 6 months)
-        const joiningTrend = await pool.query(`
-            WITH months AS (
-                SELECT DATE_TRUNC('month', joining_date) as m
-                FROM employees
-                WHERE joining_date >= NOW() - INTERVAL '6 months'
-                GROUP BY 1
-            )
-            SELECT 
-                TO_CHAR(m, 'Mon') as month,
-                (SELECT COUNT(*) FROM employees WHERE DATE_TRUNC('month', joining_date) = m AND status != 'Inactive') as joining,
-                (SELECT COUNT(*) FROM employees WHERE DATE_TRUNC('month', joining_date) = m AND status = 'Inactive') as exit
-            FROM months
-            ORDER BY m
+        // 6. Get Recent Leave Requests (5 most recent)
+        const recentLeaves = await pool.query(`
+            SELECT l.id, e.full_name as name, l.leave_type as type, l.status, e.avatar_url as avatar
+            FROM leaves l
+            JOIN employees e ON l.employee_id = e.id
+            ORDER BY l.created_at DESC
+            LIMIT 5
+        `);
+
+        // 7. Get Announcements
+        const announcementsData = await pool.query(`
+            SELECT a.id, a.title, a.content, e.full_name as author_name, e.avatar_url as author_avatar, a.created_at
+            FROM announcements a
+            LEFT JOIN employees e ON a.author_id = e.id
+            ORDER BY a.created_at DESC
+            LIMIT 5
         `);
 
         res.json({
             headcount: parseInt(headcount.rows[0]?.count || 0),
+            newEmployeesCount: parseInt(newEmployees.rows[0]?.count || 0),
+            activeLeaves: (leaveBreakdown.rows || []).reduce((acc, curr) => acc + (parseInt(curr.value) || 0), 0),
+            upcomingBirthdays: upcomingBirthdays.rows,
+            recentLeaves: recentLeaves.rows,
+            announcements: announcementsData.rows,
             deptData: deptBreakdown.rows,
-            leaveData: leaveBreakdown.rows,
-            absentees: absentees.rows,
-            attrition: 3.5, // Realistic mock for now
-            openPositions: 8,
-            avgTenure: parseFloat(avgTenure.rows[0]?.avg_tenure || 0).toFixed(1),
-            trendData: joiningTrend.rows
+            leaveData: leaveBreakdown.rows
         });
     } catch (err) {
         console.error('[Analytics Error]:', err.message);

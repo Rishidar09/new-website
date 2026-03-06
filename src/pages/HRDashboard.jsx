@@ -14,9 +14,12 @@ const HRDashboard = () => {
         totalEmployees: 0,
         newEmployees: 0,
         activeLeaves: 0,
-        upcomingBirthdays: 0
+        upcomingBirthdaysCount: 0
     });
     const [deptData, setDeptData] = useState([]);
+    const [birthdays, setBirthdays] = useState([]);
+    const [leaves, setLeaves] = useState([]);
+    const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -26,11 +29,14 @@ const HRDashboard = () => {
                 const data = await api.get('/analytics');
                 setStats({
                     totalEmployees: data.headcount || 0,
-                    newEmployees: 5,
-                    activeLeaves: (data.leaveData || []).reduce((acc, curr) => acc + (parseInt(curr.value) || 0), 0),
-                    upcomingBirthdays: 3
+                    newEmployees: data.newEmployeesCount || 0,
+                    activeLeaves: data.activeLeaves || 0,
+                    upcomingBirthdaysCount: (data.upcomingBirthdays || []).length
                 });
                 setDeptData(data.deptData || []);
+                setBirthdays(data.upcomingBirthdays || []);
+                setLeaves(data.recentLeaves || []);
+                setAnnouncements(data.announcements || []);
             } catch (error) {
                 console.error('Dashboard fetch failed:', error);
             } finally {
@@ -86,7 +92,7 @@ const HRDashboard = () => {
                 />
                 <KPICard
                     title="Upcoming Birthdays"
-                    value={stats.upcomingBirthdays.toString()}
+                    value={stats.upcomingBirthdaysCount.toString()}
                     icon={<Gift size={24} />}
                     color="#F59E0B"
                 />
@@ -100,13 +106,13 @@ const HRDashboard = () => {
                         gridTemplateColumns: '1fr 1fr',
                         gap: '24px'
                     }}>
-                        <UpcomingBirthdays />
-                        <Announcements />
+                        <UpcomingBirthdays birthdays={birthdays} />
+                        <Announcements announcements={announcements} />
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <LeaveRequests />
+                    <LeaveRequests requests={leaves} />
                 </div>
             </div>
         </>
