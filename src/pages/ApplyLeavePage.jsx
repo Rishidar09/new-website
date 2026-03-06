@@ -37,8 +37,22 @@ const ApplyLeavePage = () => {
             setLoading(true);
             const leaves = await api.get('/leaves');
             setHistory(leaves || []);
-            // Mock balances for now since we don't have a specific table yet
-            setBalances({ casual: 10, sick: 5, earned: 15 });
+
+            // Calculate REAL balances — only approved leaves deduct from balance
+            const MAX = { Casual: 12, Sick: 8, Earned: 18 };
+            const used = { Casual: 0, Sick: 0, Earned: 0 };
+
+            (leaves || []).forEach(l => {
+                if (l.status === 'Approved' && used[l.leave_type] !== undefined) {
+                    used[l.leave_type] += parseInt(l.days) || 0;
+                }
+            });
+
+            setBalances({
+                casual: Math.max(0, MAX.Casual - used.Casual),
+                sick: Math.max(0, MAX.Sick - used.Sick),
+                earned: Math.max(0, MAX.Earned - used.Earned)
+            });
         } catch (err) {
             console.error(err);
         } finally {
