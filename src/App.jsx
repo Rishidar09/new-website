@@ -94,6 +94,7 @@ function App() {
                   <Route path="documents" element={<EmployeeDocumentsPage />} />
                   <Route path="id-card" element={<EmployeeIDCardPage />} />
                   <Route path="complaints" element={<EmployeeComplaintsPage />} />
+                  <Route path="profile/:id" element={<EmployeeProfilePage />} />
                   <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
                 </Routes>
               </EmployeeLayout>

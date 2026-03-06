@@ -121,7 +121,19 @@ const Navbar = () => {
                             padding: '8px',
                             zIndex: 1000
                         }}>
-                            <button onClick={() => navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard')} className="dropdown-item">
+                            <button
+                                onClick={() => {
+                                    setShowProfile(false);
+                                    if (profile?.employee_id) {
+                                        // Navigate to employee profile page using employee_id
+                                        navigate(profile?.role === 'hr' ? `/hr/employees/${profile.employee_id}` : `/employee/profile/${profile.employee_id}`);
+                                    } else {
+                                        // Fallback: go to dashboard so at least something happens
+                                        navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard');
+                                    }
+                                }}
+                                className="dropdown-item"
+                            >
                                 <User size={16} />
                                 View Profile
                             </button>
