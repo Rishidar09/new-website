@@ -38,7 +38,7 @@ router.get('/', auth, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -66,7 +66,7 @@ router.post('/', auth, authorize(['hr']), async (req, res) => {
         res.json(project);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -93,7 +93,7 @@ router.get('/:id', auth, async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -110,7 +110,7 @@ router.post('/:id/tasks', auth, async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -128,7 +128,7 @@ router.post('/:id/reports', auth, async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -146,7 +146,7 @@ router.get('/:id/reports', auth, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -164,7 +164,7 @@ router.get('/reports/my', auth, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

@@ -3,6 +3,8 @@ const router = express.Router();
 const { Pool } = require('pg');
 const { auth, authorize } = require('../middleware/auth');
 const { auditLogger } = require('../middleware/auditLogger');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -17,22 +19,41 @@ router.get('/', auth, async (req, res) => {
         res.json(employees.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
 router.post('/', auth, authorize(['hr']), async (req, res) => {
     const { full_name, email, role, department, phone, joining_date, salary } = req.body;
+    const client = await pool.connect();
 
     try {
-        const newEmployee = await pool.query(
+        await client.query('BEGIN');
+
+        // 1. Create Employee Record
+        const newEmployee = await client.query(
             'INSERT INTO employees (full_name, email, role, department, phone, joining_date, salary) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [full_name, email, role, department, phone, joining_date, salary]
         );
+
+        // 2. Create Login Profile for the employee
+        const tempPassword = crypto.randomBytes(16).toString('hex');
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(tempPassword, salt);
+
+        await client.query(
+            'INSERT INTO profiles (email, password_hash, role, employee_id, is_first_login, status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [email, hash, 'employee', newEmployee.rows[0].id, true, 'active']
+        );
+
+        await client.query('COMMIT');
         res.json(newEmployee.rows[0]);
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error', details: err.message });
+    } finally {
+        client.release();
     }
 });
 
@@ -50,7 +71,7 @@ router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

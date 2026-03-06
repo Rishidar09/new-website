@@ -77,7 +77,7 @@ router.get('/contents', auth, async (req, res) => {
         res.json({ folders: folders.rows, files: files.rows });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -95,7 +95,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -113,7 +113,7 @@ router.post('/folder', auth, async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -135,7 +135,7 @@ router.delete('/files/:id', auth, async (req, res) => {
         res.json({ message: 'File deleted' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -149,7 +149,7 @@ router.get('/download/:id', auth, async (req, res) => {
         res.download(filePath, file.rows[0].name);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

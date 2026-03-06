@@ -58,7 +58,7 @@ router.get('/', auth, async (req, res) => {
         res.json(leaves.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -83,7 +83,7 @@ router.post('/', auth, upload.single('attachment'), async (req, res) => {
         res.json(newLeave.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -124,7 +124,7 @@ router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
         res.json(updatedLeave);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

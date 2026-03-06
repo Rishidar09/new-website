@@ -30,7 +30,7 @@ router.get('/', auth, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -47,7 +47,7 @@ router.post('/', auth, authorize(['hr']), async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -60,7 +60,7 @@ router.post('/:id/send', auth, authorize(['hr']), async (req, res) => {
         res.json({ message: 'Payslip sent to employee email successfully (simulated)' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

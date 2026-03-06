@@ -16,37 +16,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 
 // ─── POST /api/auth/signup ────────────────────────────────────────
 router.post('/signup', async (req, res) => {
-    const { email, password, role } = req.body;
-    try {
-        const userExists = await pool.query('SELECT * FROM profiles WHERE email = $1', [email]);
-        if (userExists.rows.length > 0) {
-            return res.status(400).json({ error: 'User already exists' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash(password, salt);
-
-        const newUser = await pool.query(
-            'INSERT INTO profiles (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
-            [email, password_hash, role || 'employee']
-        );
-
-        await logManualAction({
-            email, name: email.split('@')[0],
-            action: 'Signup', module: 'Authentication',
-            ip: req.ip || req.connection.remoteAddress,
-            details: { role: role || 'employee' }
-        });
-
-        const token = jwt.sign(
-            { id: newUser.rows[0].id, role: newUser.rows[0].role },
-            JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }
-        );
-        res.json({ token, user: newUser.rows[0] });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Server error' });
-    }
+    return res.status(403).json({ error: 'Public signup is disabled. Please contact HR for account creation.' });
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────
@@ -307,7 +277,7 @@ router.get('/me', auth, async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

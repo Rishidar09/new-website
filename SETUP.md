@@ -31,10 +31,27 @@ npm run db:setup
 - **Frontend**: In the root folder, run `npm run dev`.
 
 ---
-**Default HR Account:**
-- **Email**: hr@indusinnovate.com
-- **Password**: Admin@1234
 
-**Default Employee Account:**
-- **Email**: employee@indusinnovate.com
-- **Password**: Employee@1234
+### 7. Interactive User Management (Python)
+
+You can manage all portal accounts (HR and Employees) using the provided interactive Python script:
+
+1.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+2.  **Run the script**:
+    ```bash
+    python manage_users.py
+    ```
+    This script allows you to:
+    - **List** all current accounts.
+    - **Add** new HR or Employee accounts with secure password hashing.
+    - **Edit** existing accounts (update passwords or roles).
+    - **Delete** accounts permanently from the database.
+
+---
+
+### Default Login Accounts
+- **HR Account**: `hr@indusinnovate.com` / `Admin@1234`
+- **Employee Account**: `employee@indusinnovate.com` / `Emp@1234`

@@ -44,29 +44,33 @@ router.get('/', auth, authorize(['hr']), async (req, res) => {
 
         // 6. Joining Trend (Last 6 months)
         const joiningTrend = await pool.query(`
+            WITH months AS (
+                SELECT DATE_TRUNC('month', joining_date) as m
+                FROM employees
+                WHERE joining_date >= NOW() - INTERVAL '6 months'
+                GROUP BY 1
+            )
             SELECT 
-                TO_CHAR(joining_date, 'Mon') as month,
-                COUNT(*) as joining,
-                (SELECT COUNT(*) FROM employees WHERE status = 'Inactive' AND TO_CHAR(joining_date, 'Mon') = TO_CHAR(e.joining_date, 'Mon')) as exit
-            FROM employees e
-            WHERE joining_date >= NOW() - INTERVAL '6 months'
-            GROUP BY TO_CHAR(joining_date, 'Mon'), DATE_TRUNC('month', joining_date)
-            ORDER BY DATE_TRUNC('month', joining_date)
+                TO_CHAR(m, 'Mon') as month,
+                (SELECT COUNT(*) FROM employees WHERE DATE_TRUNC('month', joining_date) = m AND status != 'Inactive') as joining,
+                (SELECT COUNT(*) FROM employees WHERE DATE_TRUNC('month', joining_date) = m AND status = 'Inactive') as exit
+            FROM months
+            ORDER BY m
         `);
 
         res.json({
-            headcount: parseInt(headcount.rows[0].count),
+            headcount: parseInt(headcount.rows[0]?.count || 0),
             deptData: deptBreakdown.rows,
             leaveData: leaveBreakdown.rows,
             absentees: absentees.rows,
             attrition: 3.5, // Realistic mock for now
             openPositions: 8,
-            avgTenure: parseFloat(avgTenure.rows[0].avg_tenure || 0).toFixed(1),
+            avgTenure: parseFloat(avgTenure.rows[0]?.avg_tenure || 0).toFixed(1),
             trendData: joiningTrend.rows
         });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('[Analytics Error]:', err.message);
+        res.status(500).json({ error: 'Server error', details: err.message });
     }
 });
 

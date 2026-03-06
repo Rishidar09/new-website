@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import HRLayout from './components/HRLayout';
 import EmployeeLayout from './components/EmployeeLayout';
 import { useAuth } from './context/AuthContext';
@@ -51,6 +53,8 @@ function App() {
         <Routes>
           {/* Public Route */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* HR Routes */}
           <Route path="/hr/*" element={
