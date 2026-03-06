@@ -124,11 +124,11 @@ const Navbar = () => {
                             <button
                                 onClick={() => {
                                     setShowProfile(false);
-                                    if (profile?.employee_id) {
-                                        // Navigate to employee profile page using employee_id
-                                        navigate(profile?.role === 'hr' ? `/hr/employees/${profile.employee_id}` : `/employee/profile/${profile.employee_id}`);
+                                    // Use employee_uuid (real DB UUID from employees table) for navigation
+                                    const empId = profile?.employee_uuid || profile?.employee_id;
+                                    if (empId) {
+                                        navigate(profile?.role === 'hr' ? `/hr/employees/${empId}` : `/employee/profile/${empId}`);
                                     } else {
-                                        // Fallback: go to dashboard so at least something happens
                                         navigate(profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard');
                                     }
                                 }}

@@ -271,7 +271,9 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT p.id, p.email, p.role, p.employee_id, p.is_first_login, p.status, e.full_name, e.department, e.avatar_url
+            SELECT p.id, p.email, p.role, p.employee_id, p.is_first_login, p.status,
+                   e.full_name, e.department, e.avatar_url,
+                   e.id AS employee_uuid
             FROM profiles p
             LEFT JOIN employees e ON p.email = e.email
             WHERE p.id = $1
