@@ -18,6 +18,7 @@ Follow these steps to set up the project on a new system with a local PostgreSQL
    ```
 4. Update `DATABASE_URL` in the `.env` file with your credentials:
    `DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/website`
+   `PORT=5001`
 
 ## 3. Run Automated Migration
 This command will automatically create all tables and a default HR user:
@@ -30,6 +31,10 @@ npm run db:setup
 - **Frontend**: In the root folder, run `npm run dev`.
 
 ---
-**Default Login Account (Created after db:setup):**
-- **Email**: balichaksumann@gmail.com
-- **Password**: root123
+**Default HR Account:**
+- **Email**: hr@indusinnovate.com
+- **Password**: Admin@1234
+
+**Default Employee Account:**
+- **Email**: employee@indusinnovate.com
+- **Password**: Employee@1234

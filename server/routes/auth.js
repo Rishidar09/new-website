@@ -45,7 +45,7 @@ router.post('/signup', async (req, res) => {
         res.json({ token, user: newUser.rows[0] });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -146,7 +146,7 @@ router.post('/login', async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -167,7 +167,7 @@ router.post('/logout', auth, async (req, res) => {
         res.json({ message: 'Logged out successfully' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -212,7 +212,7 @@ router.post('/change-password', auth, async (req, res) => {
         res.json({ message: 'Password changed successfully' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -255,7 +255,7 @@ router.post('/forgot-password', async (req, res) => {
         res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -291,7 +291,7 @@ router.post('/reset-password', async (req, res) => {
         res.json({ message: 'Password reset successfully. You can now log in.' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
