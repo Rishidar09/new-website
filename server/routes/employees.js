@@ -53,7 +53,7 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// @route   GET api/employees/dashboard-stats
+// @route   GET api/employees/dashboard-stats  ← MUST be before /:id
 router.get('/dashboard-stats', auth, async (req, res) => {
     const employeeId = req.user.employee_id;
     if (!employeeId) {
@@ -101,6 +101,23 @@ router.get('/dashboard-stats', auth, async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+// @route   GET api/employees/:id — lookup by UUID id or employee_id string
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `SELECT * FROM employees WHERE id::text = $1 OR employee_id = $1 LIMIT 1`,
+            [id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 router.post('/', auth, authorize(['hr']), upload.single('avatar'), async (req, res) => {
     const { full_name, email, role, department, phone, joining_date, salary } = req.body;
