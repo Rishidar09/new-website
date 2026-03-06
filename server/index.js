@@ -64,6 +64,12 @@ io.on('connection', (socket) => {
         console.log(`User ${socket.id} joined room: ${roomId}`);
     });
 
+    // Join personal signaling room
+    socket.on('identify', (userId) => {
+        socket.join(userId);
+        console.log(`User ${socket.id} identified as ${userId}`);
+    });
+
     socket.on('send_message', (data) => {
         // Broadcast to specific room (group or 1-1)
         io.to(data.roomId).emit('receive_message', data);
@@ -71,6 +77,40 @@ io.on('connection', (socket) => {
 
     socket.on('send_meeting_chat', (data) => {
         socket.to(data.roomId).emit('receive_meeting_chat', data);
+    });
+
+    // --- Signaling for Voice/Video Calls ---
+    socket.on('call_user', (data) => {
+        console.log(`Call from ${data.from} to ${data.to}`);
+        // data contains: to (receiver id), offer, from (sender info/id), type (voice/video)
+        io.to(data.to).emit('incoming_call', {
+            from: data.from,
+            offer: data.offer,
+            type: data.type,
+            caller_name: data.caller_name
+        });
+    });
+
+    socket.on('answer_call', (data) => {
+        console.log(`Answer from ${data.from} to ${data.to}`);
+        // data contains: to (caller id), answer
+        io.to(data.to).emit('call_answered', {
+            answer: data.answer,
+            from: data.from
+        });
+    });
+
+    socket.on('ice_candidate', (data) => {
+        // data contains: to, candidate
+        io.to(data.to).emit('ice_candidate', {
+            candidate: data.candidate,
+            from: data.from
+        });
+    });
+
+    socket.on('hangup', (data) => {
+        // data contains: to
+        io.to(data.to).emit('call_ended');
     });
 
     socket.on('disconnect', () => {

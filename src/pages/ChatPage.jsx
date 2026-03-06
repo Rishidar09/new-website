@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
+import CallModal from '../components/Chat/CallModal';
 import {
     Search,
     Send,
@@ -113,6 +114,10 @@ const ChatPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
+
+    // Calling State
+    const [callConfig, setCallConfig] = useState(null); // { type, remoteUser, isIncoming, offer }
+
     const socket = useRef(null);
     const messageContainerRef = useRef(null);
     const { profile: currentUser } = useAuth();
@@ -130,7 +135,22 @@ const ChatPage = () => {
             setMessages(prev => [...prev, message]);
         });
 
+        socket.current.on('incoming_call', (data) => {
+            console.log('Incoming call:', data);
+            setCallConfig({
+                type: data.type,
+                remoteUser: { id: data.from, name: data.caller_name },
+                isIncoming: true,
+                offer: data.offer
+            });
+        });
+
         fetchInitialData();
+
+        if (currentUser) {
+            const myId = currentUser.employee_uuid || currentUser.id;
+            socket.current.emit('identify', myId);
+        }
 
         return () => {
             if (socket.current) socket.current.disconnect();
@@ -364,8 +384,24 @@ const ChatPage = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '16px', color: 'var(--text-muted)' }}>
-                                    <Phone size={20} style={{ cursor: 'pointer' }} />
-                                    <Video size={20} style={{ cursor: 'pointer' }} />
+                                    <Phone
+                                        size={20}
+                                        style={{ cursor: activeChat.type === 'personal' ? 'pointer' : 'not-allowed', opacity: activeChat.type === 'personal' ? 1 : 0.5 }}
+                                        onClick={() => {
+                                            if (activeChat.type === 'personal') {
+                                                setCallConfig({ type: 'voice', remoteUser: { id: activeChat.id, name: activeChat.name }, isIncoming: false });
+                                            }
+                                        }}
+                                    />
+                                    <Video
+                                        size={20}
+                                        style={{ cursor: activeChat.type === 'personal' ? 'pointer' : 'not-allowed', opacity: activeChat.type === 'personal' ? 1 : 0.5 }}
+                                        onClick={() => {
+                                            if (activeChat.type === 'personal') {
+                                                setCallConfig({ type: 'video', remoteUser: { id: activeChat.id, name: activeChat.name }, isIncoming: false });
+                                            }
+                                        }}
+                                    />
                                     <MoreVertical size={20} style={{ cursor: 'pointer' }} />
                                 </div>
                             </div>
@@ -477,6 +513,19 @@ const ChatPage = () => {
                     console.log('Announcement posted!');
                 }}
             />
+
+            {callConfig && (
+                <CallModal
+                    isOpen={!!callConfig}
+                    onClose={() => setCallConfig(null)}
+                    type={callConfig.type}
+                    remoteUser={callConfig.remoteUser}
+                    isIncoming={callConfig.isIncoming}
+                    onAccept={callConfig.isIncoming ? callConfig : null}
+                    socket={socket}
+                    currentUser={currentUser}
+                />
+            )}
         </>
     );
 };
