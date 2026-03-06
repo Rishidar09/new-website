@@ -38,8 +38,7 @@ const ApplyLeavePage = () => {
             const leaves = await api.get('/leaves');
             setHistory(leaves || []);
 
-            // Calculate REAL balances — only approved leaves deduct from balance
-            const MAX = { Casual: 12, Sick: 8, Earned: 18 };
+            // Calculate days USED — only Approved leaves count
             const used = { Casual: 0, Sick: 0, Earned: 0 };
 
             (leaves || []).forEach(l => {
@@ -48,10 +47,11 @@ const ApplyLeavePage = () => {
                 }
             });
 
+            // Store USED days (rejected = 0 used, approved = actual days taken)
             setBalances({
-                casual: Math.max(0, MAX.Casual - used.Casual),
-                sick: Math.max(0, MAX.Sick - used.Sick),
-                earned: Math.max(0, MAX.Earned - used.Earned)
+                casual: used.Casual,
+                sick: used.Sick,
+                earned: used.Earned
             });
         } catch (err) {
             console.error(err);
@@ -106,9 +106,9 @@ const ApplyLeavePage = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-                <BalanceCard title="Casual Leave" count={balances.casual} total={12} color="#3B82F6" />
-                <BalanceCard title="Sick Leave" count={balances.sick} total={8} color="#EF4444" />
-                <BalanceCard title="Earned Leave" count={balances.earned} total={18} color="#10B981" />
+                <BalanceCard title="Casual Leave" used={balances.casual} total={12} color="#3B82F6" />
+                <BalanceCard title="Sick Leave" used={balances.sick} total={8} color="#EF4444" />
+                <BalanceCard title="Earned Leave" used={balances.earned} total={18} color="#10B981" />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px', alignItems: 'start' }}>
@@ -264,18 +264,22 @@ const ApplyLeavePage = () => {
     );
 };
 
-const BalanceCard = ({ title, count, total, color }) => (
-    <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color }}></div>
-        <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '12px' }}>{title}</p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '32px', color: 'var(--text-main)', fontWeight: '800' }}>{count}</h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>of {total} days</p>
+const BalanceCard = ({ title, used, total, color }) => {
+    const remaining = Math.max(0, total - used);
+    return (
+        <div className="card" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color }}></div>
+            <p style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '12px' }}>{title}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                <h2 style={{ fontSize: '32px', color: 'var(--text-main)', fontWeight: '800' }}>{used}</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>used of {total} days</p>
+            </div>
+            <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px' }}>{remaining} days remaining</p>
+            <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${(used / total) * 100}%`, height: '100%', background: color, transition: 'width 0.5s' }}></div>
+            </div>
         </div>
-        <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${(count / total) * 100}%`, height: '100%', background: color, transition: 'width 0.5s' }}></div>
-        </div>
-    </div>
-);
+    );
+};
 
 export default ApplyLeavePage;
