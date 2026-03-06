@@ -210,7 +210,12 @@ router.post('/forgot-password', async (req, res) => {
             [user.id, token, expiresAt]
         );
 
-        const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+        // Use the actual request origin if available so it works across network IPs, fallback to env or localhost
+        let baseURL = req.headers.origin || req.headers.referer?.replace(/\/$/, '');
+        if (!baseURL || process.env.CLIENT_URL && process.env.CLIENT_URL !== '*') {
+            baseURL = baseURL || process.env.CLIENT_URL || 'http://localhost:5173';
+        }
+        const resetLink = `${baseURL}/reset-password?token=${token}`;
 
         // Get employee name if available
         const emp = await pool.query('SELECT full_name FROM employees WHERE email = $1', [email]);
