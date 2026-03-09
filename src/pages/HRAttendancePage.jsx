@@ -82,7 +82,6 @@ const HRAttendancePage = () => {
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         fontWeight: '500',
-                        color: '#000000',
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                     }}

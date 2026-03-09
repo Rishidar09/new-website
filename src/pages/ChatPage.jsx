@@ -527,7 +527,7 @@ const ChatPage = () => {
                     type={callConfig.type}
                     remoteUser={callConfig.remoteUser}
                     isIncoming={callConfig.isIncoming}
-                    onAccept={callConfig.isIncoming ? callConfig : null}
+                    incomingOffer={callConfig.offer || null}
                     socket={socket}
                     currentUser={currentUser}
                 />

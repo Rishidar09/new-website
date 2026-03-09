@@ -85,13 +85,18 @@ router.post('/login', async (req, res) => {
             [user.id]
         );
 
+        // Fetch employee UUID for the token
+        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [user.email]);
+        const employee_uuid = emp.rows[0]?.id || null;
+
         const token = jwt.sign(
             {
                 id: user.id,
                 role: user.role,
                 email: user.email,
                 name: user.full_name || user.email,
-                employee_id: user.employee_id || null
+                employee_id: user.employee_id || null,
+                employee_uuid: employee_uuid
             },
             JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
@@ -112,6 +117,7 @@ router.post('/login', async (req, res) => {
                 role: user.role,
                 full_name: user.full_name,
                 employee_id: user.employee_id,
+                employee_uuid: employee_uuid,
                 is_first_login: user.is_first_login ?? true,
                 status: user.status
             }

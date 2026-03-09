@@ -91,9 +91,13 @@ router.post('/', auth, upload.single('attachment'), async (req, res) => {
 router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
     const { status, remarks } = req.body;
     try {
+        // Find the reviewer's employee UUID (profiles.employee_id is text, leaves.reviewed_by is UUID)
+        const reviewer = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const reviewerUUID = reviewer.rows[0]?.id || null;
+
         const result = await pool.query(
             'UPDATE leaves SET status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3 RETURNING *',
-            [status, req.user.employee_id, req.params.id]
+            [status, reviewerUUID, req.params.id]
         );
         const updatedLeave = result.rows[0];
 

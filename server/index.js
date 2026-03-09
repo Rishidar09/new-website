@@ -101,7 +101,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('ice_candidate', (data) => {
-        // data contains: to, candidate
+        // data contains: to, candidate, from
+        console.log(`ICE candidate from ${data.from} to ${data.to}`);
         io.to(data.to).emit('ice_candidate', {
             candidate: data.candidate,
             from: data.from
@@ -110,6 +111,7 @@ io.on('connection', (socket) => {
 
     socket.on('hangup', (data) => {
         // data contains: to
+        console.log(`Hangup signal to ${data.to}`);
         io.to(data.to).emit('call_ended');
     });
 
