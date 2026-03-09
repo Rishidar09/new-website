@@ -36,7 +36,7 @@ const EmployeeLayout = ({ children }) => {
                 />
             )}
 
-            <div style={{
+            <div className="main-content-wrapper" style={{
                 flex: 1,
                 marginLeft: isMobile ? '0' : '260px',
                 display: 'flex',

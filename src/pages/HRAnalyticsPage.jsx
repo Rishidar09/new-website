@@ -85,7 +85,7 @@ const HRAnalyticsPage = () => {
             </div>
 
             {/* KPI Section */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+            <div className="grid-cols-4" style={{ marginBottom: '32px' }}>
                 {[
                     { label: 'Total Headcount', value: stats.headcount, icon: <Users color="#3B82F6" />, trend: '+4% vs last month' },
                     { label: 'Attrition Rate', value: `${stats.attrition}%`, icon: <UserMinus color="#94A3B8" />, trend: '-0.5% vs last year' },
@@ -104,7 +104,7 @@ const HRAnalyticsPage = () => {
             </div>
 
             {/* Charts Row 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="responsive-grid-2-1" style={{ marginBottom: '32px' }}>
                 <div className="card" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <BarChart3 size={18} color="var(--primary)" /> Department Wise Headcount
@@ -150,7 +150,7 @@ const HRAnalyticsPage = () => {
             </div>
 
             {/* Charts Row 2 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+            <div className="responsive-grid-2" style={{ alignItems: 'start' }}>
                 <div className="card" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Monthly Joining vs Exit Trend

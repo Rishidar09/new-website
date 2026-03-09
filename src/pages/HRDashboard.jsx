@@ -104,11 +104,7 @@ const HRDashboard = () => {
             <div className="dashboard-grid">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <AttendanceChart data={deptData} />
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '24px'
-                    }}>
+                    <div className="responsive-grid-2">
                         <UpcomingBirthdays birthdays={birthdays} />
                         <Announcements announcements={announcements} />
                     </div>

@@ -104,7 +104,7 @@ const HRAuditLogsPage = () => {
 
     return (
         <>
-            <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="responsive-flex-header" style={{ marginBottom: '32px' }}>
                 <div>
                     <h1 style={{ fontSize: '26px', color: 'var(--text-main)', fontWeight: '700' }}>Platform Audit Trail</h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Monitor all system mutations and administrative actions.</p>
@@ -121,7 +121,7 @@ const HRAuditLogsPage = () => {
             </div>
 
             {/* Filters Bar */}
-            <div className="card" style={{ padding: '24px', marginBottom: '24px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', alignItems: 'end' }}>
+            <div className="card responsive-grid-filters" style={{ padding: '24px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>SEARCH USER</label>
                     <div style={{ position: 'relative' }}>

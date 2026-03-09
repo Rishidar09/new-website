@@ -254,3 +254,203 @@ input::placeholder {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* ─── Responsive Grid Utilities ─────────────────────────────── */
+
+/* Prevent page-level horizontal scroll, but allow inner containers to scroll */
+.main-content-wrapper {
+  overflow-x: hidden;
+}
+
+/* Table scroll wrapper — allows horizontal scroll inside cards */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-grid-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.responsive-grid-filters {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+
+.responsive-flex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+/* ─── Tablet Breakpoint (≤ 768px) ───────────────────────────── */
+@media (max-width: 768px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-grid-2-1 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-grid-filters {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .responsive-flex-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 20px !important;
+  }
+
+  /* Tables — horizontal scroll wrapper */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: unset !important;
+  }
+
+  /* Notification dropdown */
+  .shadow-lg {
+    max-width: calc(100vw - 32px);
+  }
+
+  /* ─── Chat Mobile Toggle ─────────────────────────────────── */
+  .chat-layout {
+    flex-direction: column;
+  }
+
+  .chat-contacts-panel {
+    width: 100% !important;
+    min-width: unset !important;
+    border-right: none !important;
+    flex: 1;
+  }
+
+  .chat-messages-panel {
+    display: none !important;
+  }
+
+  .chat-messages-panel.active {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    width: 100% !important;
+    background: var(--main-bg);
+    border-radius: 16px;
+  }
+
+  .chat-back-btn {
+    display: flex !important;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  /* Payroll earnings/deductions grid */
+  .payroll-breakdown {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Profile & Settings layout */
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Offer letter header */
+  .offer-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 16px;
+  }
+
+  /* Profile back button */
+  .profile-back-btn {
+    position: static !important;
+    margin-bottom: 16px;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    text-align: center;
+  }
+
+  /* Project detail panel — full-screen on mobile */
+  .project-detail-panel {
+    width: 100% !important;
+    padding: 24px !important;
+  }
+
+  /* Employee page header */
+  .employee-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
+
+/* ─── Phone Breakpoint (≤ 480px) ────────────────────────────── */
+@media (max-width: 480px) {
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-grid-filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  h1 {
+    font-size: 18px !important;
+  }
+
+  /* Calendar grid */
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr) !important;
+    font-size: 11px;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    width: calc(100vw - 32px) !important;
+    max-width: none !important;
+    margin: 16px;
+    padding: 16px !important;
+  }
+}

@@ -93,7 +93,7 @@ const HRAttendancePage = () => {
             </header>
 
             {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }} className="grid-cols-4">
                 <div className="card">
                     <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Total Records</p>
                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -121,7 +121,7 @@ const HRAttendancePage = () => {
             </div>
 
             {/* Filters */}
-            <div className="card" style={{ marginBottom: '24px', display: 'flex', gap: '20px' }}>
+            <div className="card responsive-flex-header" style={{ marginBottom: '24px' }}>
                 <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px' }}>DATE</label>
                     <input
@@ -148,50 +148,52 @@ const HRAttendancePage = () => {
             </div>
 
             {/* Table */}
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#F9FAFB', borderBottom: '1px solid var(--border)' }}>
-                        <tr>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>EMPLOYEE</th>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>DEPARTMENT</th>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>CHECK-IN</th>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>CHECK-OUT</th>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>HOURS</th>
-                            <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {records.length === 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+                <div className="table-scroll-wrapper">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                        <thead style={{ background: '#F9FAFB', borderBottom: '1px solid var(--border)' }}>
                             <tr>
-                                <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No records found for this criteria.</td>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>EMPLOYEE</th>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>DEPARTMENT</th>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>CHECK-IN</th>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>CHECK-OUT</th>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>HOURS</th>
+                                <th style={{ textAlign: 'left', padding: '16px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>STATUS</th>
                             </tr>
-                        ) : (
-                            records.map((row, idx) => (
-                                <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <td style={{ padding: '16px', fontWeight: '500' }}>{row.full_name}</td>
-                                    <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{row.department}</td>
-                                    <td style={{ padding: '16px' }}>
-                                        <div>{new Date(row.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                        {row.location && (
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                                📍 {row.location}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '16px' }}>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
-                                    <td style={{ padding: '16px' }}>{calculateHours(row.check_in, row.check_out)}h</td>
-                                    <td style={{ padding: '16px' }}>
-                                        <span className={`status-badge ${row.status.toLowerCase()}`}>
-                                            {row.status}
-                                        </span>
-                                    </td>
+                        </thead>
+                        <tbody>
+                            {records.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No records found for this criteria.</td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            ) : (
+                                records.map((row, idx) => (
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '16px', fontWeight: '500' }}>{row.full_name}</td>
+                                        <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{row.department}</td>
+                                        <td style={{ padding: '16px' }}>
+                                            <div>{new Date(row.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            {row.location && (
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                    📍 {row.location}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: '16px' }}>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
+                                        <td style={{ padding: '16px' }}>{calculateHours(row.check_in, row.check_out)}h</td>
+                                        <td style={{ padding: '16px' }}>
+                                            <span className={`status-badge ${row.status.toLowerCase()}`}>
+                                                {row.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        </div >
     );
 };
 

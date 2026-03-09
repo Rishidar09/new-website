@@ -44,13 +44,13 @@ const HRLeavesPage = () => {
 
     return (
         <>
-            <div style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div className="responsive-flex-header" style={{ marginBottom: '40px' }}>
                 <div>
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)', fontWeight: '700' }}>Mission Control: Leaves</h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>Review, filter, and moderate team time-off requests.</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>STATUS</span>
                         <select
@@ -82,7 +82,7 @@ const HRLeavesPage = () => {
             </div>
 
             <div className="card" style={{ padding: '0' }}>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-scroll-wrapper">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
                         <thead style={{ background: '#F9FAFB', borderBottom: '1px solid var(--border)' }}>
                             <tr>

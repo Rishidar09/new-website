@@ -167,7 +167,7 @@ const EmployeeAttendancePage = () => {
                 <p style={{ color: 'var(--text-muted)' }}>Keep track of your daily presence and work hours.</p>
             </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="responsive-grid-2-1" style={{ marginBottom: '32px' }}>
                 {/* Check-in Card */}
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', textAlign: 'center' }}>
                     <div style={{ fontSize: '48px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '8px' }}>
@@ -302,7 +302,7 @@ const EmployeeAttendancePage = () => {
                     </div>
                 </div>
 
-                <div style={{
+                <div className="calendar-grid" style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: '8px',

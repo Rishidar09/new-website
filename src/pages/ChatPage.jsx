@@ -234,10 +234,9 @@ const ChatPage = () => {
 
     return (
         <>
-            <div style={{
+            <div className="chat-layout" style={{
                 height: 'calc(100vh - 118px)',
-                display: 'grid',
-                gridTemplateColumns: 'minmax(320px, 320px) 1fr',
+                display: 'flex',
                 background: 'var(--card-bg)',
                 color: 'var(--text-main)',
                 borderRadius: '16px',
@@ -247,11 +246,12 @@ const ChatPage = () => {
                 position: 'relative'
             }}>
                 {/* Left Panel */}
-                <div style={{
+                <div className="chat-contacts-panel" style={{
+                    width: '320px',
+                    minWidth: '320px',
                     borderRight: '1px solid var(--border)',
                     display: 'flex',
                     flexDirection: 'column',
-                    minWidth: 0,
                     height: '100%'
                 }}>
                     <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -360,13 +360,14 @@ const ChatPage = () => {
                 </div>
 
                 {/* Right Panel */}
-                <div style={{
+                <div className={`chat-messages-panel ${activeChat ? 'active' : ''}`} style={{
                     display: 'flex',
+                    flex: 1,
                     flexDirection: 'column',
                     background: 'var(--main-bg)',
                     height: '100%',
                     minWidth: 0,
-                    overflow: 'hidden' // Force child containers to handle overflow
+                    overflow: 'hidden'
                 }}>
                     {activeChat ? (
                         <>
@@ -381,6 +382,20 @@ const ChatPage = () => {
                                 flexShrink: 0
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <button
+                                        className="chat-back-btn"
+                                        onClick={() => setActiveChat(null)}
+                                        style={{
+                                            display: 'none',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: 'var(--text-muted)',
+                                            padding: '4px'
+                                        }}
+                                    >
+                                        ←
+                                    </button>
                                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontWeight: '700' }}>
                                         {activeChat.name.charAt(0)}
                                     </div>

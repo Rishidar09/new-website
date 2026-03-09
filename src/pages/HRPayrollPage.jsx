@@ -133,7 +133,7 @@ const HRPayrollPage = () => {
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Generate and manage employee monthly payslips.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '32px' }}>
+            <div className="responsive-grid-2-1">
                 {/* Sidebar: Employee List */}
                 <div className="card" style={{ padding: '0', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
@@ -204,7 +204,7 @@ const HRPayrollPage = () => {
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', padding: '24px' }}>
+                                    <div className="payroll-breakdown" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', padding: '24px' }}>
                                         <div>
                                             <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--primary)', marginBottom: '12px' }}>EARNINGS</p>
                                             <div className="pay-row"><span>Basic Salary</span> <span>₹{payslip.basic_salary}</span></div>

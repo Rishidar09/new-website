@@ -79,7 +79,7 @@ const HRProjectsPage = () => {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+            <header className="responsive-flex-header" style={{ marginBottom: '40px' }}>
                 <div>
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '4px' }}>Projects Portfolio</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Manage enterprise projects, teams, and deliverables.</p>
@@ -105,7 +105,7 @@ const HRProjectsPage = () => {
             </header>
 
             {/* Project Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
+            <div className="project-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
                 {projects.map((project) => (
                     <div
                         key={project.id}
@@ -192,7 +192,7 @@ const HRProjectsPage = () => {
 
             {/* Detail Panel (Conditional) */}
             {selectedProject && projectDetail && (
-                <div style={{
+                <div className="project-detail-panel" style={{
                     position: 'fixed', right: 0, top: 0, width: '40%', height: '100vh',
                     background: 'var(--card-bg)', borderLeft: '1px solid var(--border)', zIndex: 100,
                     padding: '40px', overflowY: 'auto', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)'

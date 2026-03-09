@@ -39,8 +39,8 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
 
     return (
         <div className="card" style={{ padding: '0' }}>
-            <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ position: 'relative', width: '300px' }}>
+            <div className="responsive-flex-header" style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text"
@@ -102,7 +102,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                 </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
                     <thead style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--border)' }}>
                         <tr>

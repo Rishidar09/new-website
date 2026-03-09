@@ -137,7 +137,7 @@ const OfferLetterPage = () => {
 
     return (
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <header className="no-print" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <header className="no-print offer-header" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '4px' }}>Document Generator</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Draft, preview, and transmit professional employment letters.</p>
@@ -162,7 +162,7 @@ const OfferLetterPage = () => {
                 </div>
             </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '32px' }}>
+            <div className="responsive-grid-2-1">
                 {/* Form Column */}
                 <div className="card no-print" style={{ padding: '32px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>

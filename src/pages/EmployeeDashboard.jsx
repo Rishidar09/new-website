@@ -81,7 +81,7 @@ const EmployeeDashboard = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+            <div className="responsive-grid-2-1">
                 {/* Current Projects List */}
                 <div className="card" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>Your Current Projects</h3>

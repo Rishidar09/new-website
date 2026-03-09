@@ -70,7 +70,7 @@ const EmployeeComplaintsPage = () => {
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Raise your concerns securely and track their resolution status.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '32px', alignItems: 'start' }}>
+            <div className="responsive-grid-2-1" style={{ alignItems: 'start' }}>
                 {/* Form Section */}
                 <div className="card" style={{ padding: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>

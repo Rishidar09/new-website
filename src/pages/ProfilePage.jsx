@@ -165,18 +165,20 @@ const ProfilePage = () => {
                         color: '#2563EB',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                     }}
+                    className="profile-back-btn"
                 >
                     <ChevronLeft size={24} />
                 </button>
 
                 {/* Header Card */}
-                <div style={{
+                <div className="profile-grid" style={{
                     background: 'white',
                     borderRadius: '16px',
                     padding: '40px',
                     marginBottom: '32px',
                     border: '1px solid #E5E7EB',
-                    display: 'flex',
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr',
                     alignItems: 'center',
                     gap: '40px'
                 }}>
@@ -239,7 +241,7 @@ const ProfilePage = () => {
                     <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '32px' }}>Personal Information</h2>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                             <div>
                                 <label className="input-label">Full Name</label>
                                 <input
@@ -262,7 +264,7 @@ const ProfilePage = () => {
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                             <div>
                                 <label className="input-label">Role</label>
                                 <input
