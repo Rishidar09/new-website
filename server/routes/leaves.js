@@ -90,18 +90,27 @@ router.post('/', auth, upload.single('attachment'), async (req, res) => {
 // @route   PATCH api/leaves/:id
 router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
     const { status, remarks } = req.body;
+    console.log('[Leaves PATCH] User:', req.user.email, '| Leave ID:', req.params.id, '| Status:', status);
     try {
         // Find the reviewer's employee UUID (profiles.employee_id is text, leaves.reviewed_by is UUID)
         const reviewer = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
         const reviewerUUID = reviewer.rows[0]?.id || null;
+        console.log('[Leaves PATCH] Reviewer UUID:', reviewerUUID);
 
+        // Update leave - if no reviewer found, just set it to null (don't block the approval)
         const result = await pool.query(
             'UPDATE leaves SET status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3 RETURNING *',
             [status, reviewerUUID, req.params.id]
         );
-        const updatedLeave = result.rows[0];
 
-        // Send email notification to employee
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Leave request not found' });
+        }
+
+        const updatedLeave = result.rows[0];
+        console.log('[Leaves PATCH] Leave updated successfully:', updatedLeave.id);
+
+        // Send email notification to employee (non-blocking)
         try {
             const empData = await pool.query(`
                 SELECT e.full_name, e.email, l.leave_type, l.start_date, l.end_date
@@ -127,8 +136,8 @@ router.patch('/:id', auth, authorize(['hr']), async (req, res) => {
 
         res.json(updatedLeave);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Server error' });
+        console.error('[Leaves PATCH] FULL ERROR:', err);
+        res.status(500).json({ error: 'Server error: ' + err.message });
     }
 });
 
