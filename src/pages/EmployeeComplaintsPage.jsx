@@ -4,8 +4,6 @@ import {
     MessageSquare,
     Plus,
     Send,
-    Shield,
-    ShieldOff,
     Loader2,
     AlertCircle,
     CheckCircle2,
@@ -20,8 +18,7 @@ const EmployeeComplaintsPage = () => {
     const [formData, setFormData] = useState({
         category: 'HR',
         description: '',
-        attachment_url: '',
-        is_anonymous: false
+        attachment_url: ''
     });
 
     useEffect(() => {
@@ -46,7 +43,7 @@ const EmployeeComplaintsPage = () => {
             setSubmitting(true);
             await api.post('/complaints', formData);
             alert('Your concern has been submitted successfully.');
-            setFormData({ category: 'HR', description: '', attachment_url: '', is_anonymous: false });
+            setFormData({ category: 'HR', description: '', attachment_url: '' });
             fetchComplaints();
         } catch (error) {
             alert(error.message || 'Failed to submit complaint');
@@ -124,38 +121,6 @@ const EmployeeComplaintsPage = () => {
                             </div>
                         </div>
 
-                        <div
-                            onClick={() => setFormData({ ...formData, is_anonymous: !formData.is_anonymous })}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '16px',
-                                background: formData.is_anonymous ? '#EEF2FF' : '#F9FAFB',
-                                border: `1px solid ${formData.is_anonymous ? 'var(--primary)' : 'var(--border)'}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {formData.is_anonymous ? <Shield size={24} color="var(--primary)" /> : <ShieldOff size={24} color="#94A3B8" />}
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: '14px', fontWeight: '700', color: formData.is_anonymous ? 'var(--primary)' : 'var(--text-main)' }}>Submit Anonymously</p>
-                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>HR will not see your name or profile details.</p>
-                            </div>
-                            <div style={{
-                                width: '20px',
-                                height: '20px',
-                                borderRadius: '50%',
-                                border: `2px solid ${formData.is_anonymous ? 'var(--primary)' : '#CBD5E1'}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {formData.is_anonymous && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>}
-                            </div>
-                        </div>
-
                         <button
                             type="submit"
                             disabled={submitting}
@@ -211,11 +176,6 @@ const EmployeeComplaintsPage = () => {
                                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                         {new Date(c.created_at).toLocaleDateString()}
                                     </span>
-                                    {c.is_anonymous && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--primary)', fontWeight: '600' }}>
-                                            <Shield size={12} /> Anonymous
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         ))}

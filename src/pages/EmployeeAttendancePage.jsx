@@ -7,8 +7,20 @@ const EmployeeAttendancePage = () => {
     const [attendance, setAttendance] = useState([]);
     const [todayRecord, setTodayRecord] = useState(null);
     const [todayRecords, setTodayRecords] = useState([]);
+    const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeDuration, setActiveDuration] = useState(0);
+
+    // Determine if today is restricted
+    const todayDateObj = currentTime;
+    const isWeekend = todayDateObj.getDay() === 0 || todayDateObj.getDay() === 6;
+
+    // Check if today matches any holiday
+    const todayYYYYMMDD = todayDateObj.toLocaleDateString('en-CA'); // e.g. "2026-03-09"
+    const todayHoliday = holidays.find(h => h.date === todayYYYYMMDD);
+
+    const isRestrictedDay = isWeekend || todayHoliday;
+    const restrictReason = todayHoliday ? todayHoliday.name : (isWeekend ? 'Weekend' : '');
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -46,6 +58,13 @@ const EmployeeAttendancePage = () => {
             setTodayRecord(activeSession || mostRecentSession || null);
         } catch (err) {
             console.error('Failed to fetch attendance', err);
+        }
+
+        try {
+            const hData = await api.get('/holidays');
+            setHolidays(hData || []);
+        } catch (err) {
+            console.error('Failed to fetch holidays', err);
         } finally {
             setLoading(false);
         }
@@ -178,29 +197,47 @@ const EmployeeAttendancePage = () => {
                     </p>
 
                     {(!todayRecord || todayRecord.check_out) ? (
-                        <button
-                            onClick={handleCheckIn}
-                            disabled={loading}
-                            style={{
+                        isRestrictedDay ? (
+                            <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '12px',
                                 padding: '16px 40px',
-                                background: loading ? 'var(--text-muted)' : 'var(--primary)',
-                                color: 'white',
-                                border: 'none',
+                                background: 'var(--input-bg)',
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border)',
                                 borderRadius: '50px',
                                 fontSize: '18px',
                                 fontWeight: '600',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                boxShadow: loading ? 'none' : '0 4px 14px rgba(59, 130, 246, 0.4)',
-                                transition: 'transform 0.2s'
-                            }}
-                            onMouseOver={(e) => !loading && (e.currentTarget.style.transform = 'scale(1.05)')}
-                            onMouseOut={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
-                        >
-                            <Play fill="white" size={20} /> {loading ? 'Locating...' : 'Check-In'}
-                        </button>
+                                cursor: 'not-allowed'
+                            }}>
+                                <Calendar size={20} /> {restrictReason}
+                            </div>
+                        ) : (
+                            <button
+                                onClick={handleCheckIn}
+                                disabled={loading}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '16px 40px',
+                                    background: loading ? 'var(--text-muted)' : 'var(--primary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50px',
+                                    fontSize: '18px',
+                                    fontWeight: '600',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: loading ? 'none' : '0 4px 14px rgba(59, 130, 246, 0.4)',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseOver={(e) => !loading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                                onMouseOut={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
+                            >
+                                <Play fill="white" size={20} /> {loading ? 'Locating...' : 'Check-In'}
+                            </button>
+                        )
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                             <div style={{

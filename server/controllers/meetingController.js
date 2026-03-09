@@ -8,10 +8,15 @@ const pool = new Pool({
 const createMeeting = async (req, res) => {
     const { title, agenda, date_time, duration, participants } = req.body;
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(
+            `SELECT e.id FROM employees e 
+             JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+             WHERE p.id = $1`,
+            [req.user.id]
+        );
         const creator_id = emp.rows[0]?.id;
 
-        if (!creator_id) return res.status(404).json({ error: 'Profile not found' });
+        if (!creator_id) return res.status(404).json({ error: 'Employee profile not found' });
 
         const room_id = Math.random().toString(36).substring(7);
         const room_url = `https://indusinnovate.daily.co/${room_id}`;
@@ -37,7 +42,12 @@ const createMeeting = async (req, res) => {
 // ─── Get meetings ────────────────────────────────────────────────
 const getMeetings = async (req, res) => {
     try {
-        const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+        const emp = await pool.query(
+            `SELECT e.id FROM employees e 
+             JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+             WHERE p.id = $1`,
+            [req.user.id]
+        );
         const myId = emp.rows[0]?.id;
 
         if (!myId) return res.json([]);

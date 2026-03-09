@@ -56,6 +56,8 @@ app.use('/api/drive', require('./routes/drive'));
 app.use('/api/user', require('./routes/user'));
 
 // Socket.io Logic
+const onlineUsers = new Map(); // userId -> socketId
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -67,7 +69,12 @@ io.on('connection', (socket) => {
     // Join personal signaling room
     socket.on('identify', (userId) => {
         socket.join(userId);
+        onlineUsers.set(userId, socket.id);
+        socket.userId = userId;
         console.log(`User ${socket.id} identified as ${userId}`);
+
+        // Broadcast that this user is now online
+        io.emit('user_online', userId);
     });
 
     socket.on('send_message', (data) => {
@@ -117,8 +124,15 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        if (socket.userId) {
+            onlineUsers.delete(socket.userId);
+            io.emit('user_offline', socket.userId);
+        }
     });
 });
+
+// Attach onlineUsers to io so it can be checked in controllers
+io.onlineUsers = onlineUsers;
 
 // Test Route
 app.get('/api/health', (req, res) => {

@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import PayslipPDF from '../components/Payroll/PayslipPDF';
 import {
     FileText,
     Download,
     Eye,
     Loader2,
-    Calendar
+    Calendar,
+    X
 } from 'lucide-react';
 
 const EmployeePayslipsPage = () => {
     const [payslips, setPayslips] = useState([]);
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [selectedPayslip, setSelectedPayslip] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -41,13 +44,24 @@ const EmployeePayslipsPage = () => {
 
             // Employee data will be part of the payslip relation in local API
             if (psData.length > 0) {
-                setEmployee({ full_name: psData[0].full_name });
+                setEmployee({
+                    id: psData[0].employee_uuid || psData[0].employee_id,
+                    full_name: psData[0].full_name,
+                    department: psData[0].department,
+                    role: psData[0].role,
+                    location: psData[0].location
+                });
             }
         } catch (error) {
             console.error(error.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePreview = (ps) => {
+        setSelectedPayslip(ps);
+        setIsPreviewOpen(true);
     };
 
     return (
@@ -67,7 +81,7 @@ const EmployeePayslipsPage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
                     {payslips.map((ps) => (
                         <div key={ps.id} className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                            <div style={{ padding: '20px', background: '#F9FAFB', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ padding: '20px', background: 'rgba(249, 250, 251, 0.5)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ background: 'var(--card-bg)', color: 'var(--text-main)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                         <Calendar size={20} color="var(--primary)" />
@@ -87,13 +101,17 @@ const EmployeePayslipsPage = () => {
                                     style={{ flex: 1, textDecoration: 'none' }}
                                 >
                                     {({ loading: pdfLoading }) => (
-                                        <button className="btn-action" disabled={pdfLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none' }}>
+                                        <button className="btn-action" disabled={pdfLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '100%' }}>
                                             <Download size={16} />
                                             {pdfLoading ? 'Loading...' : 'Download PDF'}
                                         </button>
                                     )}
                                 </PDFDownloadLink>
-                                <button className="btn-action" style={{ background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}>
+                                <button
+                                    onClick={() => handlePreview(ps)}
+                                    className="btn-action"
+                                    style={{ background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
+                                >
                                     <Eye size={16} />
                                     Preview
                                 </button>
@@ -106,6 +124,67 @@ const EmployeePayslipsPage = () => {
                             No payslips found for your account.
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {isPreviewOpen && selectedPayslip && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    zIndex: 1000,
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        background: 'white',
+                        width: '100%',
+                        maxWidth: '1000px',
+                        margin: '0 auto',
+                        height: '100%',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{
+                            padding: '16px 24px',
+                            borderBottom: '1px solid #eee',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: '700' }}>
+                                Payslip Preview - {selectedPayslip.month} {selectedPayslip.year}
+                            </h2>
+                            <button
+                                onClick={() => setIsPreviewOpen(false)}
+                                style={{
+                                    border: 'none',
+                                    background: '#f3f4f6',
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ flex: 1, background: '#525659' }}>
+                            <PDFViewer width="100%" height="100%" showToolbar={true} style={{ border: 'none' }}>
+                                <PayslipPDF payslip={selectedPayslip} employee={employee} />
+                            </PDFViewer>
+                        </div>
+                    </div>
                 </div>
             )}
 
