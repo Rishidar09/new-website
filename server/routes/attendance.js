@@ -11,11 +11,16 @@ const pool = new Pool({
 // @desc    Record check-in
 router.post('/check-in', auth, async (req, res) => {
     try {
-        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
-        const employee_id = profileInfo.rows[0]?.employee_id;
+        // Prefer employee_uuid from token, fallback to lookup
+        let employee_id = req.user.employee_uuid;
 
         if (!employee_id) {
-            return res.status(400).json({ error: 'Employee profile not perfectly linked. Contact HR.' });
+            const empRes = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+            employee_id = empRes.rows[0]?.id;
+        }
+
+        if (!employee_id) {
+            return res.status(400).json({ error: 'Employee account not found. Please contact HR.' });
         }
 
         const { location } = req.body;
@@ -52,8 +57,16 @@ router.post('/check-in', auth, async (req, res) => {
 // @desc    Record check-out
 router.post('/check-out', auth, async (req, res) => {
     try {
-        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
-        const employee_id = profileInfo.rows[0]?.employee_id;
+        let employee_id = req.user.employee_uuid;
+
+        if (!employee_id) {
+            const empRes = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+            employee_id = empRes.rows[0]?.id;
+        }
+
+        if (!employee_id) {
+            return res.status(400).json({ error: 'Employee account not found.' });
+        }
         const now = new Date();
 
         const result = await pool.query(
@@ -76,8 +89,16 @@ router.post('/check-out', auth, async (req, res) => {
 // @desc    Get current user's attendance
 router.get('/my', auth, async (req, res) => {
     try {
-        const profileInfo = await pool.query('SELECT employee_id FROM profiles WHERE id = $1', [req.user.id]);
-        const employee_id = profileInfo.rows[0]?.employee_id;
+        let employee_id = req.user.employee_uuid;
+
+        if (!employee_id) {
+            const empRes = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
+            employee_id = empRes.rows[0]?.id;
+        }
+
+        if (!employee_id) {
+            return res.json([]);
+        }
 
         const result = await pool.query(
             "SELECT * FROM attendance WHERE employee_id = $1 ORDER BY check_in DESC",
