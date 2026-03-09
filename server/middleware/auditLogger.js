@@ -30,7 +30,7 @@ const auditLogger = (moduleName) => async (req, res, next) => {
 const logAction = async (req, moduleName) => {
     const userEmail = req.user.email;
     const fullName = req.user.name || 'System User';
-    const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+    const ipAddress = normalizeIp(req.ip || req.connection.remoteAddress || 'Unknown');
 
     let action = 'Unknown';
     switch (req.method) {
@@ -61,14 +61,22 @@ const logAction = async (req, moduleName) => {
 // Manual logging function for auth actions
 const logManualAction = async ({ email, name, action, module, ip, details }) => {
     try {
+        const normalizedIp = normalizeIp(ip);
         const query = `
             INSERT INTO audit_logs (user_email, full_name, action, module, ip_address, details)
             VALUES ($1, $2, $3, $4, $5, $6)
         `;
-        await pool.query(query, [email, name, action, module, ip, details ? JSON.stringify(details) : null]);
+        await pool.query(query, [email, name, action, module, normalizedIp, details ? JSON.stringify(details) : null]);
     } catch (err) {
         console.error('Manual Audit Log Error:', err);
     }
 };
 
-module.exports = { auditLogger, logManualAction };
+const normalizeIp = (ip) => {
+    if (!ip) return 'Unknown';
+    if (ip === '::1') return '127.0.0.1';
+    if (ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
+    return ip;
+};
+
+module.exports = { auditLogger, logManualAction, normalizeIp };

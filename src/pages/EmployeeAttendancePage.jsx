@@ -72,7 +72,13 @@ const EmployeeAttendancePage = () => {
                     try {
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
                         const data = await res.json();
-                        locationString = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb || data.address?.state_district || "Unknown Location";
+                        const addr = data.address || {};
+                        const parts = [
+                            addr.road,
+                            addr.suburb || addr.neighbourhood || addr.residential,
+                            addr.city || addr.town || addr.village
+                        ].filter(Boolean);
+                        locationString = parts.length > 0 ? parts.join(", ") : (addr.state_district || "Unknown Location");
                     } catch (geoErr) {
                         locationString = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
                     }
@@ -83,7 +89,7 @@ const EmployeeAttendancePage = () => {
                     try {
                         const ipRes = await fetch('https://ipapi.co/json/');
                         const ipData = await ipRes.json();
-                        locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} (via IP)`;
+                        locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
                     } catch (ipErr) {
                         console.error("IP Geolocaiton also failed", ipErr);
                     }
@@ -93,7 +99,7 @@ const EmployeeAttendancePage = () => {
                 try {
                     const ipRes = await fetch('https://ipapi.co/json/');
                     const ipData = await ipRes.json();
-                    locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} (via IP)`;
+                    locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
                 } catch (ipErr) {
                     console.error("IP Geolocaiton failed", ipErr);
                 }
