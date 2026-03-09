@@ -51,14 +51,26 @@ const HRPayrollPage = () => {
 
     const calculatePayslip = (employee) => {
         const base = parseFloat(employee.salary) || 0;
-        const basic = Math.round(base * 0.5);
-        const hra = Math.round(base * 0.2);
-        const allowances = Math.round(base * 0.3);
+
+        // Match the PDF template rough breakdown (Basic roughly 55%, HRA roughly 27%, Rest split into Conveyance/Special)
+        const basic = Math.round(base * 0.55);
+        const hra = Math.round(base * 0.27);
+        const remaining = base - basic - hra;
+
+        // Total allowances in DB terms
+        const allowances = remaining > 0 ? remaining : 0;
+
+        // Deductions
         const pf = Math.round(basic * 0.12);
         const tds = Math.round(base * 0.1);
 
+        // Template exact variables
+        const conveyance = allowances > 0 ? Math.floor(allowances * 0.285) : 0;
+        const specialAllowance = allowances > 0 ? Math.ceil(allowances * 0.715) : 0;
+        const ptax = 200;
+
         const gross = basic + hra + allowances;
-        const deductions = pf + tds;
+        const deductions = pf + tds + ptax; // include ptax in total db deductions amount
         const net = gross - deductions;
 
         return {
@@ -66,12 +78,16 @@ const HRPayrollPage = () => {
             year,
             basic_salary: basic,
             hra,
-            allowances,
+            allowances, // stores total sum in DB
             pf,
-            tds,
+            tds, // stored as other_deductions logically
             gross_salary: gross,
             deductions,
             net_salary: net,
+            // Extended preview data
+            conveyance,
+            specialAllowance,
+            ptax,
             created_at: new Date().toISOString()
         };
     };
@@ -85,11 +101,20 @@ const HRPayrollPage = () => {
 
         try {
             setGenerating(true);
-            // Longer delay to ensure color change is visible to user
             await new Promise(resolve => setTimeout(resolve, 1500));
+            // Only send DB columns
             await api.post('/payroll', {
                 employee_id: selectedEmp.id,
-                ...payslip
+                month: payslip.month,
+                year: payslip.year,
+                basic_salary: payslip.basic_salary,
+                hra: payslip.hra,
+                allowances: payslip.allowances,
+                pf: payslip.pf,
+                tds: payslip.tds,
+                gross_salary: payslip.gross_salary,
+                deductions: payslip.deductions,
+                net_salary: payslip.net_salary
             });
             toast.success('Payslip generated and saved successfully!');
         } catch (error) {
@@ -209,13 +234,15 @@ const HRPayrollPage = () => {
                                             <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--primary)', marginBottom: '12px' }}>EARNINGS</p>
                                             <div className="pay-row"><span>Basic Salary</span> <span>₹{payslip.basic_salary}</span></div>
                                             <div className="pay-row"><span>HRA</span> <span>₹{payslip.hra}</span></div>
-                                            <div className="pay-row"><span>Allowances</span> <span>₹{payslip.allowances}</span></div>
+                                            <div className="pay-row"><span>Conveyance</span> <span>₹{payslip.conveyance}</span></div>
+                                            <div className="pay-row"><span>Special Allowance</span> <span>₹{payslip.specialAllowance}</span></div>
                                             <div className="pay-row total"><span>Gross Total</span> <span>₹{payslip.gross_salary}</span></div>
                                         </div>
                                         <div>
                                             <p style={{ fontSize: '13px', fontWeight: '700', color: '#EF4444', marginBottom: '12px' }}>DEDUCTIONS</p>
+                                            <div className="pay-row"><span>Other Deduction</span> <span>₹{payslip.tds}</span></div>
+                                            <div className="pay-row"><span>P Tax</span> <span>₹{payslip.ptax}</span></div>
                                             <div className="pay-row"><span>PF</span> <span>₹{payslip.pf}</span></div>
-                                            <div className="pay-row"><span>TDS / Tax</span> <span>₹{payslip.tds}</span></div>
                                             <div className="pay-row total"><span>Total Deductions</span> <span>₹{payslip.deductions}</span></div>
                                         </div>
                                     </div>
