@@ -19,6 +19,9 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use((req, res, next) => {
     console.log(`[Request]: ${req.method} ${req.url}`);
+    if (Object.keys(req.body).length > 0) {
+        console.log(`[Body]:`, JSON.stringify(req.body).substring(0, 100));
+    }
     next();
 });
 app.use(express.json());
@@ -29,6 +32,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
+
+pool.connect()
+    .then(client => {
+        console.log(`✅ Connected to database: ${process.env.DATABASE_URL.split('@')[1]}`);
+        client.release();
+    })
+    .catch(err => console.error('❌ Database connection error:', err.message));
 
 // Attach io to req for use in routes
 app.use((req, res, next) => {

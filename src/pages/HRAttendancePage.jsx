@@ -12,6 +12,8 @@ const HRAttendancePage = () => {
 
     useEffect(() => {
         fetchAttendance();
+        const interval = setInterval(fetchAttendance, 30000); // Auto refresh every 30s
+        return () => clearInterval(interval);
     }, [filters]);
 
     const fetchAttendance = async () => {
@@ -58,9 +60,9 @@ const HRAttendancePage = () => {
 
     const stats = {
         total: records.length,
-        present: records.filter(r => r.status === 'Present').length,
+        present: records.filter(r => r.status === 'Present' || r.status === 'Late').length,
         late: records.filter(r => r.status === 'Late').length,
-        absent: 0 // In a real system, you'd compare this to total employees
+        absent: 0
     };
 
     return (
@@ -70,26 +72,43 @@ const HRAttendancePage = () => {
                     <h1 style={{ fontSize: '28px', color: 'var(--text-main)' }}>Company Attendance</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Monitor and manage employee daily presence.</p>
                 </div>
-                <button
-                    onClick={handleExport}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 20px',
-                        background: 'var(--card-bg)',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseOver={e => e.currentTarget.style.background = '#F9FAFB'}
-                    onMouseOut={e => e.currentTarget.style.background = 'white'}
-                >
-                    <Download size={18} /> Export Report
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={fetchAttendance}
+                        disabled={loading}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 20px',
+                            background: 'var(--card-bg)',
+                            color: 'var(--text-main)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Clock size={18} /> {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 20px',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Download size={18} /> Export CSV
+                    </button>
+                </div>
             </header>
 
             {/* Stats */}
@@ -140,9 +159,8 @@ const HRAttendancePage = () => {
                     >
                         <option value="">All Departments</option>
                         <option value="Engineering">Engineering</option>
-                        <option value="HR">HR</option>
-                        <option value="Design">Design</option>
-                        <option value="Marketing">Marketing</option>
+                        <option value="Human Resources">Human Resources</option>
+                        <option value="Sales">Sales</option>
                     </select>
                 </div>
             </div>
@@ -179,7 +197,14 @@ const HRAttendancePage = () => {
                                                 </div>
                                             )}
                                         </td>
-                                        <td style={{ padding: '16px' }}>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
+                                        <td style={{ padding: '16px' }}>
+                                            <div>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</div>
+                                            {row.checkout_location && (
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                    📍 {row.checkout_location}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td style={{ padding: '16px' }}>{calculateHours(row.check_in, row.check_out)}h</td>
                                         <td style={{ padding: '16px' }}>
                                             <span className={`status-badge ${row.status.toLowerCase()}`}>

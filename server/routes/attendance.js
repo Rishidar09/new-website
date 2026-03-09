@@ -11,21 +11,27 @@ const pool = new Pool({
 // @desc    Record check-in
 router.post('/check-in', auth, async (req, res) => {
     try {
+        console.log('[Attendance Check-In] Request received. user:', req.user);
+
         // Prefer employee_uuid from token, fallback to lookup
         let employee_id = req.user.employee_uuid;
+        console.log('[Attendance Check-In] Initial employee_id from token:', employee_id);
 
         if (!employee_id) {
             const empRes = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
             employee_id = empRes.rows[0]?.id;
+            console.log('[Attendance Check-In] Looked up employee_id by email:', employee_id);
         }
 
         if (!employee_id) {
+            console.log('[Attendance Check-In] ERROR: Employee account not found for email:', req.user.email);
             return res.status(400).json({ error: 'Employee account not found. Please contact HR.' });
         }
 
         console.log('[Attendance Check-In] Final employee_id:', employee_id);
 
         const { location } = req.body;
+        console.log('[Attendance Check-In] Location from body:', location);
         const now = new Date();
 
         // Check if there is an active check-in (without checkout)
@@ -48,6 +54,8 @@ router.post('/check-in', auth, async (req, res) => {
             [employee_id, now, status, location]
         );
 
+        console.log('[Attendance Check-In] SUCCESS: Record inserted:', result.rows[0]);
+
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
@@ -69,12 +77,12 @@ router.post('/check-out', auth, async (req, res) => {
         if (!employee_id) {
             return res.status(400).json({ error: 'Employee account not found.' });
         }
-        console.log('[Attendance Check-Out] Final employee_id:', employee_id);
+        const { location } = req.body;
         const now = new Date();
 
         const result = await pool.query(
-            "UPDATE attendance SET check_out = $1 WHERE employee_id = $2 AND DATE(check_in) = CURRENT_DATE AND check_out IS NULL RETURNING *",
-            [now, employee_id]
+            "UPDATE attendance SET check_out = $1, checkout_location = $2 WHERE employee_id = $3 AND DATE(check_in) = CURRENT_DATE AND check_out IS NULL RETURNING *",
+            [now, location, employee_id]
         );
 
         if (result.rows.length === 0) {

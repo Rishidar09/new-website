@@ -51,60 +51,64 @@ const EmployeeAttendancePage = () => {
         }
     };
 
-    const handleCheckIn = async () => {
-        try {
-            setLoading(true);
-            let locationString = "Unknown Location";
+    const getLocation = async () => {
+        let locationString = "Unknown Location";
 
-            // 1. Try Browser Geolocation (GPS)
-            if ("geolocation" in navigator) {
-                try {
-                    const position = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            timeout: 5000,
-                            enableHighAccuracy: true
-                        });
+        // 1. Try Browser Geolocation (GPS)
+        if ("geolocation" in navigator) {
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        timeout: 5000,
+                        enableHighAccuracy: true
                     });
+                });
 
-                    const { latitude, longitude } = position.coords;
+                const { latitude, longitude } = position.coords;
 
-                    // OpenStreetMap Reverse Geocoding
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                        const data = await res.json();
-                        const addr = data.address || {};
-                        const parts = [
-                            addr.road,
-                            addr.suburb || addr.neighbourhood || addr.residential,
-                            addr.city || addr.town || addr.village
-                        ].filter(Boolean);
-                        locationString = parts.length > 0 ? parts.join(", ") : (addr.state_district || "Unknown Location");
-                    } catch (geoErr) {
-                        locationString = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-                    }
-                } catch (posErr) {
-                    console.warn("GPS access denied or failed, falling back to IP...");
-
-                    // 2. IP-based Geolocation Fallback
-                    try {
-                        const ipRes = await fetch('https://ipapi.co/json/');
-                        const ipData = await ipRes.json();
-                        locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
-                    } catch (ipErr) {
-                        console.error("IP Geolocaiton also failed", ipErr);
-                    }
+                // OpenStreetMap Reverse Geocoding
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const data = await res.json();
+                    const addr = data.address || {};
+                    const parts = [
+                        addr.road,
+                        addr.suburb || addr.neighbourhood || addr.residential,
+                        addr.city || addr.town || addr.village
+                    ].filter(Boolean);
+                    locationString = parts.length > 0 ? parts.join(", ") : (addr.state_district || "Unknown Location");
+                } catch (geoErr) {
+                    locationString = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
                 }
-            } else {
-                // Fallback for browsers without geolocation support
+            } catch (posErr) {
+                console.warn("GPS access denied or failed, falling back to IP...");
+
+                // 2. IP-based Geolocation Fallback
                 try {
                     const ipRes = await fetch('https://ipapi.co/json/');
                     const ipData = await ipRes.json();
                     locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
                 } catch (ipErr) {
-                    console.error("IP Geolocaiton failed", ipErr);
+                    console.error("IP Geolocaiton also failed", ipErr);
                 }
             }
+        } else {
+            // Fallback for browsers without geolocation support
+            try {
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+                locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
+            } catch (ipErr) {
+                console.error("IP Geolocaiton failed", ipErr);
+            }
+        }
+        return locationString;
+    };
 
+    const handleCheckIn = async () => {
+        try {
+            setLoading(true);
+            const locationString = await getLocation();
             await api.post('/attendance/check-in', { location: locationString });
             fetchAttendance();
         } catch (err) {
@@ -116,10 +120,14 @@ const EmployeeAttendancePage = () => {
 
     const handleCheckOut = async () => {
         try {
-            const data = await api.post('/attendance/check-out', {});
+            setLoading(true);
+            const locationString = await getLocation();
+            await api.post('/attendance/check-out', { location: locationString });
             fetchAttendance();
         } catch (err) {
             alert(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -248,7 +256,14 @@ const EmployeeAttendancePage = () => {
                             </div>
                             <div>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>CHECK-OUT</p>
-                                <p style={{ fontWeight: '600' }}>{todayRecord.check_out ? new Date(todayRecord.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                                <p style={{ fontWeight: '600' }}>
+                                    {todayRecord.check_out ? new Date(todayRecord.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                </p>
+                                {todayRecord.checkout_location && (
+                                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        📍 {todayRecord.checkout_location}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>STATUS</p>

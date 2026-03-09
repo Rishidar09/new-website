@@ -47,9 +47,11 @@ async function seed() {
                     const checkOut = new Date(date);
                     checkOut.setHours(17, 30 + Math.floor(Math.random() * 90), 0);
 
+                    const checkout_location = location; // For seeding, we'll use same as check-in
+
                     await pool.query(
-                        'INSERT INTO attendance (employee_id, check_in, check_out, status, location) VALUES ($1, $2, $3, $4, $5)',
-                        [empId, checkIn, checkOut, status, location]
+                        'INSERT INTO attendance (employee_id, check_in, check_out, status, location, checkout_location) VALUES ($1, $2, $3, $4, $5, $6)',
+                        [empId, checkIn, checkOut, status, location, checkout_location]
                     );
                 }
             }
