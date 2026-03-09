@@ -23,6 +23,8 @@ router.post('/check-in', auth, async (req, res) => {
             return res.status(400).json({ error: 'Employee account not found. Please contact HR.' });
         }
 
+        console.log('[Attendance Check-In] Final employee_id:', employee_id);
+
         const { location } = req.body;
         const now = new Date();
 
@@ -67,6 +69,7 @@ router.post('/check-out', auth, async (req, res) => {
         if (!employee_id) {
             return res.status(400).json({ error: 'Employee account not found.' });
         }
+        console.log('[Attendance Check-Out] Final employee_id:', employee_id);
         const now = new Date();
 
         const result = await pool.query(
@@ -99,6 +102,8 @@ router.get('/my', auth, async (req, res) => {
         if (!employee_id) {
             return res.json([]);
         }
+
+        console.log('[Attendance /my] Final employee_id:', employee_id);
 
         const result = await pool.query(
             "SELECT * FROM attendance WHERE employee_id = $1 ORDER BY check_in DESC",
