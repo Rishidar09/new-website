@@ -25,7 +25,19 @@ const EmployeePayslipsPage = () => {
 
             // Fetch payslips for the logged-in user
             const psData = await api.get('/payroll');
-            setPayslips(psData || []);
+
+            // Reconstruct the PDF's extra display fields that aren't stored in the database
+            const enrichedPayslips = (psData || []).map(ps => {
+                const allowances = Number(ps.allowances) || 0;
+                return {
+                    ...ps,
+                    conveyance: allowances > 0 ? Math.floor(allowances * 0.285) : 0,
+                    specialAllowance: allowances > 0 ? Math.ceil(allowances * 0.715) : 0,
+                    ptax: 200
+                };
+            });
+
+            setPayslips(enrichedPayslips);
 
             // Employee data will be part of the payslip relation in local API
             if (psData.length > 0) {

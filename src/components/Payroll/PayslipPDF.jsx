@@ -263,15 +263,14 @@ const PayslipPDF = ({ payslip, employee }) => {
     const bankAccount = employee.bank_account || "*********0001";
     const bankName = employee.bank_name || "HDFC";
 
-    // Values
-    const basic = Number(payslip.basic_salary) || 17500;
-    const hra = Number(payslip.hra) || 8750;
-    const conveyance = payslip.allowances ? Math.floor(Number(payslip.allowances) * 0.285) : 1500; // split allowance roughly like template
-    const specialAllowance = payslip.allowances ? Math.ceil(Number(payslip.allowances) * 0.715) : 3750;
+    const basic = Number(payslip.basic_salary) || 0;
+    const hra = Number(payslip.hra) || 0;
+    const conveyance = Number(payslip.conveyance) || 0;
+    const specialAllowance = Number(payslip.specialAllowance) || 0;
     const grossPay = basic + hra + conveyance + specialAllowance;
 
-    const ptax = 200; // Standard professional tax shown in template
-    const otherDeduction = Number(payslip.tds) || 0; // TDS as other deduction for template accuracy
+    const ptax = Number(payslip.ptax) || 200;
+    const otherDeduction = Number(payslip.tds) || Number(payslip.otherDeduction) || 0;
     const totalDeductions = otherDeduction + ptax + (Number(payslip.pf) || 0);
 
     // Net Pay based strictly on the split above to ensure math is perfect
@@ -284,7 +283,7 @@ const PayslipPDF = ({ payslip, employee }) => {
 
                 {/* Watermark Logo Component - Behind everything */}
                 <View style={styles.watermarkContainer}>
-                    <Image style={styles.watermarkImage} src="https://i.imgur.com/Kx9M7Z8.png" />
+                    <Image style={styles.watermarkImage} src="/logo.png" />
                 </View>
 
                 <View style={styles.outerBorder}>
@@ -293,7 +292,7 @@ const PayslipPDF = ({ payslip, employee }) => {
                     <View style={styles.headerRow}>
                         <View style={styles.logoSection}>
                             {/* In a real project you'd use your actual logo asset. Using a placeholder or text if unavailable */}
-                            <Image style={styles.logoImage} src="https://i.imgur.com/Kx9M7Z8.png" />
+                            <Image style={styles.logoImage} src="/logo.png" />
                             <Text style={styles.tagline}>Innovating the future, the Indus way.</Text>
                         </View>
                         <Text style={styles.companyAddress}>
@@ -357,20 +356,20 @@ const PayslipPDF = ({ payslip, employee }) => {
                     <View style={styles.trContainer}>
                         <Text style={styles.tdEarningLabel}>Basic</Text>
                         <Text style={styles.tdEarningAmount}>{basic}</Text>
-                        <Text style={styles.tdDeductionLabel}>Other Deduction</Text>
-                        <Text style={styles.tdDeductionAmount}>{otherDeduction}</Text>
+                        <Text style={styles.tdDeductionLabel}>PF</Text>
+                        <Text style={styles.tdDeductionAmount}>{Number(payslip.pf) || 0}</Text>
                     </View>
                     <View style={styles.trContainer}>
                         <Text style={styles.tdEarningLabel}>HRA</Text>
                         <Text style={styles.tdEarningAmount}>{hra}</Text>
-                        <Text style={styles.tdDeductionLabel}>P Tax</Text>
-                        <Text style={styles.tdDeductionAmount}>{ptax}</Text>
+                        <Text style={styles.tdDeductionLabel}>Other Deduction</Text>
+                        <Text style={styles.tdDeductionAmount}>{otherDeduction}</Text>
                     </View>
                     <View style={styles.trContainer}>
                         <Text style={styles.tdEarningLabel}>Conveyance</Text>
                         <Text style={styles.tdEarningAmount}>{conveyance}</Text>
-                        <Text style={styles.tdDeductionLabel}></Text>
-                        <Text style={styles.tdDeductionAmount}></Text>
+                        <Text style={styles.tdDeductionLabel}>P Tax</Text>
+                        <Text style={styles.tdDeductionAmount}>{ptax}</Text>
                     </View>
                     <View style={styles.trContainer}>
                         <Text style={styles.tdEarningLabel}>Special Allowance</Text>

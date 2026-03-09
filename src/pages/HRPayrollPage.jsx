@@ -50,27 +50,36 @@ const HRPayrollPage = () => {
     };
 
     const calculatePayslip = (employee) => {
-        const base = parseFloat(employee.salary) || 0;
+        const annualSalary = parseFloat(employee.salary) || 0;
+        const base = Math.round(annualSalary / 12); // Convert Annual CTC to Monthly Base
 
-        // Match the PDF template rough breakdown (Basic roughly 55%, HRA roughly 27%, Rest split into Conveyance/Special)
+        // Match the exact PDF template from example (CTC 400008 / 12 = 33333)
+        // Basic: 18334 (55% of 33333)
+        // HRA: 9000 (27% of 33333)
+        // Conveyance: 1709
+        // Special: 4290
+
         const basic = Math.round(base * 0.55);
         const hra = Math.round(base * 0.27);
         const remaining = base - basic - hra;
 
-        // Total allowances in DB terms
         const allowances = remaining > 0 ? remaining : 0;
+        const conveyance = allowances > 0 ? Math.round(allowances * 0.28488) : 0;
+        const specialAllowance = allowances - conveyance;
 
-        // Deductions
-        const pf = Math.round(basic * 0.12);
-        const tds = Math.round(base * 0.1);
-
-        // Template exact variables
-        const conveyance = allowances > 0 ? Math.floor(allowances * 0.285) : 0;
-        const specialAllowance = allowances > 0 ? Math.ceil(allowances * 0.715) : 0;
+        // Deductions from example
+        // Other Deduction: 3333 (10% of 33333)
+        // P Tax: 200
+        // PF: 0 (or not shown in this specific example)
+        const otherDeduction = Math.round(base * 0.10); // Equivalent to `tds` field in DB
         const ptax = 200;
 
+        // DB fields
+        const pf = 0; // Not in new template example
+        const tds = otherDeduction;
+
         const gross = basic + hra + allowances;
-        const deductions = pf + tds + ptax; // include ptax in total db deductions amount
+        const deductions = pf + tds + ptax;
         const net = gross - deductions;
 
         return {
@@ -240,9 +249,9 @@ const HRPayrollPage = () => {
                                         </div>
                                         <div>
                                             <p style={{ fontSize: '13px', fontWeight: '700', color: '#EF4444', marginBottom: '12px' }}>DEDUCTIONS</p>
+                                            <div className="pay-row"><span>PF</span> <span>₹{payslip.pf}</span></div>
                                             <div className="pay-row"><span>Other Deduction</span> <span>₹{payslip.tds}</span></div>
                                             <div className="pay-row"><span>P Tax</span> <span>₹{payslip.ptax}</span></div>
-                                            <div className="pay-row"><span>PF</span> <span>₹{payslip.pf}</span></div>
                                             <div className="pay-row total"><span>Total Deductions</span> <span>₹{payslip.deductions}</span></div>
                                         </div>
                                     </div>
