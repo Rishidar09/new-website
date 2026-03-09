@@ -16,10 +16,13 @@ const io = require('socket.io')(server, {
 const PORT = process.env.PORT || 5001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*', // Allow all origins during debugging to prevent crashes
+    credentials: true
+}));
 app.use((req, res, next) => {
     console.log(`[Request]: ${req.method} ${req.url}`);
-    if (Object.keys(req.body).length > 0) {
+    if (req.body && Object.keys(req.body).length > 0) {
         console.log(`[Body]:`, JSON.stringify(req.body).substring(0, 100));
     }
     next();
