@@ -309,6 +309,57 @@ const AnnouncementsModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
+const MeetingButton = ({ url, trulyMe, navigate }) => {
+    const [status, setStatus] = useState('loading');
+    const meetingId = url.split('/meetings/')[1]?.trim();
+
+    React.useEffect(() => {
+        const checkStatus = async () => {
+            if (!meetingId) {
+                setStatus('completed');
+                return;
+            }
+            try {
+                const data = await api.get(`/meetings/${meetingId}`);
+                if (data.error) {
+                    setStatus('completed');
+                } else {
+                    // if status isn't returned, default to active for backwards compatibility
+                    setStatus(data.status || 'active');
+                }
+            } catch (err) {
+                setStatus('completed');
+            }
+        };
+        checkStatus();
+    }, [meetingId]);
+
+    const isEnded = status === 'completed';
+
+    return (
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                if (!isEnded && url) navigate(url.trim());
+            }}
+            disabled={isEnded || status === 'loading'}
+            style={{
+                background: isEnded ? 'rgba(0,0,0,0.1)' : (trulyMe ? 'white' : 'var(--primary)'),
+                color: isEnded ? 'var(--text-muted)' : (trulyMe ? 'var(--primary)' : 'white'),
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: isEnded ? 'not-allowed' : 'pointer',
+                opacity: status === 'loading' ? 0.7 : 1
+            }}
+        >
+            {status === 'loading' ? 'Loading...' : isEnded ? 'Call Ended' : 'Join Live Call'}
+        </button>
+    );
+};
+
 const ChatPage = () => {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
@@ -901,25 +952,11 @@ const ChatPage = () => {
                                                 ) : m.content && m.content.includes('/meetings/') ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                         <p>{m.content.split('Click here to join:')[0]}</p>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const url = m.content.split('Click here to join: ')[1];
-                                                                if (url) navigate(url);
-                                                            }}
-                                                            style={{
-                                                                background: trulyMe ? 'white' : 'var(--primary)',
-                                                                color: trulyMe ? 'var(--primary)' : 'white',
-                                                                border: 'none',
-                                                                padding: '6px 12px',
-                                                                borderRadius: '6px',
-                                                                fontSize: '12px',
-                                                                fontWeight: '700',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            Join Live Call
-                                                        </button>
+                                                        <MeetingButton
+                                                            url={m.content.split('Click here to join: ')[1]}
+                                                            trulyMe={trulyMe}
+                                                            navigate={navigate}
+                                                        />
                                                     </div>
                                                 ) : m.content}
                                             </div>

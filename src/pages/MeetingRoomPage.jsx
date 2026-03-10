@@ -63,6 +63,11 @@ const MeetingRoomPage = () => {
     const fetchMeetingDetails = async () => {
         try {
             const data = await api.get(`/meetings/${id}`);
+            if (data.status === 'completed') {
+                alert('This call has already ended.');
+                navigate('/meetings');
+                return;
+            }
             setMeeting(data);
         } catch (error) {
             console.error('Error fetching meeting:', error);
@@ -192,7 +197,17 @@ const MeetingRoomPage = () => {
                         </button>
                         <div style={{ width: '1px', background: '#475569', margin: '0 8px' }}></div>
                         <button
-                            onClick={() => { if (window.confirm('Are you sure you want to end this call?')) navigate('/meetings'); }}
+                            onClick={async () => {
+                                if (window.confirm('Are you sure you want to end this call?')) {
+                                    try {
+                                        await api.put(`/meetings/${id}/end`);
+                                        navigate('/meetings');
+                                    } catch (err) {
+                                        console.error('Failed to end call', err);
+                                        navigate('/meetings');
+                                    }
+                                }
+                            }}
                             style={{ padding: '0 24px', height: '48px', borderRadius: '12px', border: 'none', background: '#EF4444', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700' }}
                         >
                             <PhoneOff size={22} />

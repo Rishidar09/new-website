@@ -97,4 +97,23 @@ const getMeetingById = async (req, res) => {
     }
 };
 
-module.exports = { createMeeting, getMeetings, getMeetingById };
+// ─── End meeting ──────────────────────────────────────────────────
+const endMeeting = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Verify user has rights (optional, currently anyone in the meeting can end it, or just creator)
+        const result = await pool.query(
+            "UPDATE meetings SET status = 'completed' WHERE id = $1 RETURNING *",
+            [id]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Meeting not found' });
+
+        res.json({ message: 'Meeting ended successfully', meeting: result.rows[0] });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+module.exports = { createMeeting, getMeetings, getMeetingById, endMeeting };

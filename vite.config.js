@@ -11,7 +11,6 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // hmr: { clientPort: 443 } is often needed for ngrok so Vite knows to use 443 for HMR
-    hmr: { clientPort: 443 },
     allowedHosts: true,
     // Disabling local HTTPS for now to make ngrok testing much easier.
     // ngrok provides its own HTTPS tunnel for the public link.

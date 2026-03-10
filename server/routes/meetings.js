@@ -9,5 +9,6 @@ router.use(auditLogger('Meetings'));
 router.post('/', auth, meetingController.createMeeting);
 router.get('/', auth, meetingController.getMeetings);
 router.get('/:id', auth, meetingController.getMeetingById);
+router.put('/:id/end', auth, meetingController.endMeeting);
 
 module.exports = router;
