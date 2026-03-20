@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { LayoutDashboard, Lock, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Lock, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 
 const ResetPasswordPage = () => {
@@ -71,10 +71,11 @@ const ResetPasswordPage = () => {
             <div style={{ width: '100%', maxWidth: '440px', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                            <LayoutDashboard size={24} />
+                        <img src="/logo.png" alt="Company Logo" style={{ height: '56px', width: 'auto', objectFit: 'contain' }} />
+                        <div className="brand-lockup" style={{ textAlign: 'left' }}>
+                            <span className="brand-name-animated" style={{ fontSize: '26px', fontWeight: '800' }}>IndusInnovate</span>
+                            <span className="brand-name-animated-subline" style={{ fontSize: '13px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
                         </div>
-                        <span style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)' }}>Indus<span style={{ color: 'var(--primary)' }}>Innovate</span></span>
                     </div>
                     <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-main)' }}>Set New Password</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '8px' }}>

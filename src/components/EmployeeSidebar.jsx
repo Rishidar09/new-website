@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -6,10 +6,16 @@ import {
     Send,
     FileText,
     Briefcase,
-    Files,
+    ClipboardList,
     MessageSquare,
     HardDrive,
     CreditCard,
+    BarChart3,
+    Wallet,
+    Laptop,
+    HandCoins,
+    UserX,
+    LifeBuoy,
     LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -17,18 +23,53 @@ import { useAuth } from '../context/AuthContext';
 const EmployeeSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
     const { signOut } = useAuth();
     const location = useLocation();
+    const navRef = useRef(null);
+    const SIDEBAR_SCROLL_KEY = 'employee_sidebar_scroll_top';
+
+    useLayoutEffect(() => {
+        const savedTop = window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+        if (navRef.current && savedTop != null) {
+            navRef.current.scrollTop = Number(savedTop) || 0;
+        }
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return undefined;
+
+        const handleScroll = () => {
+            window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(nav.scrollTop));
+        };
+
+        nav.addEventListener('scroll', handleScroll);
+        return () => {
+            handleScroll();
+            nav.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
 
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'My Dashboard', path: '/employee/dashboard' },
         { icon: <CalendarCheck size={20} />, label: 'My Attendance', path: '/employee/attendance' },
         { icon: <Send size={20} />, label: 'Apply Leave', path: '/employee/apply-leave' },
         { icon: <FileText size={20} />, label: 'My Payslips', path: '/employee/payslips' },
+        { icon: <Wallet size={20} />, label: 'Expenses', path: '/employee/expenses' },
+        { icon: <Laptop size={20} />, label: 'My Assets', path: '/employee/assets' },
+        { icon: <FileText size={20} />, label: 'IT Declaration', path: '/employee/tax-declaration' },
+        { icon: <FileText size={20} />, label: 'Form 16', path: '/employee/form16' },
+        { icon: <CreditCard size={20} />, label: 'Salary Structure', path: '/employee/salary-structure' },
+        { icon: <HandCoins size={20} />, label: 'Leave Encashment', path: '/employee/leave-encashment' },
+        { icon: <UserX size={20} />, label: 'Exit Interview', path: '/employee/exit-interview' },
+        { icon: <LifeBuoy size={20} />, label: 'Support', path: '/employee/helpdesk' },
+        { icon: <ClipboardList size={20} />, label: 'Surveys', path: '/employee/surveys' },
         { icon: <Briefcase size={20} />, label: 'My Projects', path: '/employee/projects' },
         { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/employee/calendar' },
         { icon: <MessageSquare size={20} />, label: 'Complaint Box', path: '/employee/complaints' },
         { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
         { icon: <HardDrive size={20} />, label: 'Drive', path: '/drive' },
         { icon: <CreditCard size={20} />, label: 'My ID Card', path: '/employee/id-card' },
+        { icon: <BarChart3 size={20} />, label: 'Performance', path: '/employee/performance' },
+        { icon: <ClipboardList size={20} />, label: 'Onboarding', path: '/employee/onboarding' },
     ];
 
     return (
@@ -47,26 +88,16 @@ const EmployeeSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             transition: 'transform 0.3s ease-in-out'
         }}>
             {/* Logo */}
-            <Link to="/employee/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', padding: '0 24px' }}>
-                <div style={{
-                    width: '36px',
-                    height: '36px',
-                    background: 'var(--primary)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                }}>
-                    <LayoutDashboard size={24} />
+            <Link to="/employee/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px', padding: '0 24px' }}>
+                <img src="/logo.png" alt="Company Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain' }} />
+                <div className="brand-lockup">
+                    <span className="brand-name-animated" style={{ fontSize: '17px', fontWeight: '800' }}>IndusInnovate</span>
+                    <span className="brand-name-animated-subline" style={{ fontSize: '11px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
                 </div>
-                <span style={{ fontSize: 'var(--font-3xl)', fontWeight: '800', color: 'var(--text-main)' }}>
-                    Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
-                </span>
             </Link>
 
             {/* Navigation */}
-            <nav style={{
+            <nav ref={navRef} style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
@@ -86,7 +117,12 @@ const EmployeeSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                         <Link
                             key={index}
                             to={item.path}
-                            onClick={() => isMobile && toggleSidebar()}
+                            onClick={() => {
+                                if (navRef.current) {
+                                    window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(navRef.current.scrollTop));
+                                }
+                                if (isMobile) toggleSidebar();
+                            }}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',

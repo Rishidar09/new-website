@@ -41,5 +41,6 @@ router.get('/', auth, employeeController.getEmployees);
 router.get('/:id', auth, employeeController.getEmployeeById);
 router.post('/', auth, authorize(['hr']), upload.single('avatar'), employeeController.createEmployee);
 router.patch('/:id', auth, authorize(['hr']), upload.single('avatar'), employeeController.updateEmployee);
+router.delete('/:id', auth, authorize(['hr']), employeeController.deleteEmployee);
 
 module.exports = router;

@@ -9,20 +9,104 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
         full_name: '',
         email: '',
         role: '',
-        department: 'Engineering',
+        employee_id: '',
+        designation: '',
+        department: 'Unassigned',
+        location: '',
         phone: '',
         joining_date: '',
-        salary: ''
+        salary: '',
+        personal_email: '',
+        emergency_contact: '',
+        technology: '',
+        experience_years: '',
+        aadhaar_card: '',
+        pan: '',
+        bank_account: '',
+        bank_name: '',
+        department_id: '',
+        manager_id: '',
+        onboarding_template_id: ''
     });
     const [avatarFile, setAvatarFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(employeeData?.avatar_url || null);
+    const [templates, setTemplates] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [managerOptions, setManagerOptions] = useState([]);
 
     React.useEffect(() => {
         if (employeeData) {
-            setFormData(employeeData);
+            setFormData({
+                ...employeeData,
+                manager_id: employeeData.manager_id || employeeData.reporting_manager_id || '',
+                department_id: employeeData.department_id || ''
+            });
             setPreviewUrl(employeeData.avatar_url);
+            return;
         }
-    }, [employeeData]);
+
+        setFormData({
+            full_name: '',
+            email: '',
+            role: '',
+            employee_id: '',
+            designation: '',
+            department: 'Unassigned',
+            location: '',
+            phone: '',
+            joining_date: '',
+            salary: '',
+            personal_email: '',
+            emergency_contact: '',
+            technology: '',
+            experience_years: '',
+            aadhaar_card: '',
+            pan: '',
+            bank_account: '',
+            bank_name: '',
+            department_id: '',
+            manager_id: '',
+            onboarding_template_id: ''
+        });
+        setPreviewUrl(null);
+    }, [employeeData, isOpen]);
+
+    React.useEffect(() => {
+        const fetchLookups = async () => {
+            if (!isOpen) return;
+            try {
+                const [templateData, departmentData, employeesData] = await Promise.all([
+                    api.get('/onboarding/templates').catch(() => []),
+                    api.get('/departments').catch(() => []),
+                    api.get('/employees').catch(() => [])
+                ]);
+
+                setTemplates(templateData || []);
+                setDepartments(departmentData || []);
+                setManagerOptions(
+                    (employeesData || []).filter((emp) => !employeeData || emp.id !== employeeData.id)
+                );
+
+                if (!employeeData) {
+                    const engineering = (departmentData || []).find((dep) => dep.name === 'Engineering');
+                    if (engineering) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            department_id: prev.department_id || engineering.id,
+                            department: prev.department && prev.department !== 'Unassigned' ? prev.department : engineering.name
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load employee lookups', error);
+                setTemplates([]);
+                setDepartments([]);
+                setManagerOptions([]);
+            }
+        };
+
+        fetchLookups();
+    }, [employeeData, isOpen]);
 
     if (!isOpen) return null;
 
@@ -61,7 +145,10 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
             setLoading(true);
             const data = new FormData();
             Object.keys(formData).forEach(key => {
-                data.append(key, formData[key]);
+                const value = formData[key];
+                if (value !== '' && value !== null && value !== undefined) {
+                    data.append(key, value);
+                }
             });
             if (avatarFile) {
                 data.append('avatar', avatarFile);
@@ -85,10 +172,24 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                     full_name: '',
                     email: '',
                     role: '',
-                    department: 'Engineering',
+                    employee_id: '',
+                    designation: '',
+                    department: 'Unassigned',
+                    location: '',
                     phone: '',
                     joining_date: '',
-                    salary: ''
+                    salary: '',
+                    personal_email: '',
+                    emergency_contact: '',
+                    technology: '',
+                    experience_years: '',
+                    aadhaar_card: '',
+                    pan: '',
+                    bank_account: '',
+                    bank_name: '',
+                    department_id: '',
+                    manager_id: '',
+                    onboarding_template_id: ''
                 });
                 setAvatarFile(null);
                 setPreviewUrl(null);
@@ -109,12 +210,13 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
             bottom: 0,
             background: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px'
+            padding: '20px',
+            overflowY: 'auto'
         }}>
-            <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '0', overflow: 'hidden' }}>
+            <div className="card add-employee-modal-card" style={{ width: '100%', maxWidth: '760px', padding: '0', overflow: 'hidden', maxHeight: 'calc(100vh - 40px)', margin: 'auto 0' }}>
                 <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ fontSize: '20px' }}>{employeeData ? 'Edit Employee Profile' : 'Add New Employee'}</h2>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -122,8 +224,8 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <form onSubmit={handleSubmit} className="add-employee-modal-form" style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
+                    <div className="add-employee-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Full Name</label>
                             <input
@@ -161,19 +263,72 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Employee Code</label>
+                            <input
+                                name="employee_id"
+                                type="text"
+                                className="input-field"
+                                placeholder="IIT-EMP-001"
+                                value={formData.employee_id || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Designation</label>
+                            <input
+                                name="designation"
+                                type="text"
+                                className="input-field"
+                                placeholder="Software Engineer"
+                                value={formData.designation || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Department</label>
                             <select
-                                name="department"
+                                name="department_id"
                                 className="input-field"
-                                value={formData.department}
+                                value={formData.department_id || ''}
+                                onChange={(e) => {
+                                    const selectedDepartment = departments.find((dep) => dep.id === e.target.value);
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        department_id: e.target.value,
+                                        department: selectedDepartment?.name || 'Unassigned'
+                                    }));
+                                }}
+                            >
+                                <option value="">Unassigned</option>
+                                {departments.map((dep) => (
+                                    <option key={dep.id} value={dep.id}>{dep.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Reporting Manager</label>
+                            <select
+                                name="manager_id"
+                                className="input-field"
+                                value={formData.manager_id || ''}
                                 onChange={handleChange}
                             >
-                                <option>Engineering</option>
-                                <option>Sales</option>
-                                <option>Marketing</option>
-                                <option>Design</option>
-                                <option>Human Resources</option>
+                                <option value="">No manager</option>
+                                {managerOptions.map((manager) => (
+                                    <option key={manager.id} value={manager.id}>{manager.full_name}</option>
+                                ))}
                             </select>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Location</label>
+                            <input
+                                name="location"
+                                type="text"
+                                className="input-field"
+                                placeholder="Hyderabad"
+                                value={formData.location || ''}
+                                onChange={handleChange}
+                            />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Phone Number</label>
@@ -200,18 +355,124 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Annual Salary</label>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Annual Salary (INR)</label>
                             <input
                                 name="salary"
                                 type="number"
                                 className="input-field"
-                                placeholder="75000"
+                                placeholder="Enter annual salary"
                                 required
                                 value={formData.salary}
                                 onChange={handleChange}
                             />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: 'span 2' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Personal Email</label>
+                            <input
+                                name="personal_email"
+                                type="email"
+                                className="input-field"
+                                placeholder="john.personal@gmail.com"
+                                value={formData.personal_email || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Emergency Contact</label>
+                            <input
+                                name="emergency_contact"
+                                type="text"
+                                className="input-field"
+                                placeholder="+91XXXXXXXXXX"
+                                value={formData.emergency_contact || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Technology</label>
+                            <input
+                                name="technology"
+                                type="text"
+                                className="input-field"
+                                placeholder="Frontend / Backend / QA"
+                                value={formData.technology || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Experience (Years)</label>
+                            <input
+                                name="experience_years"
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                className="input-field"
+                                placeholder="2.5"
+                                value={formData.experience_years || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Aadhaar Number</label>
+                            <input
+                                name="aadhaar_card"
+                                type="text"
+                                className="input-field"
+                                placeholder="XXXX XXXX XXXX"
+                                value={formData.aadhaar_card || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>PAN Number</label>
+                            <input
+                                name="pan"
+                                type="text"
+                                className="input-field"
+                                placeholder="ABCDE1234F"
+                                value={formData.pan || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Bank Account Number</label>
+                            <input
+                                name="bank_account"
+                                type="text"
+                                className="input-field"
+                                placeholder="123456789012"
+                                value={formData.bank_account || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Bank Name</label>
+                            <input
+                                name="bank_name"
+                                type="text"
+                                className="input-field"
+                                placeholder="HDFC"
+                                value={formData.bank_name || ''}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        {!employeeData && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '14px', fontWeight: '500' }}>Onboarding Template (Optional)</label>
+                                <select
+                                    name="onboarding_template_id"
+                                    className="input-field"
+                                    value={formData.onboarding_template_id || ''}
+                                    onChange={handleChange}
+                                >
+                                    <option value="">No template</option>
+                                    {templates.map((template) => (
+                                        <option key={template.id} value={template.id}>{template.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="employee-photo-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Employee Photo</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                 <div style={{
@@ -272,6 +533,26 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                     </div>
                 </form>
             </div>
+            <style>{`
+                @media (max-width: 768px) {
+                    .add-employee-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 14px !important;
+                    }
+
+                    .employee-photo-field {
+                        grid-column: span 1 !important;
+                    }
+
+                    .add-employee-modal-card {
+                        max-height: calc(100vh - 20px) !important;
+                    }
+
+                    .add-employee-modal-form {
+                        max-height: calc(100vh - 120px) !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

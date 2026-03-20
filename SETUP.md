@@ -30,6 +30,18 @@ npm run db:setup
 - **Backend**: In the `server` folder, run `npm start`.
 - **Frontend**: In the root folder, run `npm run dev`.
 
+## 5. One-Command Setup + Run (Recommended)
+From the project root, run:
+```bash
+npm run dev:all
+```
+This single command will:
+- install frontend dependencies
+- install backend dependencies
+- run backend DB setup/migration (`db:setup`)
+- start backend (`npm start` in `server`)
+- start frontend (`npm run dev` in root)
+
 ---
 
 ### 7. Interactive User Management (Python)
@@ -53,5 +65,6 @@ You can manage all portal accounts (HR and Employees) using the provided interac
 ---
 
 ### Default Login Accounts
-- **HR Account**: `hr@indusinnovate.com` / `Admin@1234`
-- **Employee Account**: `employee@indusinnovate.com` / `Emp@1234`
+- No fixed default credentials are embedded.
+- To seed accounts, set `SEED_DEFAULT_USERS=true` and provide `SEED_HR_*` / `SEED_EMPLOYEE_*` values in `server/.env`.
+- If seeding variables are not provided, onboarding users should be created through admin flows.

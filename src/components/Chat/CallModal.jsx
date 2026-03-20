@@ -74,23 +74,23 @@ const CallModal = ({
 
         pc.ontrack = (event) => {
             console.log('[Call] Remote track received:', event.track.kind, '| streams:', event.streams.length);
-            if (remoteVideoRef.current && event.streams[0]) {
-                // Only set srcObject if it's not already set to this stream to avoid AbortError
-                if (remoteVideoRef.current.srcObject !== event.streams[0]) {
+
+            // Ensure we have a stream to work with
+            const remoteStream = event.streams[0] || new MediaStream([event.track]);
+
+            if (remoteVideoRef.current) {
+                // Only set srcObject if it's not already set to this stream
+                if (remoteVideoRef.current.srcObject !== remoteStream) {
                     console.log('[Call] Setting remote srcObject');
-                    remoteVideoRef.current.srcObject = event.streams[0];
+                    remoteVideoRef.current.srcObject = remoteStream;
                 }
 
-                // Use a small delay to ensure the browser has processed the stream
-                setTimeout(() => {
-                    if (remoteVideoRef.current) {
-                        remoteVideoRef.current.play().catch(e => {
-                            if (e.name !== 'AbortError') {
-                                console.log('[Call] Playback issue:', e);
-                            }
-                        });
+                // Explicitly play the video
+                remoteVideoRef.current.play().catch(e => {
+                    if (e.name !== 'AbortError') {
+                        console.error('[Call] Remote video playback failed:', e);
                     }
-                }, 100);
+                });
             }
         };
 
@@ -214,8 +214,21 @@ const CallModal = ({
     const handleCallAnswered = useCallback(async (data) => {
         try {
             console.log('[Call] call_answered received');
-            if (peerConnection.current) {
-                await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+            const pc = peerConnection.current;
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+
+                // Process any ICE candidates that arrived before the answer
+                console.log(`[Call] Processing ${pendingCandidates.current.length} buffered ICE candidates`);
+                for (const candidate of pendingCandidates.current) {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.warn('[Call] Error adding buffered candidate:', e);
+                    }
+                }
+                pendingCandidates.current = [];
+
                 setCallStatus('connected');
             }
         } catch (err) {

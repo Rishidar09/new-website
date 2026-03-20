@@ -4,6 +4,78 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
+const parseAttendanceDate = (attendanceDate) => {
+    if (!attendanceDate) {
+        const today = new Date();
+        return today.toISOString().slice(0, 10);
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceDate)) {
+        throw new Error('attendance_date must be in YYYY-MM-DD format');
+    }
+
+    return attendanceDate;
+};
+
+const isWeekendDate = (dateStr) => {
+    const day = new Date(`${dateStr}T00:00:00`).getDay();
+    return day === 0 || day === 6;
+};
+
+const buildTimestampForDate = (dateStr) => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return new Date(`${dateStr}T${hh}:${mm}:${ss}`);
+};
+
+const parseTimeToMinutes = (timeValue) => {
+    if (!timeValue) return null;
+    const text = String(timeValue);
+    const match = text.match(/^(\d{2}):(\d{2})(:\d{2})?$/);
+    if (!match) return null;
+    return Number(match[1]) * 60 + Number(match[2]);
+};
+
+const getShiftForDate = async (employeeId, attendanceDate) => {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS shifts (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT UNIQUE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS employee_shift_assignments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+            shift_id UUID NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
+            effective_from DATE NOT NULL,
+            effective_to DATE,
+            assigned_by UUID REFERENCES employees(id) ON DELETE SET NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+    `);
+
+    const result = await pool.query(
+        `SELECT s.id, s.name, s.start_time, s.end_time
+         FROM employee_shift_assignments esa
+         JOIN shifts s ON s.id = esa.shift_id
+         WHERE esa.employee_id = $1
+           AND esa.effective_from <= $2::date
+           AND (esa.effective_to IS NULL OR esa.effective_to >= $2::date)
+         ORDER BY esa.effective_from DESC, esa.created_at DESC
+         LIMIT 1`,
+        [employeeId, attendanceDate]
+    );
+
+    return result.rows[0] || null;
+};
+
 // ─── Record check-in ─────────────────────────────────────────────
 const checkIn = async (req, res) => {
     try {
@@ -18,32 +90,41 @@ const checkIn = async (req, res) => {
             return res.status(400).json({ error: 'Employee account not found. Please contact HR.' });
         }
 
+        const attendanceDate = parseAttendanceDate(req.body?.attendance_date);
+        if (isWeekendDate(attendanceDate)) {
+            return res.status(400).json({ error: 'Check-in is disabled on Saturday and Sunday by default.' });
+        }
+
         console.log('[Attendance Check-In] Final employee_id:', employee_id);
 
         const { location } = req.body;
-        const now = new Date();
+        const checkInAt = buildTimestampForDate(attendanceDate);
 
         const existing = await pool.query(
-            "SELECT * FROM attendance WHERE employee_id = $1 AND DATE(check_in) = CURRENT_DATE AND check_out IS NULL",
-            [employee_id]
+            "SELECT * FROM attendance WHERE employee_id = $1 AND DATE(check_in) = $2::date AND check_out IS NULL",
+            [employee_id, attendanceDate]
         );
 
         if (existing.rows.length > 0) {
             return res.status(400).json({ error: 'You are already checked in. Please check out first.' });
         }
 
-        const checkInTime = now.getHours() * 60 + now.getMinutes();
-        const lateTime = 9 * 60 + 15;
-        const status = checkInTime > lateTime ? 'Late' : 'Present';
+        const assignedShift = await getShiftForDate(employee_id, attendanceDate);
+        const checkInTime = checkInAt.getHours() * 60 + checkInAt.getMinutes();
+        const shiftStartMinutes = parseTimeToMinutes(assignedShift?.start_time);
+        const status = shiftStartMinutes != null && checkInTime > shiftStartMinutes ? 'Late' : 'Present';
 
         const result = await pool.query(
             "INSERT INTO attendance (employee_id, check_in, status, location) VALUES ($1, $2, $3, $4) RETURNING *",
-            [employee_id, now, status, location]
+            [employee_id, checkInAt, status, location]
         );
 
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
+        if (err.message && err.message.includes('attendance_date')) {
+            return res.status(400).json({ error: err.message });
+        }
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -61,21 +142,30 @@ const checkOut = async (req, res) => {
         if (!employee_id) {
             return res.status(400).json({ error: 'Employee account not found.' });
         }
+
+        const attendanceDate = parseAttendanceDate(req.body?.attendance_date);
+        if (isWeekendDate(attendanceDate)) {
+            return res.status(400).json({ error: 'Check-out is disabled on Saturday and Sunday by default.' });
+        }
+
         console.log('[Attendance Check-Out] Final employee_id:', employee_id);
-        const now = new Date();
+        const checkOutAt = buildTimestampForDate(attendanceDate);
 
         const result = await pool.query(
-            "UPDATE attendance SET check_out = $1 WHERE employee_id = $2 AND DATE(check_in) = CURRENT_DATE AND check_out IS NULL RETURNING *",
-            [now, employee_id]
+            "UPDATE attendance SET check_out = $1 WHERE employee_id = $2 AND DATE(check_in) = $3::date AND check_out IS NULL RETURNING *",
+            [checkOutAt, employee_id, attendanceDate]
         );
 
         if (result.rows.length === 0) {
-            return res.status(400).json({ error: 'No active check-in found for today' });
+            return res.status(400).json({ error: 'No active check-in found for the selected date' });
         }
 
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err.message);
+        if (err.message && err.message.includes('attendance_date')) {
+            return res.status(400).json({ error: err.message });
+        }
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -114,7 +204,7 @@ const getAllAttendance = async (req, res) => {
     }
 
     try {
-        const { date, department } = req.query;
+        const { date, department, employee_id } = req.query;
         let query = `
             SELECT a.*, e.full_name, e.department, e.role as emp_role
             FROM attendance a
@@ -130,6 +220,10 @@ const getAllAttendance = async (req, res) => {
         if (department) {
             params.push(department);
             query += ` AND e.department = $${params.length}`;
+        }
+        if (employee_id) {
+            params.push(employee_id);
+            query += ` AND a.employee_id = $${params.length}`;
         }
 
         query += " ORDER BY a.check_in DESC";

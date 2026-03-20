@@ -1,0 +1,27 @@
+const express = require('express');
+const router = express.Router();
+const { auth, authorize } = require('../middleware/auth');
+const { auditLogger } = require('../middleware/auditLogger');
+const performanceController = require('../controllers/performanceController');
+
+router.use(auth);
+router.use(auditLogger('Performance Management'));
+
+router.get('/cycles', performanceController.getCycles);
+router.post('/cycles', authorize(['hr']), performanceController.createCycle);
+router.patch('/cycles/:id/status', authorize(['hr']), performanceController.updateCycleStatus);
+
+router.get('/dashboard', authorize(['hr']), performanceController.getHRDashboard);
+router.get('/my-overview', performanceController.getMyOverview);
+
+router.get('/goals', performanceController.getGoals);
+router.post('/goals', authorize(['employee']), performanceController.createGoal);
+router.patch('/goals/:id/progress', authorize(['employee']), performanceController.updateGoalProgress);
+
+router.post('/self-appraisal', authorize(['employee']), performanceController.submitSelfAppraisal);
+router.post('/manager-appraisal', authorize(['employee']), performanceController.submitManagerAppraisal);
+
+router.post('/peer-feedback', authorize(['employee']), performanceController.submitPeerFeedback);
+router.get('/peer-feedback', performanceController.getPeerFeedback);
+
+module.exports = router;

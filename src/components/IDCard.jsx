@@ -4,6 +4,14 @@ import { QRCodeSVG } from 'qrcode.react';
 const IDCard = ({ employee, idRef }) => {
     if (!employee) return null;
 
+    const displayEmployeeId = employee.employee_id || employee.employeeId || employee.EmployeeID || null;
+
+    const qrPayload = [
+        `Name: ${employee.full_name || ''}`,
+        `Email: ${employee.email || ''}`,
+        `ID: ${displayEmployeeId || employee.id || ''}`
+    ].join('\n');
+
     return (
         <div
             ref={idRef}
@@ -46,12 +54,11 @@ const IDCard = ({ employee, idRef }) => {
 
             {/* Header: Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', zIndex: 1 }}>
-                <div style={{ width: '24px', height: '24px', background: 'var(--card-bg)', color: 'var(--primary)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '14px', height: '14px', background: '#3B82F6', borderRadius: '2px' }}></div>
+                <img src="/logo.png" alt="Company Logo" style={{ height: '34px', width: 'auto', objectFit: 'contain' }} />
+                <div className="brand-lockup">
+                    <span className="brand-name-animated" style={{ fontSize: '15px', fontWeight: '800' }}>IndusInnovate</span>
+                    <span className="brand-name-animated-subline" style={{ fontSize: '9px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
                 </div>
-                <span style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px' }}>
-                    Indus<span style={{ opacity: 0.9 }}>Innovate</span>
-                </span>
             </div>
 
             {/* Photo */}
@@ -88,7 +95,7 @@ const IDCard = ({ employee, idRef }) => {
                 <div style={{ background: 'rgba(255, 255, 255, 0.15)', borderRadius: '12px', padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div style={{ textAlign: 'left' }}>
                         <p style={{ fontSize: '10px', opacity: 0.7, fontWeight: '700' }}>EMPLOYEE ID</p>
-                        <p style={{ fontSize: '13px', fontWeight: '600' }}>#{employee.id?.slice(0, 8).toUpperCase()}</p>
+                        <p style={{ fontSize: '13px', fontWeight: '600' }}>{displayEmployeeId || `#${employee.id?.slice(0, 8).toUpperCase()}`}</p>
                     </div>
                     <div style={{ textAlign: 'left' }}>
                         <p style={{ fontSize: '10px', opacity: 0.7, fontWeight: '700' }}>DEPARTMENT</p>
@@ -112,7 +119,7 @@ const IDCard = ({ employee, idRef }) => {
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
             }}>
                 <QRCodeSVG
-                    value={employee.id || 'VALIDATION_QR'}
+                    value={qrPayload || 'VALIDATION_QR'}
                     size={80}
                     level="H"
                     includeMargin={false}

@@ -28,6 +28,24 @@ import {
 
 const SOCKET_URL = window.location.origin;
 
+const formatChatTimestamp = (value) => {
+    if (!value) return '';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    const sameYear = date.getFullYear() === now.getFullYear();
+
+    return date.toLocaleString([], {
+        day: '2-digit',
+        month: 'short',
+        ...(sameYear ? {} : { year: 'numeric' }),
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
 const CreateGroupModal = ({ isOpen, onClose, contacts, onSuccess, initialMembers = [] }) => {
     const [name, setName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState(initialMembers);
@@ -138,9 +156,12 @@ const CreateGroupModal = ({ isOpen, onClose, contacts, onSuccess, initialMembers
     );
 };
 
-const AddMembersModal = ({ isOpen, onClose, contacts, groupId, onSuccess }) => {
+const AddMembersModal = ({ isOpen, onClose, contacts, groupId, onSuccess, currentMembers = [] }) => {
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Filter out members already in the group
+    const availableContacts = contacts.filter(c => !currentMembers.includes(c.id));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -187,7 +208,10 @@ const AddMembersModal = ({ isOpen, onClose, contacts, groupId, onSuccess }) => {
                     <div>
                         <label style={{ display: 'block', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>Select Members to Add</label>
                         <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px' }}>
-                            {contacts.map(c => (
+                            {availableContacts.length === 0 ? (
+                                <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>All contacts are already members</p>
+                            ) : (
+                                availableContacts.map(c => (
                                 <div
                                     key={c.id}
                                     onClick={() => toggleMember(c.id)}
@@ -210,7 +234,8 @@ const AddMembersModal = ({ isOpen, onClose, contacts, groupId, onSuccess }) => {
                                         {selectedMembers.includes(c.id) && <div style={{ width: '10px', height: '10px', background: 'var(--primary)', borderRadius: '2px' }}></div>}
                                     </div>
                                 </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                     <button
@@ -366,6 +391,7 @@ const ChatPage = () => {
     const [contacts, setContacts] = useState([]);
     const [groups, setGroups] = useState([]);
     const [activeChat, setActiveChat] = useState(null); // { id, type, name, role }
+    const [groupMembers, setGroupMembers] = useState([]); // Members of active group
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -475,6 +501,13 @@ const ChatPage = () => {
 
             console.log('Joining room:', roomId);
             socket.current.emit('join_room', roomId);
+            
+            // Fetch group members if it's a group
+            if (activeChat.type === 'group') {
+                fetchGroupMembers(activeChat.id);
+            } else {
+                setGroupMembers([]); // Clear members for direct chats
+            }
         }
     }, [activeChat, currentUser]);
 
@@ -513,6 +546,17 @@ const ChatPage = () => {
             setMessages(data || []);
         } catch (error) {
             console.error('History error:', error);
+        }
+    };
+
+    const fetchGroupMembers = async (groupId) => {
+        try {
+            const data = await api.get(`/chat/groups/${groupId}/members`);
+            console.log('[Chat] Group members fetched:', data);
+            setGroupMembers(data || []);
+        } catch (error) {
+            console.error('Failed to fetch group members:', error);
+            setGroupMembers([]);
         }
     };
 
@@ -575,6 +619,7 @@ const ChatPage = () => {
                     agenda: 'Live group discussion',
                     date_time: new Date(),
                     duration: 60,
+                    meeting_type: 'instant',
                     participants: [] // In a real app, you might auto-add group members
                 };
                 const meeting = await api.post('/meetings', meetingData);
@@ -682,7 +727,7 @@ const ChatPage = () => {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                             <p style={{ fontWeight: '700', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.full_name}</p>
-                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{c.last_time ? new Date(c.last_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatChatTimestamp(c.last_time)}</span>
                                         </div>
                                         <p style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {c.last_msg || c.role}
@@ -827,15 +872,37 @@ const ChatPage = () => {
                                                 marginTop: '8px'
                                             }}>
                                                 {activeChat.type === 'group' ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            setIsAddMembersModalOpen(true);
-                                                            setIsMoreMenuOpen(false);
-                                                        }}
-                                                        style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                                    >
-                                                        <Plus size={16} /> Add People
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsAddMembersModalOpen(true);
+                                                                setIsMoreMenuOpen(false);
+                                                            }}
+                                                            style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                                        >
+                                                            <Plus size={16} /> Add People
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Leave this group?')) {
+                                                                    try {
+                                                                        await api.post('/chat/leave-group', { groupId: activeChat.id });
+                                                                        setActiveChat(null);
+                                                                        // Refresh groups list
+                                                                        const groupsData = await api.get('/chat/groups');
+                                                                        setGroups(groupsData);
+                                                                        setIsMoreMenuOpen(false);
+                                                                    } catch (error) {
+                                                                        console.error('Failed to leave group', error);
+                                                                        alert('Failed to leave group');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                                        >
+                                                            <Trash2 size={16} /> Leave Group
+                                                        </button>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         <button onClick={() => { setIsSearchActive(!isSearchActive); setIsMoreMenuOpen(false); }} style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -961,7 +1028,7 @@ const ChatPage = () => {
                                                 ) : m.content}
                                             </div>
                                             <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                                {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatChatTimestamp(m.created_at)}
                                             </span>
                                         </div>
                                     );
@@ -1101,9 +1168,11 @@ const ChatPage = () => {
                 onClose={() => setIsAddMembersModalOpen(false)}
                 contacts={contacts}
                 groupId={activeChat?.id}
+                currentMembers={groupMembers.map(m => m.id)}
                 onSuccess={() => {
                     fetchInitialData();
                     fetchHistory();
+                    if (activeChat?.id) fetchGroupMembers(activeChat.id);
                 }}
             />
 

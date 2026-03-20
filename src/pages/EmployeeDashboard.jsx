@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import { Calendar, UserCheck, Briefcase, Loader2 } from 'lucide-react';
+import { Calendar, UserCheck, Briefcase, Loader2, ClipboardList, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import Announcements from '../components/Dashboard/Announcements';
 
@@ -9,7 +10,12 @@ const EmployeeDashboard = () => {
     const { profile } = useAuth();
     const [stats, setStats] = useState(null);
     const [announcements, setAnnouncements] = useState([]);
+    const [onboardingSummary, setOnboardingSummary] = useState(null);
+    const [currentShift, setCurrentShift] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const isBirthday = Boolean(stats?.hasBirthdayToday);
+    const isAnniversary = Boolean(stats?.hasWorkAnniversaryToday);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -20,6 +26,23 @@ const EmployeeDashboard = () => {
                 ]);
                 setStats(statsData);
                 setAnnouncements(announceData || []);
+
+                try {
+                    const shift = await api.get('/shifts/my-current');
+                    setCurrentShift(shift || null);
+                } catch (shiftErr) {
+                    setCurrentShift(null);
+                    console.warn('Current shift unavailable', shiftErr);
+                }
+
+                try {
+                    const summary = await api.get('/onboarding/my-summary');
+                    setOnboardingSummary(summary || null);
+                } catch (onboardingErr) {
+                    // Onboarding may not be assigned yet.
+                    setOnboardingSummary(null);
+                    console.warn('Onboarding summary unavailable', onboardingErr);
+                }
             } catch (err) {
                 console.error('Failed to fetch dashboard data', err);
             } finally {
@@ -44,7 +67,35 @@ const EmployeeDashboard = () => {
                 <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
                     Welcome back, {profile?.full_name || profile?.email || 'Employee'}
                 </p>
+                <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '13px' }}>
+                    Current Shift: {currentShift?.name ? `${currentShift.name} (${String(currentShift.start_time).slice(0, 5)} - ${String(currentShift.end_time).slice(0, 5)})` : 'Not assigned'}
+                </p>
             </div>
+
+            {(isBirthday || isAnniversary) && (
+                <div
+                    className="card"
+                    style={{
+                        marginBottom: '24px',
+                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(16, 185, 129, 0.08))'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Sparkles size={24} color="#f59e0b" />
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text-main)' }}>
+                                {isBirthday && isAnniversary ? 'Double Celebration Day!' : 'Celebration Day!'}
+                            </h3>
+                            <p style={{ marginTop: '6px', color: 'var(--text-muted)' }}>
+                                {isBirthday && isAnniversary && 'Happy Birthday and Happy Work Anniversary! Wishing you continued success.'}
+                                {isBirthday && !isAnniversary && 'Happy Birthday! Wishing you a joyful year ahead.'}
+                                {!isBirthday && isAnniversary && 'Happy Work Anniversary! Thank you for your contribution to IndusInnovate.'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                 {/* Attendance Card */}
@@ -78,6 +129,22 @@ const EmployeeDashboard = () => {
                         <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '4px' }}>Active Projects</p>
                         <h2 style={{ fontSize: '24px' }}>{stats?.projects?.length || 0} Assigned</h2>
                     </div>
+                </div>
+
+                {/* Onboarding Card */}
+                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ padding: '12px', background: 'rgba(14, 165, 233, 0.1)', color: '#0EA5E9', borderRadius: '12px' }}>
+                            <ClipboardList size={28} />
+                        </div>
+                        <div>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '4px' }}>Onboarding Progress</p>
+                            <h2 style={{ fontSize: '24px' }}>{onboardingSummary?.completion_percentage ?? 0}%</h2>
+                        </div>
+                    </div>
+                    <Link to="/employee/onboarding" className="btn-primary" style={{ borderRadius: '8px', textDecoration: 'none' }}>
+                        View
+                    </Link>
                 </div>
             </div>
 

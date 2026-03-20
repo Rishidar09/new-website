@@ -1,0 +1,271 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api';
+import { Loader2, PlusCircle, Save } from 'lucide-react';
+
+const EmployeePerformancePage = () => {
+    const [overview, setOverview] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const [goalForm, setGoalForm] = useState({ title: '', description: '', target: '' });
+    const [selfItems, setSelfItems] = useState([]);
+    const [selfComment, setSelfComment] = useState('');
+
+    const [peerForm, setPeerForm] = useState({ employee_id: '', rating: 3, comment: '', is_anonymous: false });
+
+    const [managerTarget, setManagerTarget] = useState('');
+    const [managerFeedback, setManagerFeedback] = useState('');
+    const [managerItems, setManagerItems] = useState([]);
+
+    const fetchOverview = async () => {
+        try {
+            setLoading(true);
+            const data = await api.get('/performance/my-overview');
+            setOverview(data);
+            setSelfItems((data?.goals || []).map((g) => ({ goal_id: g.id, rating: 3, comment: '' })));
+            setPeerForm((prev) => ({ ...prev, employee_id: data?.cycle_participants?.[0]?.id || '' }));
+            setManagerTarget(data?.team?.[0]?.id || '');
+        } catch (error) {
+            console.error('Failed to fetch performance overview', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOverview();
+    }, []);
+
+    const addGoal = async (e) => {
+        e.preventDefault();
+        if (!overview?.current_cycle?.id) return;
+        try {
+            await api.post('/performance/goals', {
+                cycle_id: overview.current_cycle.id,
+                ...goalForm
+            });
+            setGoalForm({ title: '', description: '', target: '' });
+            await fetchOverview();
+        } catch (error) {
+            console.error('Failed to add goal', error);
+            alert('Failed to add goal');
+        }
+    };
+
+    const updateProgress = async (goalId, progress) => {
+        try {
+            await api.patch(`/performance/goals/${goalId}/progress`, { progress });
+            setOverview((prev) => ({
+                ...prev,
+                goals: prev.goals.map((g) => g.id === goalId ? { ...g, progress } : g)
+            }));
+        } catch (error) {
+            console.error('Progress update failed', error);
+        }
+    };
+
+    const submitSelf = async () => {
+        try {
+            await api.post('/performance/self-appraisal', {
+                cycle_id: overview.current_cycle.id,
+                overall_comment: selfComment,
+                items: selfItems
+            });
+            await fetchOverview();
+        } catch (error) {
+            console.error('Self appraisal failed', error);
+            alert('Failed to submit self appraisal');
+        }
+    };
+
+    const submitPeer = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/performance/peer-feedback', {
+                cycle_id: overview.current_cycle.id,
+                ...peerForm
+            });
+            setPeerForm({ employee_id: overview?.cycle_participants?.[0]?.id || '', rating: 3, comment: '', is_anonymous: false });
+            await fetchOverview();
+        } catch (error) {
+            console.error('Peer feedback failed', error);
+            alert('Failed to submit peer feedback');
+        }
+    };
+
+    const managerGoals = useMemo(() => {
+        if (!managerTarget || !overview?.current_cycle?.id) return [];
+        return overview?.team_goals?.[managerTarget] || [];
+    }, [managerTarget, overview]);
+
+    useEffect(() => {
+        setManagerItems(managerGoals.map((g) => ({ goal_id: g.id, rating: 3, comment: '' })));
+    }, [managerGoals]);
+
+    const submitManager = async () => {
+        if (!managerTarget) return;
+        try {
+            await api.post('/performance/manager-appraisal', {
+                cycle_id: overview.current_cycle.id,
+                employee_id: managerTarget,
+                feedback: managerFeedback,
+                items: managerItems
+            });
+            setManagerFeedback('');
+            await fetchOverview();
+        } catch (error) {
+            console.error('Manager appraisal failed', error);
+            alert('Failed to submit manager appraisal');
+        }
+    };
+
+    if (loading) {
+        return <div style={{ textAlign: 'center', padding: '80px' }}><Loader2 size={36} className="animate-spin" color="var(--primary)" /></div>;
+    }
+
+    if (!overview?.current_cycle) {
+        return (
+            <div className="card" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No active appraisal cycle right now.
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '26px', fontWeight: '700', color: 'var(--text-main)' }}>Performance</h1>
+                <p style={{ color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Current cycle: <strong>{overview.current_cycle.name}</strong> ({new Date(overview.current_cycle.start_date).toLocaleDateString()} - {new Date(overview.current_cycle.end_date).toLocaleDateString()})
+                </p>
+            </div>
+
+            <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>My Goals</h3>
+                <form onSubmit={addGoal} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', marginBottom: '12px' }}>
+                    <input className="input-field" placeholder="Goal title" value={goalForm.title} onChange={(e) => setGoalForm({ ...goalForm, title: e.target.value })} required />
+                    <input className="input-field" placeholder="Description" value={goalForm.description} onChange={(e) => setGoalForm({ ...goalForm, description: e.target.value })} />
+                    <input className="input-field" placeholder="Target" value={goalForm.target} onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })} required />
+                    <button type="submit" className="btn-primary" style={{ borderRadius: '8px' }}><PlusCircle size={16} /> Add</button>
+                </form>
+
+                {(overview.goals || []).length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)' }}>No goals added yet.</p>
+                ) : (
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                        {overview.goals.map((goal) => (
+                            <div key={goal.id} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                                    <div>
+                                        <p style={{ fontWeight: '700', color: 'var(--text-main)' }}>{goal.title}</p>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{goal.description || goal.target}</p>
+                                    </div>
+                                    <div style={{ minWidth: '160px' }}>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: {goal.progress}%</p>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={goal.progress}
+                                            onChange={(e) => updateProgress(goal.id, Number(e.target.value))}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Self Appraisal</h3>
+                {(overview.goals || []).map((goal, idx) => (
+                    <div key={goal.id} style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: '10px', marginBottom: '10px' }}>
+                        <p style={{ fontWeight: '600', marginBottom: '6px' }}>{goal.title}</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                            <select className="input-field" value={selfItems[idx]?.rating || 3} onChange={(e) => {
+                                const next = [...selfItems];
+                                next[idx] = { ...next[idx], goal_id: goal.id, rating: Number(e.target.value) };
+                                setSelfItems(next);
+                            }}>
+                                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} / 5</option>)}
+                            </select>
+                            <input className="input-field" placeholder="Comment" value={selfItems[idx]?.comment || ''} onChange={(e) => {
+                                const next = [...selfItems];
+                                next[idx] = { ...next[idx], goal_id: goal.id, comment: e.target.value };
+                                setSelfItems(next);
+                            }} />
+                        </div>
+                    </div>
+                ))}
+                <textarea className="input-field" rows="3" placeholder="Overall comments" value={selfComment} onChange={(e) => setSelfComment(e.target.value)} style={{ marginBottom: '10px' }} />
+                <button className="btn-primary" onClick={submitSelf} style={{ borderRadius: '8px' }}><Save size={16} /> Submit Self Appraisal</button>
+            </div>
+
+            <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Manager Appraisal</h3>
+                {overview.manager_appraisal ? (
+                    <>
+                        <p style={{ marginBottom: '8px' }}><strong>Manager:</strong> {overview.manager_appraisal.manager_name || 'Manager'}</p>
+                        <p style={{ color: 'var(--text-muted)' }}>{overview.manager_appraisal.feedback || 'No feedback comment.'}</p>
+                    </>
+                ) : <p style={{ color: 'var(--text-muted)' }}>Manager appraisal pending.</p>}
+            </div>
+
+            <div className="card" style={{ padding: '20px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>360 Peer Feedback</h3>
+                <form onSubmit={submitPeer} style={{ display: 'grid', gridTemplateColumns: '1.1fr 120px 1.6fr auto', gap: '8px', marginBottom: '10px' }}>
+                    <select className="input-field" value={peerForm.employee_id} onChange={(e) => setPeerForm({ ...peerForm, employee_id: e.target.value })} required>
+                        {(overview.cycle_participants || []).map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                    </select>
+                    <select className="input-field" value={peerForm.rating} onChange={(e) => setPeerForm({ ...peerForm, rating: Number(e.target.value) })}>
+                        {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}/5</option>)}
+                    </select>
+                    <input className="input-field" placeholder="Feedback comment" value={peerForm.comment} onChange={(e) => setPeerForm({ ...peerForm, comment: e.target.value })} />
+                    <button type="submit" className="btn-primary" style={{ borderRadius: '8px' }}>Submit</button>
+                </form>
+                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input type="checkbox" checked={peerForm.is_anonymous} onChange={(e) => setPeerForm({ ...peerForm, is_anonymous: e.target.checked })} /> Submit anonymously
+                </label>
+            </div>
+
+            {overview.is_manager && (
+                <div className="card" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Manager Panel: Team Appraisals</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '12px', marginBottom: '12px' }}>
+                        <select className="input-field" value={managerTarget} onChange={(e) => setManagerTarget(e.target.value)}>
+                            {(overview.team || []).map((member) => (
+                                <option key={member.id} value={member.id}>{member.full_name}</option>
+                            ))}
+                        </select>
+                        <input className="input-field" placeholder="Manager feedback" value={managerFeedback} onChange={(e) => setManagerFeedback(e.target.value)} />
+                    </div>
+
+                    {(managerGoals || []).map((goal, idx) => (
+                        <div key={goal.id} style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: '8px', marginBottom: '8px' }}>
+                            <p style={{ fontWeight: '600' }}>{goal.title}</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                                <select className="input-field" value={managerItems[idx]?.rating || 3} onChange={(e) => {
+                                    const next = [...managerItems];
+                                    next[idx] = { ...next[idx], goal_id: goal.id, rating: Number(e.target.value) };
+                                    setManagerItems(next);
+                                }}>
+                                    {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} / 5</option>)}
+                                </select>
+                                <input className="input-field" placeholder="Comment" value={managerItems[idx]?.comment || ''} onChange={(e) => {
+                                    const next = [...managerItems];
+                                    next[idx] = { ...next[idx], goal_id: goal.id, comment: e.target.value };
+                                    setManagerItems(next);
+                                }} />
+                            </div>
+                        </div>
+                    ))}
+
+                    <button className="btn-primary" onClick={submitManager} style={{ borderRadius: '8px' }}><Save size={16} /> Submit Manager Appraisal</button>
+                </div>
+            )}
+        </>
+    );
+};
+
+export default EmployeePerformancePage;

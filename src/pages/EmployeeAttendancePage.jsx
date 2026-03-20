@@ -2,25 +2,63 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Play, Square, Calendar, CheckCircle, AlertCircle, Timer } from 'lucide-react';
 import { api } from '../lib/api';
 
+const buildPreciseLocationLabel = (addr = {}, latitude, longitude) => {
+    const locality = addr.suburb || addr.neighbourhood || addr.city_district || addr.residential || addr.hamlet || addr.quarter;
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county;
+    const area = addr.state_district || addr.district;
+    const state = addr.state;
+    const postcode = addr.postcode;
+
+    const mainParts = [locality, city].filter(Boolean);
+    const regionParts = [area, state].filter(Boolean);
+
+    let label = mainParts.join(', ');
+    if (!label && regionParts.length > 0) {
+        label = regionParts.join(', ');
+    }
+    if (!label && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        label = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    }
+
+    if (postcode) {
+        return `${label} - ${postcode}`;
+    }
+    return label || 'Unknown Location';
+};
+
 const EmployeeAttendancePage = () => {
+    const formatLocalYmd = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+    const getTodayYmd = () => formatLocalYmd(new Date());
+    const shiftDate = (dateStr, deltaDays) => {
+        const d = new Date(`${dateStr}T00:00:00`);
+        d.setDate(d.getDate() + deltaDays);
+        return formatLocalYmd(d);
+    };
+
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(getTodayYmd());
     const [attendance, setAttendance] = useState([]);
     const [todayRecord, setTodayRecord] = useState(null);
     const [todayRecords, setTodayRecords] = useState([]);
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeDuration, setActiveDuration] = useState(0);
+    const [currentShift, setCurrentShift] = useState(null);
 
     // Determine if today is restricted
-    const todayDateObj = currentTime;
-    const isWeekend = todayDateObj.getDay() === 0 || todayDateObj.getDay() === 6;
+    const selectedDateObj = new Date(`${selectedDate}T00:00:00`);
+    const isWeekend = selectedDateObj.getDay() === 0 || selectedDateObj.getDay() === 6;
 
-    // Check if today matches any holiday
-    const todayYYYYMMDD = todayDateObj.toLocaleDateString('en-CA'); // e.g. "2026-03-09"
-    const todayHoliday = holidays.find(h => h.date === todayYYYYMMDD);
+    // Check if selected day matches any holiday
+    const selectedHoliday = holidays.find(h => h.date === selectedDate);
 
-    const isRestrictedDay = isWeekend || todayHoliday;
-    const restrictReason = todayHoliday ? todayHoliday.name : (isWeekend ? 'Weekend' : '');
+    const isRestrictedDay = isWeekend || selectedHoliday;
+    const restrictReason = selectedHoliday ? selectedHoliday.name : (isWeekend ? 'Weekend' : '');
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -28,7 +66,7 @@ const EmployeeAttendancePage = () => {
 
             // Update active session duration every second
             setTodayRecord(currentActive => {
-                if (currentActive && !currentActive.check_out) {
+                if (selectedDate === getTodayYmd() && currentActive && !currentActive.check_out) {
                     const diffSeconds = Math.floor((new Date() - new Date(currentActive.check_in)) / 1000);
                     setActiveDuration(diffSeconds > 0 ? diffSeconds : 0);
                 } else {
@@ -39,7 +77,7 @@ const EmployeeAttendancePage = () => {
         }, 1000);
         fetchAttendance();
         return () => clearInterval(timer);
-    }, []);
+    }, [selectedDate]);
 
     const fetchAttendance = async () => {
         try {
@@ -47,8 +85,7 @@ const EmployeeAttendancePage = () => {
             setAttendance(data);
 
             // Get all records for today
-            const today = new Date().toISOString().split('T')[0];
-            const foundToday = data.filter(rec => rec.check_in.startsWith(today));
+            const foundToday = data.filter(rec => rec.check_in.startsWith(selectedDate));
             setTodayRecords(foundToday);
 
             // Find an active session (not checked out) or the most recent one
@@ -58,6 +95,14 @@ const EmployeeAttendancePage = () => {
             setTodayRecord(activeSession || mostRecentSession || null);
         } catch (err) {
             console.error('Failed to fetch attendance', err);
+        }
+
+        try {
+            const shiftData = await api.get('/shifts/my-current');
+            setCurrentShift(shiftData || null);
+        } catch (err) {
+            setCurrentShift(null);
+            console.error('Failed to fetch current shift', err);
         }
 
         try {
@@ -80,7 +125,8 @@ const EmployeeAttendancePage = () => {
                 try {
                     const position = await new Promise((resolve, reject) => {
                         navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            timeout: 5000,
+                            timeout: 12000,
+                            maximumAge: 0,
                             enableHighAccuracy: true
                         });
                     });
@@ -89,17 +135,14 @@ const EmployeeAttendancePage = () => {
 
                     // OpenStreetMap Reverse Geocoding
                     try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                        const res = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&accept-language=en&lat=${latitude}&lon=${longitude}`
+                        );
                         const data = await res.json();
                         const addr = data.address || {};
-                        const parts = [
-                            addr.road,
-                            addr.suburb || addr.neighbourhood || addr.residential,
-                            addr.city || addr.town || addr.village
-                        ].filter(Boolean);
-                        locationString = parts.length > 0 ? parts.join(", ") : (addr.state_district || "Unknown Location");
+                        locationString = buildPreciseLocationLabel(addr, latitude, longitude);
                     } catch (geoErr) {
-                        locationString = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+                        locationString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
                     }
                 } catch (posErr) {
                     console.warn("GPS access denied or failed, falling back to IP...");
@@ -108,9 +151,10 @@ const EmployeeAttendancePage = () => {
                     try {
                         const ipRes = await fetch('https://ipapi.co/json/');
                         const ipData = await ipRes.json();
-                        locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
+                        const ipParts = [ipData.city, ipData.region].filter(Boolean);
+                        locationString = `${ipParts.join(', ') || 'Unknown City'} (IP Approx)`;
                     } catch (ipErr) {
-                        console.error("IP Geolocaiton also failed", ipErr);
+                        console.error("IP Geolocation also failed", ipErr);
                     }
                 }
             } else {
@@ -118,13 +162,14 @@ const EmployeeAttendancePage = () => {
                 try {
                     const ipRes = await fetch('https://ipapi.co/json/');
                     const ipData = await ipRes.json();
-                    locationString = `${ipData.city || 'Unknown City'}, ${ipData.region || ''} ${ipData.postal ? `(${ipData.postal})` : ''} (via IP)`.trim();
+                    const ipParts = [ipData.city, ipData.region].filter(Boolean);
+                    locationString = `${ipParts.join(', ') || 'Unknown City'} (IP Approx)`;
                 } catch (ipErr) {
-                    console.error("IP Geolocaiton failed", ipErr);
+                    console.error("IP Geolocation failed", ipErr);
                 }
             }
 
-            await api.post('/attendance/check-in', { location: locationString });
+            await api.post('/attendance/check-in', { location: locationString, attendance_date: selectedDate });
             fetchAttendance();
         } catch (err) {
             alert(err.message);
@@ -135,7 +180,7 @@ const EmployeeAttendancePage = () => {
 
     const handleCheckOut = async () => {
         try {
-            const data = await api.post('/attendance/check-out', {});
+            await api.post('/attendance/check-out', { attendance_date: selectedDate });
             fetchAttendance();
         } catch (err) {
             alert(err.message);
@@ -154,6 +199,25 @@ const EmployeeAttendancePage = () => {
         return total.toFixed(1);
     };
 
+    const calculateTotalPresentForMonth = () => {
+        const presentStatuses = new Set(['Present', 'Late', 'Half-Day']);
+        const uniqueDays = new Set();
+
+        for (const record of attendance) {
+            if (!presentStatuses.has(record.status)) continue;
+
+            const checkInDate = new Date(record.check_in);
+            if (
+                checkInDate.getFullYear() === calendarYear &&
+                checkInDate.getMonth() === calendarMonth
+            ) {
+                uniqueDays.add(record.check_in.slice(0, 10));
+            }
+        }
+
+        return uniqueDays.size;
+    };
+
     const formatDuration = (totalSeconds) => {
         const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
         const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
@@ -163,9 +227,10 @@ const EmployeeAttendancePage = () => {
 
     // Calendar Heatmap logic
     const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-    const now = new Date();
-    const daysInMonth = getDaysInMonth(now.getFullYear(), now.getMonth());
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+    const calendarYear = selectedDateObj.getFullYear();
+    const calendarMonth = selectedDateObj.getMonth();
+    const daysInMonth = getDaysInMonth(calendarYear, calendarMonth);
+    const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
 
     const getStatusColor = (dateString) => {
         const record = attendance.find(rec => rec.check_in.startsWith(dateString));
@@ -184,6 +249,39 @@ const EmployeeAttendancePage = () => {
             <header style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '8px' }}>Attendance Tracker</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Keep track of your daily presence and work hours.</p>
+                <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '13px' }}>
+                    Assigned Shift: {currentShift?.name ? `${currentShift.name} (${String(currentShift.start_time).slice(0, 5)} - ${String(currentShift.end_time).slice(0, 5)})` : 'Not assigned'}
+                </p>
+                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setSelectedDate((d) => shiftDate(d, -1))}
+                        style={{ padding: '8px 12px' }}
+                    >
+                        Previous Day
+                    </button>
+                    <input
+                        type="date"
+                        className="input-field"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        style={{ width: '170px' }}
+                    />
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setSelectedDate((d) => shiftDate(d, 1))}
+                        style={{ padding: '8px 12px' }}
+                    >
+                        Next Day
+                    </button>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setSelectedDate(getTodayYmd())}
+                        style={{ padding: '8px 12px' }}
+                    >
+                        Today
+                    </button>
+                </div>
             </header>
 
             <div className="responsive-grid-2-1" style={{ marginBottom: '32px' }}>
@@ -313,7 +411,7 @@ const EmployeeAttendancePage = () => {
                             <div>
                                 <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Present (Month)</p>
                                 <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>
-                                    {attendance.filter(r => r.status === 'Present' || r.status === 'Late').length}
+                                    {calculateTotalPresentForMonth()}
                                 </h3>
                             </div>
                             <AlertCircle color="var(--primary)" size={32} />
@@ -351,23 +449,29 @@ const EmployeeAttendancePage = () => {
                     {[...Array(firstDayOfMonth)].map((_, i) => <div key={`empty-${i}`}></div>)}
                     {[...Array(daysInMonth)].map((_, i) => {
                         const day = i + 1;
-                        const dateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const statusColor = getStatusColor(dateString);
+                        const isSelected = dateString === selectedDate;
                         return (
                             <div
                                 key={day}
+                                onClick={() => setSelectedDate(dateString)}
                                 style={{
                                     aspectRatio: '1',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: getStatusColor(dateString),
+                                    background: statusColor,
                                     borderRadius: '6px',
                                     fontSize: '14px',
                                     fontWeight: '500',
-                                    color: getStatusColor(dateString) === 'var(--input-bg)' ? 'var(--text-main)' : 'white',
-                                    cursor: 'pointer'
+                                    color: statusColor === 'var(--input-bg)' ? 'var(--text-main)' : 'white',
+                                    cursor: 'pointer',
+                                    border: isSelected ? '2px solid var(--primary)' : '1px solid transparent',
+                                    transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                                    transition: 'transform 0.15s ease'
                                 }}
-                                title={dateString}
+                                title={`Select ${dateString}`}
                             >
                                 {day}
                             </div>

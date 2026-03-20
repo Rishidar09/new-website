@@ -58,6 +58,30 @@ const getContents = async (req, res) => {
     }
 };
 
+// ─── Get storage usage (real data) ─────────────────────────────
+const getStorageUsage = async (req, res) => {
+    try {
+        const myId = await getEmpId(req.user.email);
+        if (!myId) return res.status(404).json({ error: 'Profile not found' });
+
+        const result = await pool.query(
+            `SELECT COALESCE(SUM(size), 0)::bigint AS used_bytes
+             FROM files
+             WHERE owner_id = $1`,
+            [myId]
+        );
+
+        const usedBytes = Number(result.rows[0]?.used_bytes || 0);
+        // Quota can be configured later per role/user; default is 10 GB for now.
+        const quotaBytes = 10 * 1024 * 1024 * 1024;
+
+        res.json({ used_bytes: usedBytes, quota_bytes: quotaBytes });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 // ─── Upload file ─────────────────────────────────────────────────
 const uploadFile = async (req, res) => {
     try {
@@ -129,4 +153,4 @@ const downloadFile = async (req, res) => {
     }
 };
 
-module.exports = { getContents, uploadFile, createFolder, deleteFile, downloadFile };
+module.exports = { getContents, getStorageUsage, uploadFile, createFolder, deleteFile, downloadFile };

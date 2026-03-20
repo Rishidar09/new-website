@@ -34,9 +34,12 @@ const EmployeePayslipsPage = () => {
                 const allowances = Number(ps.allowances) || 0;
                 return {
                     ...ps,
-                    conveyance: allowances > 0 ? Math.floor(allowances * 0.285) : 0,
-                    specialAllowance: allowances > 0 ? Math.ceil(allowances * 0.715) : 0,
-                    ptax: 200
+                    conveyance: Number(ps.conveyance) || (allowances > 0 ? Math.floor(allowances * 0.285) : 0),
+                    specialAllowance: Number(ps.special_allowance) || (allowances > 0 ? Math.ceil(allowances * 0.715) : 0),
+                    pf_employee: Number(ps.pf_employee ?? ps.pf) || 0,
+                    esi_employee: Number(ps.esi_employee) || 0,
+                    ptax: Number(ps.ptax) || 200,
+                    otherDeduction: 0
                 };
             });
 

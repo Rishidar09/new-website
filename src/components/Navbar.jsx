@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, User, Settings, LogOut, ChevronDown, CheckCircle2, AlertCircle, MessageSquare, Video, Menu, MoreHorizontal } from 'lucide-react';
+import { Bell, User, Settings, LogOut, ChevronDown, CheckCircle2, AlertCircle, MessageSquare, Video, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { api } from '../lib/api';
 
 const Navbar = ({ onMenuClick, isMobile }) => {
     const { profile, signOut } = useAuth();
@@ -12,15 +14,171 @@ const Navbar = ({ onMenuClick, isMobile }) => {
 
     const notificationRef = useRef(null);
     const profileRef = useRef(null);
+    const socketRef = useRef(null);
 
-    // Mock notifications for demonstration
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+
+    const getNotificationIcon = (type) => {
+        const normalized = (type || '').toLowerCase();
+        if (normalized.includes('leave') || normalized.includes('approved')) {
+            return <CheckCircle2 size={16} color="#10B981" />;
+        }
+        if (normalized.includes('chat') || normalized.includes('message') || normalized.includes('comment')) {
+            return <MessageSquare size={16} color="var(--primary)" />;
+        }
+        if (normalized.includes('meeting') || normalized.includes('video') || normalized.includes('call')) {
+            return <Video size={16} color="#6366F1" />;
+        }
+        return <AlertCircle size={16} color="#F59E0B" />;
+    };
+
+    const formatNotificationTime = (value) => {
+        if (!value) return 'Just now';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Just now';
+
+        const diffMs = Date.now() - date.getTime();
+        const minutes = Math.floor(diffMs / 60000);
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return `${minutes}m ago`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+
+        return date.toLocaleDateString();
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const data = await api.get('/notifications');
+            setNotifications(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch notifications:', err.message);
+            setNotifications([]);
+        }
+    };
+
+    const markAllNotificationsAsRead = async () => {
+        if (!notifications.some(n => !n.is_read)) return;
+
+        setNotifications((prev) => prev.map(n => ({ ...n, is_read: true })));
+        try {
+            await api.patch('/notifications/read', {});
+        } catch (err) {
+            console.error('Failed to mark all notifications as read:', err.message);
+            fetchNotifications();
+        }
+    };
+
+    const markOneNotificationAsRead = async (id) => {
+        setNotifications((prev) => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
+        try {
+            await api.patch(`/notifications/${id}/read`, {});
+        } catch (err) {
+            console.error('Failed to mark notification as read:', err.message);
+            fetchNotifications();
+        }
+    };
+
     useEffect(() => {
-        setNotifications([
-            { id: 1, type: 'leave', text: 'Your leave request was approved', time: '2h ago', icon: <CheckCircle2 size={16} color="#10B981" /> },
-            { id: 2, type: 'message', text: 'New message from Rahul Sharma', time: '1h ago', icon: <MessageSquare size={16} color="var(--primary)" /> },
-            { id: 3, type: 'meeting', text: 'Upcoming: Quarterly Review in 30m', time: '30m ago', icon: <Video size={16} color="#6366F1" /> }
-        ]);
-    }, []);
+        if (!profile?.id) return;
+        fetchNotifications();
+    }, [profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+
+        socketRef.current = io({
+            path: '/socket.io',
+            transports: ['polling', 'websocket'],
+        });
+
+        socketRef.current.on('connect', () => {
+            socketRef.current.emit('identify', profile.id);
+            if (profile?.role === 'hr') {
+                socketRef.current.emit('join_room', {
+                    roomId: 'hr_helpdesk',
+                    userId: profile.employee_uuid,
+                    name: profile.full_name || profile.email,
+                });
+            }
+            if (profile?.employee_uuid) {
+                socketRef.current.emit('join_room', {
+                    roomId: `employee_${profile.employee_uuid}`,
+                    userId: profile.employee_uuid,
+                    name: profile.full_name || profile.email,
+                });
+            }
+        });
+
+        const pushRealtimeNotification = (payload, fallbackType = 'info') => {
+            if (payload?.targetUserId && payload.targetUserId !== profile.employee_uuid) return;
+
+            const item = {
+                id: payload?.id || `rt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                title: payload?.title || 'New update',
+                message: payload?.message || payload?.subject || 'You have a new notification',
+                type: payload?.type || fallbackType,
+                is_read: false,
+                created_at: payload?.created_at || payload?.timestamp || new Date().toISOString(),
+            };
+
+            setNotifications((prev) => {
+                if (payload?.id && prev.some(n => n.id === payload.id)) return prev;
+                return [item, ...prev].slice(0, 50);
+            });
+        };
+
+        socketRef.current.on('notification_created', (payload) => {
+            pushRealtimeNotification(payload, payload?.type || 'info');
+        });
+
+        socketRef.current.on('ticket_created', (payload) => {
+            pushRealtimeNotification({
+                message: payload?.subject || 'A new helpdesk ticket was created.',
+                type: 'helpdesk',
+                timestamp: payload?.timestamp,
+            }, 'helpdesk');
+        });
+
+        socketRef.current.on('comment_added', (payload) => {
+            pushRealtimeNotification({
+                targetUserId: payload?.targetUserId,
+                message: 'New comment added on your helpdesk ticket.',
+                type: 'helpdesk',
+                timestamp: payload?.timestamp,
+            }, 'helpdesk');
+        });
+
+        socketRef.current.on('status_changed', (payload) => {
+            pushRealtimeNotification({
+                targetUserId: payload?.targetUserId,
+                message: `Ticket status updated to ${payload?.status || 'updated'}.`,
+                type: 'helpdesk',
+                timestamp: payload?.timestamp,
+            }, 'helpdesk');
+        });
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.off('notification_created');
+                socketRef.current.off('ticket_created');
+                socketRef.current.off('comment_added');
+                socketRef.current.off('status_changed');
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+        };
+    }, [profile?.id, profile?.role, profile?.employee_uuid, profile?.full_name, profile?.email]);
+
+    useEffect(() => {
+        if (showNotifications) {
+            markAllNotificationsAsRead();
+        }
+    }, [showNotifications]);
 
     // Close dropdowns on click outside
     useEffect(() => {
@@ -82,17 +240,24 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                         style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', position: 'relative' }}
                     >
                         <Bell size={22} />
-                        {notifications.length > 0 && (
+                        {unreadCount > 0 && (
                             <span style={{
                                 position: 'absolute',
-                                top: '-2px',
-                                right: '-2px',
-                                width: '10px',
-                                height: '10px',
+                                top: '-6px',
+                                right: '-8px',
+                                minWidth: '16px',
+                                height: '16px',
                                 background: '#EF4444',
-                                borderRadius: '50%',
-                                border: '2px solid var(--navbar-bg)'
-                            }}></span>
+                                borderRadius: '999px',
+                                border: '2px solid var(--navbar-bg)',
+                                color: '#FFFFFF',
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0 4px'
+                            }}>{unreadCount > 99 ? '99+' : unreadCount}</span>
                         )}
                     </button>
 
@@ -111,18 +276,56 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                 <h4 style={{ fontSize: 'var(--font-lg)', fontWeight: '700', color: 'var(--text-main)' }}>Notifications</h4>
-                                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer' }}>Mark all as read</span>
+                                <span
+                                    style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer' }}
+                                    onClick={markAllNotificationsAsRead}
+                                >
+                                    Mark all as read
+                                </span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {notifications.map(n => (
-                                    <div key={n.id} style={{ display: 'flex', gap: '12px', padding: '8px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }} className="hover-bg">
-                                        <div style={{ marginTop: '2px' }}>{n.icon}</div>
-                                        <div>
-                                            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-main)', lineHeight: '1.4' }}>{n.text}</p>
-                                            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{n.time}</span>
+                                {notifications.length === 0 ? (
+                                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>No notifications yet</p>
+                                ) : (
+                                    notifications.map(n => (
+                                        <div
+                                            key={n.id}
+                                            style={{
+                                                display: 'flex',
+                                                gap: '12px',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                opacity: n.is_read ? 0.75 : 1
+                                            }}
+                                            className="hover-bg"
+                                            onClick={() => {
+                                                if (!n.is_read && typeof n.id === 'string' && !n.id.startsWith('rt_')) {
+                                                    markOneNotificationAsRead(n.id);
+                                                } else if (!n.is_read && typeof n.id !== 'string') {
+                                                    markOneNotificationAsRead(n.id);
+                                                }
+                                            }}
+                                        >
+                                            <div style={{ marginTop: '2px' }}>{getNotificationIcon(n.type)}</div>
+                                            <div>
+                                                <p style={{
+                                                    fontSize: 'var(--font-sm)',
+                                                    color: 'var(--text-main)',
+                                                    lineHeight: '1.4',
+                                                    fontWeight: n.is_read ? '500' : '700',
+                                                    margin: 0
+                                                }}>
+                                                    {n.message || n.title}
+                                                </p>
+                                                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
+                                                    {formatNotificationTime(n.created_at)}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}

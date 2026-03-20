@@ -7,6 +7,7 @@ const path = require('path');
 
 const app = express();
 const server = require('http').createServer(app);
+const { scheduleCelebrationJob, processCelebrations } = require('./services/celebrationService');
 const io = require('socket.io')(server, {
     cors: {
         origin: "*",
@@ -54,6 +55,19 @@ app.use('/api/chat', require('./routes/chat'));
 app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/drive', require('./routes/drive'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/performance', require('./routes/performance'));
+app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/departments', require('./routes/departments'));
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/shifts', require('./routes/shifts'));
+app.use('/api/leave-encashment', require('./routes/leaveEncashment'));
+app.use('/api/offboarding', require('./routes/offboarding'));
+app.use('/api/helpdesk', require('./routes/helpdesk'));
+app.use('/api/assets', require('./routes/assets'));
+app.use('/api/income-tax', require('./routes/incomeTax'));
+app.use('/api/salary-revisions', require('./routes/salaryRevisions'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/surveys', require('./routes/surveys'));
 
 // Socket.io Logic
 const onlineUsers = new Map(); // userId -> socketId
@@ -61,9 +75,26 @@ const onlineUsers = new Map(); // userId -> socketId
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('join_room', (roomId) => {
+    socket.on('join_room', (data) => {
+        // data can be a string (legacy) or an object { roomId, userId, name }
+        const roomId = typeof data === 'string' ? data : data.roomId;
+        const userId = typeof data === 'string' ? socket.userId : data.userId;
+        const name = typeof data === 'object' ? data.name : null;
+
         socket.join(roomId);
-        console.log(`User ${socket.id} joined room: ${roomId}`);
+        if (userId) socket.userId = userId;
+        if (name) socket.userName = name;
+
+        console.log(`User ${name || userId || socket.id} joined room: ${roomId}`);
+
+        // Notify others in the room that a new user has joined
+        if (roomId.startsWith('meeting_')) {
+            socket.to(roomId).emit('user_joined', {
+                userId: userId,
+                socketId: socket.id,
+                name: name || socket.userName
+            });
+        }
     });
 
     // Join personal signaling room
@@ -84,6 +115,17 @@ io.on('connection', (socket) => {
 
     socket.on('send_meeting_chat', (data) => {
         socket.to(data.roomId).emit('receive_meeting_chat', data);
+    });
+
+    socket.on('leave_room', (data) => {
+        const roomId = typeof data === 'string' ? data : data?.roomId;
+        const userId = typeof data === 'object' ? data?.userId : socket.userId;
+        if (!roomId) return;
+
+        socket.leave(roomId);
+        if (roomId.startsWith('meeting_') && userId) {
+            socket.to(roomId).emit('user_left', userId);
+        }
     });
 
     // --- Signaling for Voice/Video Calls ---
@@ -122,6 +164,17 @@ io.on('connection', (socket) => {
         io.to(data.to).emit('call_ended');
     });
 
+    socket.on('disconnecting', () => {
+        if (!socket.userId) return;
+
+        // Notify meeting rooms before socket fully leaves them.
+        for (const roomId of socket.rooms) {
+            if (roomId.startsWith('meeting_')) {
+                socket.to(roomId).emit('user_left', socket.userId);
+            }
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         if (socket.userId) {
@@ -133,6 +186,18 @@ io.on('connection', (socket) => {
 
 // Attach onlineUsers to io so it can be checked in controllers
 io.onlineUsers = onlineUsers;
+
+scheduleCelebrationJob(io);
+
+if (process.env.CELEBRATIONS_RUN_ON_STARTUP === 'true') {
+    processCelebrations(io)
+        .then((result) => {
+            console.log(`[Celebrations] Startup run completed. created=${result.created}, skipped=${result.skipped}`);
+        })
+        .catch((err) => {
+            console.error('[Celebrations] Startup run failed:', err.message);
+        });
+}
 
 // Test Route
 app.get('/api/health', (req, res) => {

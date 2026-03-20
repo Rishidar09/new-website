@@ -1,16 +1,218 @@
-# React + Vite
+# IndusInnovate HR Suite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack HR and collaboration platform with role-based dashboards, employee lifecycle management, payroll, attendance, project tracking, chat, group calls, meetings, complaints, audit logs, and document/drive management.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Frontend: React 19, Vite, React Router, Socket.IO Client, Recharts, Lucide Icons
+- Backend: Node.js, Express 5, Socket.IO, PostgreSQL (pg)
+- Auth/Security: JWT, token blacklist, role-based authorization
+- Storage: Local uploads directory served by backend
+- PDF/Export: @react-pdf/renderer, html-to-image
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend app: [src](src)
+- Backend app: [server](server)
+- Database schema: [server/db/init.sql](server/db/init.sql)
+- Dev orchestration script: [scripts/dev-all.js](scripts/dev-all.js)
+- Local setup guide: [SETUP.md](SETUP.md)
 
-## Expanding the ESLint configuration
+## Core Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### HR Features
+
+- Employee management (create, update, delete, profile)
+- Attendance overview and metrics
+- Leave review and approval workflow
+- Payroll generation and payslip sending
+- Project and task tracking
+- Offer letter generation and status tracking
+- Complaint handling dashboard
+- Audit logs and analytics
+
+### Employee Features
+
+- Personal dashboard
+- Attendance check-in/check-out views
+- Apply leave
+- Project participation and reports
+- Payslip viewing
+- ID card access/export
+- Profile and settings
+
+### Collaboration Features
+
+- Personal chat and group chat
+- Group member management (add members, leave group)
+- File/image chat uploads
+- Voice/video calls and meeting room support
+- Meeting scheduling and joining
+- Shared drive browsing/upload/download
+
+## Routes Overview (Frontend)
+
+- Public: /login, /forgot-password, /reset-password
+- HR area: /hr/*
+- Employee area: /employee/*
+- Shared protected pages:
+  - /chat
+  - /meetings
+  - /meetings/:id
+  - /drive
+  - /profile
+
+Main route configuration: [src/App.jsx](src/App.jsx)
+
+## API Modules (Backend)
+
+Mounted in [server/index.js](server/index.js):
+
+- /api/auth
+- /api/employees
+- /api/leaves
+- /api/holidays
+- /api/analytics
+- /api/announcements
+- /api/payroll
+- /api/documents
+- /api/attendance
+- /api/projects
+- /api/offer-letters
+- /api/complaints
+- /api/audit
+- /api/chat
+- /api/meetings
+- /api/drive
+- /api/user
+
+## Realtime Architecture
+
+- Socket.IO server handles:
+  - Presence (user_online, user_offline)
+  - Chat message broadcasting
+  - Meeting chat broadcasting
+  - WebRTC signaling (offer/answer/ICE)
+  - Meeting join/leave notifications
+
+Socket server entry: [server/index.js](server/index.js)
+
+## Database Overview
+
+Key domain tables include:
+
+- profiles, employees
+- attendance, leaves, leave_balances
+- payroll
+- projects, project_members, tasks, daily_reports
+- documents
+- chat_groups, chat_group_members, messages
+- meetings, meeting_participants
+- folders, files, file_shares
+- announcements, complaints, audit_logs
+- notifications, token_blacklist, password_reset_tokens
+
+Full schema: [server/db/init.sql](server/db/init.sql)
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL running locally
+
+### Quick Start (Recommended)
+
+From project root:
+
+```bash
+npm run dev:all
+```
+
+This will:
+
+- install frontend dependencies
+- install backend dependencies
+- run DB migration/setup
+- free backend/frontend ports if occupied
+- start backend and frontend together
+
+### Manual Start
+
+1. Backend
+
+```bash
+cd server
+npm install
+npm run db:setup
+npm start
+```
+
+2. Frontend
+
+```bash
+cd ..
+npm install
+npm run dev
+```
+
+## Environment Variables
+
+Create [server/.env](server/.env) with values similar to:
+
+```env
+DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/website
+PORT=5001
+JWT_SECRET=your_jwt_secret
+```
+
+## Default Seed Accounts
+
+- Seed accounts are optional and environment-driven.
+- Set `SEED_DEFAULT_USERS=true` and provide `SEED_HR_*` / `SEED_EMPLOYEE_*` variables in [server/.env](server/.env).
+- If `SEED_DEFAULT_USERS` is not set to true, no default users are created.
+- Seeding logic is in [server/db/setup.js](server/db/setup.js).
+
+## Available Scripts
+
+Frontend scripts in [package.json](package.json):
+
+- npm run dev
+- npm run dev:all
+- npm run build
+- npm run lint
+- npm run preview
+
+Backend scripts in [server/package.json](server/package.json):
+
+- npm start
+- npm run db:setup
+
+## Deployment Notes
+
+- Vite dev proxy is configured in [vite.config.js](vite.config.js)
+- Vercel rewrite file exists at [vercel.json](vercel.json)
+- /uploads is served from backend static path
+
+## Known Limitations
+
+- Group video currently uses mesh WebRTC. This works for small groups but is not ideal for very large rooms (for example 10+ participants).
+- For large-scale meetings, SFU-based architecture is recommended.
+
+## Troubleshooting
+
+1. Port already in use
+	- Use npm run dev:all; it auto-frees ports 5001 and 5173.
+
+2. Login fails with token/session errors
+	- Clear localStorage token and log in again.
+
+3. DB migration issues
+	- Confirm DATABASE_URL is correct and PostgreSQL is running.
+
+4. Chat/call disconnect during code edits
+	- Expected in dev when backend restarts.
+
+## License
+
+Private internal project.

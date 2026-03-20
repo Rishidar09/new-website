@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -14,50 +15,81 @@ async function setupDatabase() {
         await pool.query(sql);
         console.log('✅ Schema applied successfully.');
 
-        // ─── Default HR Admin ─────────────────────────────────
-        const checkHR = await pool.query("SELECT * FROM profiles WHERE email = 'hr@indusinnovate.com'");
-        if (checkHR.rows.length === 0) {
-            const salt = await bcrypt.genSalt(10);
-            const hash = await bcrypt.hash('Admin@1234', salt);
-
-            await pool.query(
-                `INSERT INTO profiles (email, role, password_hash, employee_id, status, is_first_login)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                ['hr@indusinnovate.com', 'hr', hash, 'IIT-HR-001', 'active', true]
-            );
-            console.log('✅ Default HR admin created:');
-            console.log('   Email:    hr@indusinnovate.com');
-            console.log('   Password: Admin@1234');
-            console.log('   Role:     hr');
-            console.log('   ID:       IIT-HR-001');
-        } else {
-            console.log('ℹ️  HR admin already exists — skipping seed.');
+        const shouldSeed = String(process.env.SEED_DEFAULT_USERS || 'false').toLowerCase() === 'true';
+        if (!shouldSeed) {
+            console.log('ℹ️  SEED_DEFAULT_USERS is false. Skipping default user seeding.');
+            console.log('   Set SEED_DEFAULT_USERS=true and provide explicit SEED_* env vars if you need seed accounts.');
+            console.log('━━━ Migration Complete ━━━');
+            process.exit(0);
         }
 
-        // ─── Default Employee for testing ────────────────────────
-        const checkEmp = await pool.query("SELECT * FROM profiles WHERE email = 'employee@indusinnovate.com'");
-        if (checkEmp.rows.length === 0) {
+        const seedUsers = [
+            {
+                key: 'HR',
+                role: 'hr',
+                email: process.env.SEED_HR_EMAIL,
+                employeeId: process.env.SEED_HR_EMPLOYEE_ID,
+                password: process.env.SEED_HR_PASSWORD || crypto.randomBytes(12).toString('base64url'),
+                employeeProfile: null,
+            },
+            {
+                key: 'EMPLOYEE',
+                role: 'employee',
+                email: process.env.SEED_EMPLOYEE_EMAIL,
+                employeeId: process.env.SEED_EMPLOYEE_ID,
+                password: process.env.SEED_EMPLOYEE_PASSWORD || crypto.randomBytes(12).toString('base64url'),
+                employeeProfile: {
+                    full_name: process.env.SEED_EMPLOYEE_NAME || 'Seed Employee',
+                    role: process.env.SEED_EMPLOYEE_ROLE || 'Software Engineer',
+                    department: process.env.SEED_EMPLOYEE_DEPARTMENT || null,
+                    status: process.env.SEED_EMPLOYEE_STATUS || 'Active',
+                },
+            },
+        ];
+
+        for (const user of seedUsers) {
+            if (!user.email || !user.employeeId) {
+                console.log(`ℹ️  Skipping ${user.key} seed. Missing ${user.key === 'HR' ? 'SEED_HR_EMAIL/SEED_HR_EMPLOYEE_ID' : 'SEED_EMPLOYEE_EMAIL/SEED_EMPLOYEE_ID'}.`);
+                continue;
+            }
+
+            const existingProfile = await pool.query('SELECT id FROM profiles WHERE email = $1', [user.email]);
+            if (existingProfile.rows.length > 0) {
+                console.log(`ℹ️  ${user.key} profile already exists for ${user.email} — skipping.`);
+                continue;
+            }
+
             const salt = await bcrypt.genSalt(10);
-            const hash = await bcrypt.hash('Employee@1234', salt);
+            const hash = await bcrypt.hash(user.password, salt);
 
             await pool.query(
                 `INSERT INTO profiles (email, role, password_hash, employee_id, status, is_first_login)
                  VALUES ($1, $2, $3, $4, $5, $6)`,
-                ['employee@indusinnovate.com', 'employee', hash, 'IIT-EMP-001', 'active', true]
+                [user.email, user.role, hash, user.employeeId, 'active', true]
             );
 
-            // Create employee record
-            await pool.query(
-                `INSERT INTO employees (full_name, email, role, department, employee_id, status)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                ['Demo Employee', 'employee@indusinnovate.com', 'Software Engineer', 'Engineering', 'IIT-EMP-001', 'Active']
-            );
+            if (user.employeeProfile) {
+                const existingEmployee = await pool.query('SELECT id FROM employees WHERE email = $1', [user.email]);
+                if (existingEmployee.rows.length === 0) {
+                    await pool.query(
+                        `INSERT INTO employees (full_name, email, role, department, employee_id, status)
+                         VALUES ($1, $2, $3, $4, $5, $6)`,
+                        [
+                            user.employeeProfile.full_name,
+                            user.email,
+                            user.employeeProfile.role,
+                            user.employeeProfile.department,
+                            user.employeeId,
+                            user.employeeProfile.status,
+                        ]
+                    );
+                }
+            }
 
-            console.log('✅ Default employee created:');
-            console.log('   Email:    employee@indusinnovate.com');
-            console.log('   Password: Employee@1234');
-        } else {
-            console.log('ℹ️  Demo employee already exists — skipping seed.');
+            console.log(`✅ Seeded ${user.key} account: ${user.email}`);
+            if (!process.env[`${user.key === 'HR' ? 'SEED_HR_PASSWORD' : 'SEED_EMPLOYEE_PASSWORD'}`]) {
+                console.log(`   Generated temporary password: ${user.password}`);
+            }
         }
 
         console.log('━━━ Migration Complete ━━━');

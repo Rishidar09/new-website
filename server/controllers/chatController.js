@@ -254,11 +254,75 @@ const clearHistory = async (req, res) => {
     }
 };
 
+// ─── Leave group ──────────────────────────────────────────────────
+const leaveGroup = async (req, res) => {
+    try {
+        const { groupId } = req.body;
+        
+        if (!groupId) {
+            return res.status(400).json({ error: 'groupId is required' });
+        }
+
+        // Get employee ID from profile
+        const emp = await pool.query(`
+            SELECT e.id FROM employees e 
+            JOIN profiles p ON e.email = p.email OR e.employee_id = p.employee_id 
+            WHERE p.id = $1
+        `, [req.user.id]);
+        const employeeId = emp.rows[0]?.id;
+
+        if (!employeeId) {
+            return res.status(404).json({ error: 'Employee profile not found' });
+        }
+
+        // Remove employee from group
+        const result = await pool.query(
+            'DELETE FROM chat_group_members WHERE group_id = $1 AND employee_id = $2 RETURNING *',
+            [groupId, employeeId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Not a member of this group' });
+        }
+
+        res.json({ message: 'Successfully left the group' });
+    } catch (err) {
+        console.error('Failed to leave group:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Get group members ─────────────────────────────────────────────
+const getGroupMembers = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        
+        if (!groupId) {
+            return res.status(400).json({ error: 'groupId is required' });
+        }
+
+        const result = await pool.query(`
+            SELECT e.id, e.full_name, e.email, e.role, e.department
+            FROM employees e
+            JOIN chat_group_members cgm ON e.id = cgm.employee_id
+            WHERE cgm.group_id = $1
+            ORDER BY e.full_name
+        `, [groupId]);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Failed to get group members:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 module.exports = {
     getContacts,
     getGroups,
     createGroup,
     addMembers,
+    leaveGroup,
+    getGroupMembers,
     getHistory,
     clearHistory,
     sendMessage

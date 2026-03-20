@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
     const [role, setRole] = useState('hr'); // 'hr' or 'employee'
@@ -68,24 +68,14 @@ const LoginPage = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '12px',
+                    gap: '10px',
                     marginBottom: '32px'
                 }}>
-                    <div style={{
-                        width: '40px',
-                        height: '40px',
-                        background: 'var(--primary)',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white'
-                    }}>
-                        <LayoutDashboard size={24} />
+                    <img src="/logo.png" alt="Company Logo" style={{ height: '56px', width: 'auto', objectFit: 'contain' }} />
+                    <div className="brand-lockup" style={{ textAlign: 'left' }}>
+                        <span className="brand-name-animated" style={{ fontSize: '26px', fontWeight: '800' }}>IndusInnovate</span>
+                        <span className="brand-name-animated-subline" style={{ fontSize: '13px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
                     </div>
-                    <span style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)' }}>
-                        Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
-                    </span>
                 </div>
 
                 <h2 style={{

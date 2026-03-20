@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import EmployeeTable from '../components/Employees/EmployeeTable';
 import AddEmployeeModal from '../components/Employees/AddEmployeeModal';
-import { CreditCard, Users, Printer } from 'lucide-react';
+import { CreditCard, Users, Printer, UserMinus } from 'lucide-react';
 import IDCard from '../components/IDCard';
-import { api } from '../lib/api';
+import HROffboardingPage from './HROffboardingPage';
+import HRSalaryRevisionsPage from './HRSalaryRevisionsPage';
 
 const EmployeesPage = () => {
-    const [activeTab, setActiveTab] = useState('list'); // 'list' or 'id-cards'
+    const [activeTab, setActiveTab] = useState('list'); // 'list' | 'id-cards' | 'offboarding' | 'salary-revisions'
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [employeeToEdit, setEmployeeToEdit] = useState(null);
     const [employees, setEmployees] = useState([]);
@@ -90,6 +91,44 @@ const EmployeesPage = () => {
                     <CreditCard size={18} />
                     Digital ID Cards
                 </button>
+                <button
+                    onClick={() => setActiveTab('offboarding')}
+                    style={{
+                        padding: '12px 4px',
+                        fontSize: 'var(--font-md)',
+                        fontWeight: '600',
+                        color: activeTab === 'offboarding' ? 'var(--primary)' : 'var(--text-muted)',
+                        border: 'none',
+                        background: 'none',
+                        borderBottom: activeTab === 'offboarding' ? '2px solid var(--primary)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                >
+                    <UserMinus size={18} />
+                    Offboarding
+                </button>
+                <button
+                    onClick={() => setActiveTab('salary-revisions')}
+                    style={{
+                        padding: '12px 4px',
+                        fontSize: 'var(--font-md)',
+                        fontWeight: '600',
+                        color: activeTab === 'salary-revisions' ? 'var(--primary)' : 'var(--text-muted)',
+                        border: 'none',
+                        background: 'none',
+                        borderBottom: activeTab === 'salary-revisions' ? '2px solid var(--primary)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                >
+                    <CreditCard size={18} />
+                    Salary Revisions
+                </button>
             </div>
 
             {activeTab === 'list' ? (
@@ -98,7 +137,7 @@ const EmployeesPage = () => {
                     onEditClick={handleEdit}
                     onDataLoaded={handleDataLoaded}
                 />
-            ) : (
+            ) : activeTab === 'id-cards' ? (
                 <div className="id-cards-print-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px', padding: '16px 0' }}>
                     {employees.map(emp => (
                         <div key={emp.id} className="id-card-print-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -127,6 +166,10 @@ const EmployeesPage = () => {
                         </div>
                     )}
                 </div>
+            ) : activeTab === 'offboarding' ? (
+                <HROffboardingPage />
+            ) : (
+                <HRSalaryRevisionsPage />
             )}
 
             <AddEmployeeModal

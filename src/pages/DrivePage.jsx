@@ -24,6 +24,7 @@ import {
 
 const DrivePage = () => {
     const [contents, setContents] = useState({ folders: [], files: [] });
+    const [storageUsage, setStorageUsage] = useState({ used_bytes: 0, quota_bytes: 10 * 1024 * 1024 * 1024 });
     const [loading, setLoading] = useState(true);
     const [currentPath, setCurrentPath] = useState([]); // Array of { id, name }
     const [viewType, setViewType] = useState('my'); // 'my', 'shared', 'company', 'hr'
@@ -36,6 +37,7 @@ const DrivePage = () => {
         const user = JSON.parse(localStorage.getItem('user'));
         setUserRole(user?.role || '');
         fetchContents();
+        fetchStorageUsage();
     }, [viewType, currentPath.length]);
 
     const fetchContents = async () => {
@@ -48,6 +50,18 @@ const DrivePage = () => {
             console.error('Error fetching drive:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchStorageUsage = async () => {
+        try {
+            const usage = await api.get('/drive/storage-usage');
+            setStorageUsage({
+                used_bytes: Number(usage?.used_bytes || 0),
+                quota_bytes: Number(usage?.quota_bytes || 10 * 1024 * 1024 * 1024),
+            });
+        } catch (error) {
+            console.error('Error fetching storage usage:', error);
         }
     };
 
@@ -69,6 +83,7 @@ const DrivePage = () => {
                 body: formData
             });
             if (res.ok) fetchContents();
+            if (res.ok) fetchStorageUsage();
         } catch (error) {
             console.error('Upload failed:', error);
         }
@@ -101,11 +116,16 @@ const DrivePage = () => {
             } else {
                 await api.delete(`/drive/files/${id}`);
                 fetchContents();
+                fetchStorageUsage();
             }
         } catch (error) {
             console.error('Delete failed:', error);
         }
     };
+
+    const usagePercent = storageUsage.quota_bytes > 0
+        ? Math.min(100, (storageUsage.used_bytes / storageUsage.quota_bytes) * 100)
+        : 0;
 
     const formatSize = (bytes) => {
         if (!bytes) return '0 B';
@@ -137,9 +157,11 @@ const DrivePage = () => {
                     <div className="card" style={{ padding: '20px', marginTop: 'auto' }}>
                         <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase' }}>Storage Usage</p>
                         <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
-                            <div style={{ width: '45%', height: '100%', background: 'var(--primary)' }}></div>
+                            <div style={{ width: `${usagePercent}%`, height: '100%', background: 'var(--primary)' }}></div>
                         </div>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>4.5 GB of 10 GB used</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {`${formatSize(storageUsage.used_bytes)} of ${formatSize(storageUsage.quota_bytes)} used`}
+                        </p>
                     </div>
                 </div>
 

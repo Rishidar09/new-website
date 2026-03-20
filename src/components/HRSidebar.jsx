@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -7,11 +7,21 @@ import {
     Briefcase,
     ClipboardList,
     CreditCard,
-    Files,
+    Building2,
+    Network,
     BarChart3,
     Mail,
     History,
+    Settings,
+    FileCheck,
     MessageSquare,
+    Wallet,
+    Receipt,
+    Laptop,
+    Clock3,
+    HandCoins,
+    UserMinus,
+    LifeBuoy,
     LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +29,29 @@ import { useAuth } from '../context/AuthContext';
 const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
     const { signOut } = useAuth();
     const location = useLocation();
+    const navRef = useRef(null);
+
+    useEffect(() => {
+        const savedTop = window.sessionStorage.getItem('hr_sidebar_scroll_top');
+        if (navRef.current && savedTop != null) {
+            navRef.current.scrollTop = Number(savedTop) || 0;
+        }
+    }, []);
+
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return undefined;
+
+        const handleScroll = () => {
+            window.sessionStorage.setItem('hr_sidebar_scroll_top', String(nav.scrollTop));
+        };
+
+        nav.addEventListener('scroll', handleScroll);
+        return () => {
+            handleScroll();
+            nav.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
 
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/hr/dashboard' },
@@ -26,12 +59,28 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/hr/attendance' },
         { icon: <ClipboardList size={20} />, label: 'Leave Requests', path: '/hr/leaves' },
         { icon: <CreditCard size={20} />, label: 'Payroll', path: '/hr/payroll' },
+        { icon: <Settings size={20} />, label: 'Statutory Settings', path: '/hr/payroll/statutory-settings' },
+        { icon: <FileCheck size={20} />, label: 'Statutory Report', path: '/hr/payroll/statutory-compliance' },
+        { icon: <FileCheck size={20} />, label: 'IT Declarations', path: '/hr/tax-declarations' },
+        { icon: <FileCheck size={20} />, label: 'Form 16', path: '/hr/form16' },
+        { icon: <Wallet size={20} />, label: 'Expense Approvals', path: '/hr/expense-approvals' },
+        { icon: <Laptop size={20} />, label: 'Assets', path: '/hr/assets' },
+        { icon: <Receipt size={20} />, label: 'Reimbursement Summary', path: '/hr/reimbursement-summary' },
+        { icon: <Clock3 size={20} />, label: 'Shift Management', path: '/hr/shifts' },
+        { icon: <HandCoins size={20} />, label: 'Leave Encashment', path: '/hr/leave-encashment' },
+        { icon: <UserMinus size={20} />, label: 'Offboarding', path: '/hr/employees/offboarding' },
+        { icon: <LifeBuoy size={20} />, label: 'Helpdesk', path: '/hr/helpdesk' },
+        { icon: <ClipboardList size={20} />, label: 'Surveys', path: '/hr/surveys' },
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/hr/calendar' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
         { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
         { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
+        { icon: <BarChart3 size={20} />, label: 'Performance', path: '/hr/performance' },
+        { icon: <ClipboardList size={20} />, label: 'Onboarding', path: '/hr/onboarding' },
+        { icon: <Building2 size={20} />, label: 'Departments', path: '/hr/departments' },
+        { icon: <Network size={20} />, label: 'Org Chart', path: '/hr/org-chart' },
     ];
 
     return (
@@ -50,26 +99,16 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
             transition: 'transform 0.3s ease-in-out'
         }}>
             {/* Logo */}
-            <Link to="/hr/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', padding: '0 24px' }}>
-                <div style={{
-                    width: '36px',
-                    height: '36px',
-                    background: 'var(--primary)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                }}>
-                    <LayoutDashboard size={24} />
+            <Link to="/hr/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px', padding: '0 24px' }}>
+                <img src="/logo.png" alt="Company Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain' }} />
+                <div className="brand-lockup">
+                    <span className="brand-name-animated" style={{ fontSize: '17px', fontWeight: '800' }}>IndusInnovate</span>
+                    <span className="brand-name-animated-subline" style={{ fontSize: '11px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
                 </div>
-                <span style={{ fontSize: 'var(--font-3xl)', fontWeight: '800', color: 'var(--text-main)' }}>
-                    Indus<span style={{ color: 'var(--primary)' }}>Innovate</span>
-                </span>
             </Link>
 
             {/* Navigation */}
-            <nav style={{
+            <nav ref={navRef} style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',

@@ -1,18 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Eye, Edit2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Eye, Edit2, Trash2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
+import toast from 'react-hot-toast';
 
 const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
     const navigate = useNavigate();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [departmentFilter, setDepartmentFilter] = useState('All');
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
+    const [departmentFilter, setDepartmentFilter] = useState(() => searchParams.get('department') || 'All');
+    const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'All');
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchEmployees();
     }, []);
+
+    // Keep local state in sync if URL changes via browser navigation.
+    useEffect(() => {
+        setSearchTerm(searchParams.get('q') || '');
+        setDepartmentFilter(searchParams.get('department') || 'All');
+        setStatusFilter(searchParams.get('status') || 'All');
+    }, [searchParams]);
+
+    // Persist filters in URL for refresh/share/back-forward support.
+    useEffect(() => {
+        const next = new URLSearchParams();
+        if (searchTerm.trim()) next.set('q', searchTerm.trim());
+        if (departmentFilter !== 'All') next.set('department', departmentFilter);
+        if (statusFilter !== 'All') next.set('status', statusFilter);
+
+        const nextString = next.toString();
+        const currentString = searchParams.toString();
+        if (nextString !== currentString) {
+            setSearchParams(next, { replace: true });
+        }
+    }, [searchTerm, departmentFilter, statusFilter, searchParams, setSearchParams]);
 
     const fetchEmployees = async () => {
         try {
@@ -27,15 +52,39 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
         }
     };
 
+    const handleDelete = async (employee) => {
+        if ((employee.status || '').toLowerCase() === 'inactive') {
+            toast('Employee is already inactive');
+            return;
+        }
+
+        const confirmed = window.confirm(`Mark ${employee.full_name} as inactive? They will no longer be active in the system.`);
+        if (!confirmed) return;
+
+        try {
+            await api.delete(`/employees/${employee.id}`);
+            toast.success('Employee marked inactive successfully');
+            fetchEmployees();
+        } catch (error) {
+            toast.error(error.message || 'Failed to delete employee');
+        }
+    };
+
     const filteredEmployees = employees.filter(emp => {
         const matchesSearch = emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             emp.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             emp.department?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesDept = departmentFilter === 'All' || emp.department === departmentFilter;
+        const normalizedStatus = (emp.status || 'Active').toLowerCase();
+        const matchesStatus = statusFilter === 'All' || normalizedStatus === statusFilter.toLowerCase();
 
-        return matchesSearch && matchesDept;
+        return matchesSearch && matchesDept && matchesStatus;
     });
+
+    const departmentOptions = Array.from(
+        new Set((employees || []).map((emp) => emp.department).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
 
     return (
         <div className="card" style={{ padding: '0' }}>
@@ -74,11 +123,28 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                         }}
                     >
                         <option value="All">All Departments</option>
-                        <option>Engineering</option>
-                        <option>Sales</option>
-                        <option>Marketing</option>
-                        <option>Design</option>
-                        <option>Human Resources</option>
+                        {departmentOptions.map((dep) => (
+                            <option key={dep} value={dep}>{dep}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border)',
+                            background: 'var(--card-bg)',
+                            color: 'var(--text-main)',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            fontSize: 'var(--font-md)',
+                            outline: 'none'
+                        }}
+                    >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
                     </select>
                     <button
                         onClick={onAddClick}
@@ -155,6 +221,20 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
                                         >
                                             <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(emp)}
+                                            disabled={(emp.status || '').toLowerCase() === 'inactive'}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: (emp.status || '').toLowerCase() === 'inactive' ? 'not-allowed' : 'pointer',
+                                                color: (emp.status || '').toLowerCase() === 'inactive' ? '#9CA3AF' : '#DC2626',
+                                                padding: '4px'
+                                            }}
+                                            title={(emp.status || '').toLowerCase() === 'inactive' ? 'Already inactive' : 'Mark inactive'}
+                                        >
+                                            <Trash2 size={18} />
                                         </button>
                                     </div>
                                 </td>

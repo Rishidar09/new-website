@@ -24,6 +24,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.get('/contents', auth, driveController.getContents);
+router.get('/storage-usage', auth, driveController.getStorageUsage);
 router.post('/upload', auth, upload.single('file'), driveController.uploadFile);
 router.post('/folder', auth, driveController.createFolder);
 router.delete('/files/:id', auth, driveController.deleteFile);

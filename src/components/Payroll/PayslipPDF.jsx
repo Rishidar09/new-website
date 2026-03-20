@@ -218,7 +218,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#bfbfbf',
         fontSize: 9,
     },
-    // WATERMARK
+    tableSection: {
+        position: 'relative',
+    },
+    // WATERMARK (table-only)
     watermarkContainer: {
         position: 'absolute',
         top: 0,
@@ -227,7 +230,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: -1,
     },
     watermarkImage: {
         width: 350,
@@ -252,39 +254,59 @@ const numberToWords = (num) => {
     return str.trim();
 };
 
+const round2 = (value) => Number((Math.round((Number(value) || 0) * 100) / 100).toFixed(2));
+
 const PayslipPDF = ({ payslip, employee }) => {
     if (!payslip || !employee) return null;
 
-    // Default formatting mappings based on the template
-    const empId = `INDUS${String(employee.id).padStart(3, '0').substring(0, 3)}` || "INDUS006";
-    const panNo = employee.pan || "BIDPV8596A";
-    const processedDays = 31;
-    const paidDays = 31;
-    const bankAccount = employee.bank_account || "*********0001";
-    const bankName = employee.bank_name || "HDFC";
+    const valueOrNA = (value) => {
+        if (value === null || value === undefined) return 'NA';
+        if (typeof value === 'string' && value.trim() === '') return 'NA';
+        return value;
+    };
+
+    const watermarkLogoSrc = typeof window !== 'undefined'
+        ? `${window.location.origin}/logo.png`
+        : '/logo.png';
+    const headerLogoSrc = typeof window !== 'undefined'
+        ? `${window.location.origin}/logo2.png`
+        : '/logo2.png';
+
+    const empId = valueOrNA(payslip.emp_code ?? employee.employee_id ?? employee.id);
+    const panNo = valueOrNA(payslip.pan_no ?? employee.pan);
+    const processedDays = payslip.processed_days != null && payslip.processed_days !== '' ? payslip.processed_days : 'NA';
+    const paidDays = payslip.paid_days != null && payslip.paid_days !== '' ? payslip.paid_days : 'NA';
+    const bankAccount = valueOrNA(payslip.bank_account ?? employee.bank_account);
+    const bankName = valueOrNA(payslip.bank_name ?? employee.bank_name);
+    const designation = valueOrNA(payslip.designation ?? employee.role);
+    const department = valueOrNA(payslip.department ?? employee.department);
+    const location = valueOrNA(payslip.location ?? employee.location);
 
     const basic = Number(payslip.basic_salary) || 0;
     const hra = Number(payslip.hra) || 0;
-    const conveyance = Number(payslip.conveyance) || 0;
-    const specialAllowance = Number(payslip.specialAllowance) || 0;
-    const grossPay = basic + hra + conveyance + specialAllowance;
+    const storedAllowances = Number(payslip.allowances) || 0;
+    const conveyance = Number(payslip.conveyance) || (storedAllowances > 0 ? Math.floor(storedAllowances * 0.285) : 0);
+    const specialAllowance = Number(payslip.specialAllowance ?? payslip.special_allowance) || (storedAllowances > 0 ? Math.ceil(storedAllowances * 0.715) : 0);
+    const leaveEncashment = Number(payslip.leave_encashment) || 0;
+    const grossPay = Number(payslip.gross_salary) || (basic + hra + conveyance + specialAllowance);
 
-    const ptax = Number(payslip.ptax) || 200;
-    const otherDeduction = Number(payslip.tds) || Number(payslip.otherDeduction) || 0;
-    const totalDeductions = otherDeduction + ptax + (Number(payslip.pf) || 0);
+    const pfEmployee = Number(payslip.pf_employee ?? payslip.pf) || 0;
+    const esiEmployee = Number(payslip.esi_employee) || 0;
+    const tds = Number(payslip.tds) || 0;
+    const statutoryDeductions = round2(pfEmployee + esiEmployee + tds);
+    const persistedDeductions = Number(payslip.deductions) || 0;
+    const legacyOtherDeduction = persistedDeductions > statutoryDeductions
+        ? round2(persistedDeductions - statutoryDeductions)
+        : 0;
+    const totalDeductions = persistedDeductions || round2(statutoryDeductions + legacyOtherDeduction);
 
     // Net Pay based strictly on the split above to ensure math is perfect
-    const netPay = grossPay - totalDeductions;
+    const netPay = Number(payslip.net_salary) || (grossPay - totalDeductions);
     const netWords = numberToWords(netPay);
 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-
-                {/* Watermark Logo Component - Behind everything */}
-                <View style={styles.watermarkContainer}>
-                    <Image style={styles.watermarkImage} src="/logo.png" />
-                </View>
 
                 <View style={styles.outerBorder}>
 
@@ -292,7 +314,7 @@ const PayslipPDF = ({ payslip, employee }) => {
                     <View style={styles.headerRow}>
                         <View style={styles.logoSection}>
                             {/* In a real project you'd use your actual logo asset. Using a placeholder or text if unavailable */}
-                            <Image style={styles.logoImage} src="/logo.png" />
+                            <Image style={styles.logoImage} src={headerLogoSrc} />
                             <Text style={styles.tagline}>Innovating the future, the Indus way.</Text>
                         </View>
                         <Text style={styles.companyAddress}>
@@ -315,23 +337,23 @@ const PayslipPDF = ({ payslip, employee }) => {
                         <Text style={styles.empLabelCell}>Emp ID:</Text>
                         <Text style={styles.empValueCell}>{empId}</Text>
                         <Text style={styles.empLabelCellRight}>Emp Name:</Text>
-                        <Text style={styles.empValueCellRight}>{employee.full_name}</Text>
+                        <Text style={styles.empValueCellRight}>{valueOrNA(employee.full_name)}</Text>
                     </View>
                     <View style={styles.gridRow}>
                         <Text style={styles.empLabelCell}>Designation:</Text>
-                        <Text style={styles.empValueCell}>{employee.role}</Text>
+                        <Text style={styles.empValueCell}>{designation}</Text>
                         <Text style={styles.empLabelCellRight}>Pan No:</Text>
                         <Text style={styles.empValueCellRight}>{panNo}</Text>
                     </View>
                     <View style={styles.gridRow}>
                         <Text style={styles.empLabelCell}>Department:</Text>
-                        <Text style={styles.empValueCell}>{employee.department || 'IT'}</Text>
+                        <Text style={styles.empValueCell}>{department}</Text>
                         <Text style={styles.empLabelCellRight}>Processed Days:</Text>
                         <Text style={styles.empValueCellRight}>{processedDays}</Text>
                     </View>
                     <View style={styles.gridRow}>
                         <Text style={styles.empLabelCell}>Location:</Text>
-                        <Text style={styles.empValueCell}>{employee.location || 'Hyderabad'}</Text>
+                        <Text style={styles.empValueCell}>{location}</Text>
                         <Text style={styles.empLabelCellRight}>Paid Days:</Text>
                         <Text style={styles.empValueCellRight}>{paidDays}</Text>
                     </View>
@@ -342,52 +364,65 @@ const PayslipPDF = ({ payslip, employee }) => {
                         <Text style={styles.empValueCellRight}>{bankName}</Text>
                     </View>
 
-                    {/* Earnings / Deductions Header */}
-                    <View style={styles.thContainer}>
-                        <Text style={styles.thEarningLabel}>Earnings</Text>
-                        <View style={styles.thEarningAmount}>
-                            <Text>Amount(Rs)</Text>
+                    <View style={styles.tableSection}>
+                        {/* Watermark Logo centered inside table area */}
+                        <View style={styles.watermarkContainer}>
+                            <Image style={styles.watermarkImage} src={watermarkLogoSrc} />
                         </View>
-                        <Text style={styles.thDeductionLabel}>Deductions</Text>
-                        <Text style={styles.thDeductionAmount}>Amount(Rs)</Text>
-                    </View>
 
-                    {/* Table Body */}
-                    <View style={styles.trContainer}>
-                        <Text style={styles.tdEarningLabel}>Basic</Text>
-                        <Text style={styles.tdEarningAmount}>{basic}</Text>
-                        <Text style={styles.tdDeductionLabel}>PF</Text>
-                        <Text style={styles.tdDeductionAmount}>{Number(payslip.pf) || 0}</Text>
-                    </View>
-                    <View style={styles.trContainer}>
-                        <Text style={styles.tdEarningLabel}>HRA</Text>
-                        <Text style={styles.tdEarningAmount}>{hra}</Text>
-                        <Text style={styles.tdDeductionLabel}>Other Deduction</Text>
-                        <Text style={styles.tdDeductionAmount}>{otherDeduction}</Text>
-                    </View>
-                    <View style={styles.trContainer}>
-                        <Text style={styles.tdEarningLabel}>Conveyance</Text>
-                        <Text style={styles.tdEarningAmount}>{conveyance}</Text>
-                        <Text style={styles.tdDeductionLabel}>P Tax</Text>
-                        <Text style={styles.tdDeductionAmount}>{ptax}</Text>
-                    </View>
-                    <View style={styles.trContainer}>
-                        <Text style={styles.tdEarningLabel}>Special Allowance</Text>
-                        <Text style={styles.tdEarningAmount}>{specialAllowance}</Text>
-                        <Text style={styles.tdDeductionLabel}></Text>
-                        <Text style={styles.tdDeductionAmount}></Text>
-                    </View>
-
-                    {/* Gross Pay & Total Deductions */}
-                    <View style={styles.grossRow}>
-                        <Text style={styles.grossLabel}>Gross Pay</Text>
-                        <Text style={styles.grossAmount}>{grossPay}</Text>
-                        <View style={styles.totalDeductionLabel}>
-                            <Text>Total</Text>
-                            <Text>Deductions</Text>
+                        {/* Earnings / Deductions Header */}
+                        <View style={styles.thContainer}>
+                            <Text style={styles.thEarningLabel}>Earnings</Text>
+                            <View style={styles.thEarningAmount}>
+                                <Text>Amount(Rs)</Text>
+                            </View>
+                            <Text style={styles.thDeductionLabel}>Deductions</Text>
+                            <Text style={styles.thDeductionAmount}>Amount(Rs)</Text>
                         </View>
-                        <View style={[styles.totalDeductionAmount, { justifyContent: 'flex-end', display: 'flex' }]}>
-                            <Text>{totalDeductions}</Text>
+
+                        {/* Table Body */}
+                        <View style={styles.trContainer}>
+                            <Text style={styles.tdEarningLabel}>Basic</Text>
+                            <Text style={styles.tdEarningAmount}>{basic}</Text>
+                            <Text style={styles.tdDeductionLabel}>PF (Employee)</Text>
+                            <Text style={styles.tdDeductionAmount}>{pfEmployee}</Text>
+                        </View>
+                        <View style={styles.trContainer}>
+                            <Text style={styles.tdEarningLabel}>HRA</Text>
+                            <Text style={styles.tdEarningAmount}>{hra}</Text>
+                            <Text style={styles.tdDeductionLabel}>ESI (Employee)</Text>
+                            <Text style={styles.tdDeductionAmount}>{esiEmployee}</Text>
+                        </View>
+                        <View style={styles.trContainer}>
+                            <Text style={styles.tdEarningLabel}>Conveyance</Text>
+                            <Text style={styles.tdEarningAmount}>{conveyance}</Text>
+                            <Text style={styles.tdDeductionLabel}>TDS</Text>
+                            <Text style={styles.tdDeductionAmount}>{tds}</Text>
+                        </View>
+                        <View style={styles.trContainer}>
+                            <Text style={styles.tdEarningLabel}>Special Allowance</Text>
+                            <Text style={styles.tdEarningAmount}>{specialAllowance}</Text>
+                            <Text style={styles.tdDeductionLabel}>{legacyOtherDeduction > 0 ? 'Other Deduction' : ''}</Text>
+                            <Text style={styles.tdDeductionAmount}>{legacyOtherDeduction > 0 ? legacyOtherDeduction : ''}</Text>
+                        </View>
+                        <View style={styles.trContainer}>
+                            <Text style={styles.tdEarningLabel}>Leave Encashment</Text>
+                            <Text style={styles.tdEarningAmount}>{leaveEncashment}</Text>
+                            <Text style={styles.tdDeductionLabel}></Text>
+                            <Text style={styles.tdDeductionAmount}></Text>
+                        </View>
+
+                        {/* Gross Pay & Total Deductions */}
+                        <View style={styles.grossRow}>
+                            <Text style={styles.grossLabel}>Gross Pay</Text>
+                            <Text style={styles.grossAmount}>{grossPay}</Text>
+                            <View style={styles.totalDeductionLabel}>
+                                <Text>Total</Text>
+                                <Text>Deductions</Text>
+                            </View>
+                            <View style={[styles.totalDeductionAmount, { justifyContent: 'flex-end', display: 'flex' }]}>
+                                <Text>{totalDeductions}</Text>
+                            </View>
                         </View>
                     </View>
 

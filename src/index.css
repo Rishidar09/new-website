@@ -3,6 +3,10 @@
 :root {
   --primary: #3B82F6;
   --primary-hover: #2563EB;
+  --primary-color: var(--primary);
+  --primary-dark: var(--primary-hover);
+  --primary-light: rgba(59, 130, 246, 0.16);
+  --input-radius: 10px;
   --sidebar-bg: #F9FAFB;
   --main-bg: #FFFFFF;
   --card-bg: #F9FAFB;
@@ -32,7 +36,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text-main);
   background-color: var(--main-bg);
 
@@ -74,6 +78,7 @@
   --text-muted: #9CA3AF;
   --input-bg: #374151;
   --navbar-bg: #111827;
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -86,6 +91,13 @@
     --text-muted: #9CA3AF;
     --input-bg: #374151;
     --navbar-bg: #111827;
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme='system'] {
+    color-scheme: light;
   }
 }
 
@@ -200,17 +212,26 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="date"],
+input[type="time"],
 input[type="tel"],
 select,
 textarea {
   background-color: var(--input-bg) !important;
   color: var(--text-main) !important;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--input-radius);
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Keep form controls consistently rounded across all pages/components */
+.input-field,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  border-radius: var(--input-radius) !important;
 }
 
 .input-field:focus,
@@ -224,6 +245,39 @@ textarea:focus {
 .input-field::placeholder,
 input::placeholder {
   color: var(--text-muted);
+}
+
+/* Shared button system to prevent browser-default thick borders */
+.btn-primary,
+.btn-secondary {
+  border-radius: var(--input-radius) !important;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: 1px solid var(--primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: var(--input-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Custom Scrollbar Styling */
@@ -291,6 +345,53 @@ input::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+}
+
+/* Brand lockup (logo + company name) */
+.brand-lockup {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.brand-name-animated {
+  background-image: linear-gradient(90deg, #8a6a00 0%, #d4af37 22%, #ffe8a3 50%, #d4af37 78%, #8a6a00 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brand-gold-shimmer 3.6s linear infinite;
+}
+
+.brand-name-animated-subline {
+  background-image: linear-gradient(90deg, #8a6a00 0%, #d4af37 22%, #ffe8a3 50%, #d4af37 78%, #8a6a00 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brand-gold-shimmer 3.6s linear infinite;
+  opacity: 0.9;
+}
+
+@keyframes brand-gold-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-name-animated {
+    animation: none;
+    background-position: 50% 0;
+  }
+
+  .brand-name-animated-subline {
+    animation: none;
+    background-position: 50% 0;
+  }
 }
 
 /* ─── Tablet Breakpoint (≤ 768px) ───────────────────────────── */
@@ -452,5 +553,26 @@ input::placeholder {
     max-width: none !important;
     margin: 16px;
     padding: 16px !important;
+  }
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+[data-theme='dark'] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme='system'] input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.9;
   }
 }

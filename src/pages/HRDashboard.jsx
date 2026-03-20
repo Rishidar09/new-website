@@ -5,6 +5,7 @@ import AttendanceChart from '../components/Dashboard/AttendanceChart';
 import LeaveRequests from '../components/Dashboard/LeaveRequests';
 import UpcomingBirthdays from '../components/Dashboard/UpcomingBirthdays';
 import Announcements from '../components/Dashboard/Announcements';
+import TodaysCelebrations from '../components/Dashboard/TodaysCelebrations';
 import { Users, UserPlus, FileText, Gift, Loader2 } from 'lucide-react';
 import { CardSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -18,6 +19,7 @@ const HRDashboard = () => {
     });
     const [deptData, setDeptData] = useState([]);
     const [birthdays, setBirthdays] = useState([]);
+    const [todaysCelebrations, setTodaysCelebrations] = useState([]);
     const [leaves, setLeaves] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -38,6 +40,7 @@ const HRDashboard = () => {
                 });
                 setDeptData(analyticsData.deptData || []);
                 setBirthdays(analyticsData.upcomingBirthdays || []);
+                setTodaysCelebrations(analyticsData.todaysCelebrations || []);
                 setLeaves(analyticsData.recentLeaves || []);
                 setAnnouncements(announceData || []);
             } catch (error) {
@@ -112,6 +115,12 @@ const HRDashboard = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <LeaveRequests requests={leaves} />
+                    <TodaysCelebrations
+                        items={todaysCelebrations}
+                        onSent={() => {
+                            // keep UX simple; no extra state for now
+                        }}
+                    />
                 </div>
             </div>
         </>

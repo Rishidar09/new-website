@@ -29,7 +29,7 @@ const login = async (req, res) => {
 
         if (result.rows.length === 0) {
             console.log(`[Login Debug] Email not found: ${email}`);
-            return res.status(400).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const user = result.rows[0];
@@ -70,7 +70,7 @@ const login = async (req, res) => {
                 'UPDATE profiles SET failed_login_attempts = $1 WHERE id = $2',
                 [newAttempts, user.id]
             );
-            return res.status(400).json({
+            return res.status(401).json({
                 error: `Invalid credentials. ${MAX_FAILED_ATTEMPTS - newAttempts} attempt(s) remaining before lockout.`
             });
         }

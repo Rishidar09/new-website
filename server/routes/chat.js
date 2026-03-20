@@ -20,8 +20,10 @@ const upload = multer({ storage: storage });
 
 router.get('/contacts', auth, chatController.getContacts);
 router.get('/groups', auth, chatController.getGroups);
+router.get('/groups/:groupId/members', auth, chatController.getGroupMembers);
 router.post('/create-group', auth, chatController.createGroup);
 router.post('/add-members', auth, chatController.addMembers);
+router.post('/leave-group', auth, chatController.leaveGroup);
 router.get('/history/:targetId', auth, chatController.getHistory);
 router.delete('/history/:targetId', auth, chatController.clearHistory);
 router.post('/message', auth, chatController.sendMessage);
