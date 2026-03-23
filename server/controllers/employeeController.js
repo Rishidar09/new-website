@@ -2,6 +2,7 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { createOnboardingCaseFromTemplate } = require('../services/onboardingService');
+const { sendWelcomeEmail } = require('../services/emailService');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -67,19 +68,65 @@ const ensureEmployeeColumns = async () => {
 const getEmployees = async (req, res) => {
     try {
         await ensureEmployeeColumns();
+        const rawManagerId = req.query.manager_id || null;
+        let managerIdFilter = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawManagerId || '')
+            ? rawManagerId
+            : null;
+
+        // Backend-only visibility rule: HR users can only fetch employees who report to them.
+        if (req.user?.role === 'hr') {
+            managerIdFilter = req.user?.employee_uuid || null;
+        }
+
+        const includeSelf = String(req.query.include_self || '').toLowerCase() === 'true';
         const employees = await pool.query(
             `SELECT e.*, 
                     COALESCE(d.name, e.department, 'Unassigned') AS department,
                     d.name AS department_name,
                     d.id AS department_id,
                     COALESCE(e.manager_id, e.reporting_manager_id) AS manager_id,
-                    m.full_name AS manager_name
+                    m.full_name AS manager_name,
+                    p.role AS account_role
              FROM employees e
              LEFT JOIN departments d ON d.id = e.department_id
              LEFT JOIN employees m ON m.id = COALESCE(e.manager_id, e.reporting_manager_id)
-             ORDER BY e.created_at DESC`
+             LEFT JOIN profiles p ON p.employee_id = e.id::text OR p.email = e.email
+             WHERE (
+                $1::uuid IS NULL
+                OR COALESCE(e.manager_id, e.reporting_manager_id) = $1::uuid
+                OR ($2::boolean = TRUE AND e.id = $1::uuid)
+             )
+             ORDER BY e.created_at DESC`,
+            [managerIdFilter, includeSelf]
         );
         res.json(employees.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Get HR accounts (admin only) ──────────────────────────────
+const getHrAccounts = async (req, res) => {
+    try {
+        await ensureEmployeeColumns();
+
+        const result = await pool.query(
+            `SELECT e.id,
+                    e.full_name,
+                    e.email,
+                    e.joining_date,
+                    e.department,
+                    e.created_at,
+                    e.status,
+                    p.role AS account_role
+             FROM employees e
+             JOIN profiles p ON (p.employee_id = e.id::text OR p.email = e.email)
+             WHERE p.role = 'hr'
+             ORDER BY e.created_at DESC`
+        );
+
+        res.json(result.rows);
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Server error' });
@@ -211,7 +258,8 @@ const createEmployee = async (req, res) => {
         employee_id, designation, location, pan, bank_account, bank_name,
         personal_email, emergency_contact, technology, experience_years,
         aadhaar_card, adhar_card, pan_card,
-        onboarding_template_id, department_id, manager_id, reporting_manager_id
+        onboarding_template_id, department_id, manager_id, reporting_manager_id,
+        account_role
     } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;
     const client = await pool.connect();
@@ -229,9 +277,23 @@ const createEmployee = async (req, res) => {
         const parsedExperience = Number(experience_years);
         const normalizedExperienceYears = Number.isFinite(parsedExperience) ? parsedExperience : null;
         const nextManagerId = manager_id || reporting_manager_id || null;
+        const requestedAccountRole = String(account_role || '').toLowerCase();
 
-        if (nextManagerId) {
-            const managerCheck = await client.query('SELECT id FROM employees WHERE id = $1', [nextManagerId]);
+        if (requestedAccountRole === 'hr' && req.user?.role !== 'admin') {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Only admins can create HR accounts' });
+        }
+
+        const profileRole = req.user?.role === 'admin' && ['hr', 'employee'].includes(requestedAccountRole)
+            ? requestedAccountRole
+            : 'employee';
+
+        const effectiveManagerId = profileRole === 'hr'
+            ? null
+            : (req.user?.role === 'hr' ? (req.user?.employee_uuid || nextManagerId) : nextManagerId);
+
+        if (effectiveManagerId) {
+            const managerCheck = await client.query('SELECT id FROM employees WHERE id = $1', [effectiveManagerId]);
             if (managerCheck.rows.length === 0) {
                 await client.query('ROLLBACK');
                 return res.status(400).json({ error: 'Reporting manager not found' });
@@ -265,7 +327,7 @@ const createEmployee = async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
              RETURNING *`,
             [
-                full_name, email, role, departmentNameValue, departmentIdValue, nextManagerId,
+                full_name, email, role, departmentNameValue, departmentIdValue, effectiveManagerId,
                 phone, joining_date, normalizedSalary, avatar_url,
                 employee_id || null, designation || role || null, location || null,
                 pan || pan_card || null, bank_account || null, bank_name || null,
@@ -279,9 +341,19 @@ const createEmployee = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(tempPassword, salt);
 
+        const profileResult = await client.query(
+            'INSERT INTO profiles (email, password_hash, role, employee_id, is_first_login, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email',
+            [email, hash, profileRole, newEmployee.rows[0].id, true, 'active']
+        );
+        const profile = profileResult.rows[0];
+
+        // Create a password reset link so employee can set a new password immediately.
+        const resetToken = crypto.randomUUID();
+        const resetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        await client.query('UPDATE password_reset_tokens SET used = TRUE WHERE profile_id = $1', [profile.id]);
         await client.query(
-            'INSERT INTO profiles (email, password_hash, role, employee_id, is_first_login, status) VALUES ($1, $2, $3, $4, $5, $6)',
-            [email, hash, 'employee', newEmployee.rows[0].id, true, 'active']
+            'INSERT INTO password_reset_tokens (profile_id, token, expires_at) VALUES ($1, $2, $3)',
+            [profile.id, resetToken, resetExpiresAt]
         );
 
         if (onboarding_template_id) {
@@ -294,7 +366,28 @@ const createEmployee = async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.json(newEmployee.rows[0]);
+
+        let credentialEmailSent = true;
+        try {
+            const resetBase = process.env.CLIENT_URL || 'http://localhost:5173';
+            const resetLink = `${resetBase.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
+            await sendWelcomeEmail({
+                to: email,
+                name: full_name,
+                email,
+                password: tempPassword,
+                role: profileRole === 'hr' ? 'HR' : (role || designation || 'Employee'),
+                resetLink
+            });
+        } catch (emailErr) {
+            credentialEmailSent = false;
+            console.warn('[Email] Welcome credentials email failed:', emailErr.message);
+        }
+
+        res.json({
+            ...newEmployee.rows[0],
+            credential_email_sent: credentialEmailSent
+        });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(err.message);
@@ -432,6 +525,7 @@ const deleteEmployee = async (req, res) => {
 
 module.exports = {
     getEmployees,
+    getHrAccounts,
     getDashboardStats,
     getEmployeeById,
     createEmployee,

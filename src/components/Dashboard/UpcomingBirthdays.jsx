@@ -16,7 +16,15 @@ const UpcomingBirthdays = ({ birthdays = [] }) => {
                     birthdays.map((person) => (
                         <div key={person.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={person.avatar || `https://i.pravatar.cc/150?u=${person.id}`} alt={person.name} className="avatar" />
+                                <img
+                                    src={person.avatar || '/avatar-placeholder.svg'}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = '/avatar-placeholder.svg';
+                                    }}
+                                    alt={person.name}
+                                    className="avatar"
+                                />
                                 <div>
                                     <p style={{ fontWeight: '600', fontSize: '14px' }}>{person.name}</p>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{person.role}</p>

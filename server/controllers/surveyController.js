@@ -234,7 +234,7 @@ const publishSurvey = async (req, res) => {
 
 const getSurveys = async (req, res) => {
     try {
-        if (req.user.role === 'hr') {
+        if (['hr', 'admin'].includes(req.user.role)) {
             const result = await pool.query(
                 `SELECT s.*, e.full_name AS created_by_name, d.name AS target_department_name,
                         COUNT(sr.id)::int AS response_count
@@ -297,7 +297,7 @@ const getSurveyById = async (req, res) => {
 
         const survey = surveyResult.rows[0];
 
-        if (req.user.role !== 'hr') {
+        if (!['hr', 'admin'].includes(req.user.role)) {
             const employee = await resolveEmployee(req);
             if (!employee) return res.status(404).json({ error: 'Employee not found' });
 

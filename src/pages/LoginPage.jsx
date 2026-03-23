@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
-    const [role, setRole] = useState('hr'); // 'hr' or 'employee'
+    const [role, setRole] = useState('admin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -14,7 +14,9 @@ const LoginPage = () => {
 
     React.useEffect(() => {
         if (user && profile) {
-            if (profile.role === 'hr') {
+            if (profile.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else if (profile.role === 'hr') {
                 navigate('/hr/dashboard');
             } else {
                 navigate('/employee/dashboard');
@@ -30,11 +32,17 @@ const LoginPage = () => {
         try {
             const data = await login(email, password);
 
-            if (data.user.role !== role) {
+            const expectedRole = role === 'admin'
+                ? ['admin', 'hr']
+                : ['employee'];
+
+            if (!expectedRole.includes(data.user.role)) {
                 throw new Error(`Unauthorized. This account is registered as ${data.user.role.toUpperCase()}, but you tried to login as ${role.toUpperCase()}.`);
             }
 
-            if (role === 'hr') {
+            if (data.user.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else if (data.user.role === 'hr') {
                 navigate('/hr/dashboard');
             } else {
                 navigate('/employee/dashboard');
@@ -95,7 +103,7 @@ const LoginPage = () => {
                     marginBottom: '24px'
                 }}>
                     <button
-                        onClick={() => setRole('hr')}
+                        onClick={() => setRole('admin')}
                         style={{
                             flex: 1,
                             padding: '8px',
@@ -104,13 +112,13 @@ const LoginPage = () => {
                             fontSize: '14px',
                             fontWeight: '500',
                             cursor: 'pointer',
-                            background: role === 'hr' ? 'var(--card-bg)' : 'transparent',
-                            color: role === 'hr' ? 'var(--text-main)' : 'var(--text-muted)',
-                            boxShadow: role === 'hr' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            background: role === 'admin' ? 'var(--card-bg)' : 'transparent',
+                            color: role === 'admin' ? 'var(--text-main)' : 'var(--text-muted)',
+                            boxShadow: role === 'admin' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                             transition: 'all 0.2s'
                         }}
                     >
-                        HR Login
+                        Admin Login
                     </button>
                     <button
                         onClick={() => setRole('employee')}

@@ -32,7 +32,7 @@ const getContents = async (req, res) => {
             fileQuery = 'SELECT * FROM files WHERE folder_id ' + (folder_id ? '= $1' : 'IS NULL') + ' AND folder_id IN (SELECT id FROM folders WHERE is_company = TRUE)';
             params = folder_id ? [folder_id] : [];
         } else if (type === 'hr') {
-            if (req.user.role !== 'hr') return res.status(403).json({ error: 'Access denied' });
+            if (!['hr', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Access denied' });
             folderQuery = 'SELECT * FROM folders WHERE is_hr_only = TRUE AND parent_id ' + (folder_id ? '= $1' : 'IS NULL');
             fileQuery = 'SELECT * FROM files WHERE folder_id ' + (folder_id ? '= $1' : 'IS NULL') + ' AND folder_id IN (SELECT id FROM folders WHERE is_hr_only = TRUE)';
             params = folder_id ? [folder_id] : [];
@@ -125,7 +125,7 @@ const deleteFile = async (req, res) => {
         const file = await pool.query('SELECT * FROM files WHERE id = $1', [req.params.id]);
 
         if (file.rows.length === 0) return res.status(404).json({ error: 'File not found' });
-        if (file.rows[0].owner_id !== myId && req.user.role !== 'hr') return res.status(403).json({ error: 'Access denied' });
+        if (file.rows[0].owner_id !== myId && !['hr', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Access denied' });
 
         if (fs.existsSync(file.rows[0].storage_path)) {
             fs.unlinkSync(file.rows[0].storage_path);

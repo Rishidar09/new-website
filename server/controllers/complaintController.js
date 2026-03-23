@@ -31,7 +31,7 @@ const getComplaints = async (req, res) => {
         let query = '';
         let params = [];
 
-        if (req.user.role === 'hr') {
+        if (['hr', 'admin'].includes(req.user.role)) {
             query = `
                 SELECT 
                     c.*, 

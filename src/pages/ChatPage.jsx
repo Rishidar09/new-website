@@ -28,6 +28,12 @@ import {
 
 const SOCKET_URL = window.location.origin;
 
+const getRoleBasePath = (role) => {
+    if (role === 'admin') return '/admin';
+    if (role === 'hr') return '/hr';
+    return '/employee';
+};
+
 const formatChatTimestamp = (value) => {
     if (!value) return '';
 
@@ -388,6 +394,7 @@ const MeetingButton = ({ url, trulyMe, navigate }) => {
 const ChatPage = () => {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
+    const roleBasePath = getRoleBasePath(currentUser?.role);
     const [contacts, setContacts] = useState([]);
     const [groups, setGroups] = useState([]);
     const [activeChat, setActiveChat] = useState(null); // { id, type, name, role }
@@ -623,7 +630,7 @@ const ChatPage = () => {
                     participants: [] // In a real app, you might auto-add group members
                 };
                 const meeting = await api.post('/meetings', meetingData);
-                const joinUrl = `/meetings/${meeting.id}`;
+                const joinUrl = `${roleBasePath}/meetings/${meeting.id}`;
 
                 await api.post('/chat/message', {
                     content: `🎥 started a ${type} call. Click here to join: ${joinUrl}`,

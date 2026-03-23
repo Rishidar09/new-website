@@ -24,11 +24,17 @@ import {
 const SOCKET_URL = window.location.origin;
 
 const getSignalUserId = (entity) => entity?.employee_uuid || entity?.id;
+const getRoleBasePath = (role) => {
+    if (role === 'admin') return '/admin';
+    if (role === 'hr') return '/hr';
+    return '/employee';
+};
 
 const MeetingRoomPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user, profile } = useAuth();
+    const roleBasePath = getRoleBasePath(profile?.role);
     const [meeting, setMeeting] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
@@ -589,10 +595,10 @@ const MeetingRoomPage = () => {
                     await api.put(`/meetings/${id}/end`);
                 }
             }
-            navigate('/chat');
+            navigate(`${roleBasePath}/chat`);
         } catch (error) {
             console.error('Error leaving meeting:', error);
-            navigate('/chat');
+            navigate(`${roleBasePath}/chat`);
         }
     };
 
@@ -601,13 +607,13 @@ const MeetingRoomPage = () => {
             const data = await api.get(`/meetings/${id}`);
             if (data.status === 'completed') {
                 alert('This call has already ended.');
-                navigate('/meetings');
+                navigate(`${roleBasePath}/meetings`);
                 return;
             }
             setMeeting(data);
         } catch (error) {
             console.error('Error fetching meeting:', error);
-            navigate('/meetings');
+            navigate(`${roleBasePath}/meetings`);
         } finally {
             setLoading(false);
         }
@@ -797,10 +803,10 @@ const MeetingRoomPage = () => {
                                 if (window.confirm('Are you sure you want to end this call?')) {
                                     try {
                                         await api.put(`/meetings/${id}/end`);
-                                        navigate('/meetings');
+                                        navigate(`${roleBasePath}/meetings`);
                                     } catch (err) {
                                         console.error('Failed to end call', err);
-                                        navigate('/meetings');
+                                        navigate(`${roleBasePath}/meetings`);
                                     }
                                 }
                             }}

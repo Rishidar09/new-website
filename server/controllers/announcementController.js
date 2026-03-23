@@ -42,4 +42,25 @@ const createAnnouncement = async (req, res) => {
     }
 };
 
-module.exports = { getAnnouncements, createAnnouncement };
+// ─── Delete announcement (HR/Admin) ────────────────────────────
+const deleteAnnouncement = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM announcements WHERE id = $1 RETURNING id',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Announcement not found' });
+        }
+
+        res.json({ message: 'Announcement deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting announcement:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+module.exports = { getAnnouncements, createAnnouncement, deleteAnnouncement };

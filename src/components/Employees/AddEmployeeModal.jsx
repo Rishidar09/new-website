@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) => {
+    const { profile } = useAuth();
+    const isAdminUser = profile?.role === 'admin';
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState(employeeData || {
         full_name: '',
         email: '',
+        account_role: 'employee',
         role: '',
         employee_id: '',
         designation: '',
@@ -48,6 +52,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
         setFormData({
             full_name: '',
             email: '',
+            account_role: 'employee',
             role: '',
             employee_id: '',
             designation: '',
@@ -84,7 +89,10 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                 setTemplates(templateData || []);
                 setDepartments(departmentData || []);
                 setManagerOptions(
-                    (employeesData || []).filter((emp) => !employeeData || emp.id !== employeeData.id)
+                    (employeesData || []).filter((emp) => {
+                        if (employeeData && emp.id === employeeData.id) return false;
+                        return (emp.account_role || '').toLowerCase() === 'hr';
+                    })
                 );
 
                 if (!employeeData) {
@@ -160,10 +168,15 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                 });
                 toast.success('Employee profile updated successfully!');
             } else {
-                await api.post('/employees', data, {
+                const created = await api.post('/employees', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                toast.success('New employee recruited successfully!');
+                const createdType = (formData.account_role || 'employee') === 'hr' ? 'HR user' : 'employee';
+                if (created?.credential_email_sent === false) {
+                    toast.error(`${createdType} created, but credential email failed to send. Check SMTP settings.`);
+                } else {
+                    toast.success(`${createdType} created successfully! Credentials email sent.`);
+                }
             }
             onRefresh();
             onClose();
@@ -171,6 +184,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                 setFormData({
                     full_name: '',
                     email: '',
+                    account_role: 'employee',
                     role: '',
                     employee_id: '',
                     designation: '',
@@ -250,6 +264,20 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 onChange={handleChange}
                             />
                         </div>
+                        {isAdminUser && !employeeData && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '14px', fontWeight: '500' }}>Account Type</label>
+                                <select
+                                    name="account_role"
+                                    className="input-field"
+                                    value={formData.account_role || 'employee'}
+                                    onChange={handleChange}
+                                >
+                                    <option value="employee">Employee Login</option>
+                                    <option value="hr">HR Login</option>
+                                </select>
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Role</label>
                             <input
@@ -312,8 +340,9 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 className="input-field"
                                 value={formData.manager_id || ''}
                                 onChange={handleChange}
+                                disabled={!employeeData && formData.account_role === 'hr'}
                             >
-                                <option value="">No manager</option>
+                                <option value="">{(!employeeData && formData.account_role === 'hr') ? 'Not required for HR account' : 'No manager'}</option>
                                 {managerOptions.map((manager) => (
                                     <option key={manager.id} value={manager.id}>{manager.full_name}</option>
                                 ))}

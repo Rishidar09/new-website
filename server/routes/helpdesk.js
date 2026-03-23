@@ -31,11 +31,11 @@ router.post('/', auth, authorize(['employee']), helpdeskController.createTicket)
 router.get('/my/tickets', auth, authorize(['employee']), helpdeskController.getMyTickets);
 
 // ─── HR Routes ──────────────────────────────────────────────────
-router.get('/hr/all', auth, authorize(['hr']), helpdeskController.getAllTickets);
-router.get('/hr/dashboard', auth, authorize(['hr']), helpdeskController.getDashboardStats);
-router.get('/hr/team-members', auth, authorize(['hr']), helpdeskController.getTeamMembers);
-router.patch('/:ticketId/assign', auth, authorize(['hr']), helpdeskController.updateAssignment);
-router.patch('/:ticketId/status', auth, authorize(['hr']), helpdeskController.updateStatus);
+router.get('/hr/all', auth, authorize(['hr', 'admin']), helpdeskController.getAllTickets);
+router.get('/hr/dashboard', auth, authorize(['hr', 'admin']), helpdeskController.getDashboardStats);
+router.get('/hr/team-members', auth, authorize(['hr', 'admin']), helpdeskController.getTeamMembers);
+router.patch('/:ticketId/assign', auth, authorize(['hr', 'admin']), helpdeskController.updateAssignment);
+router.patch('/:ticketId/status', auth, authorize(['hr', 'admin']), helpdeskController.updateStatus);
 
 router.get('/attachments/:attachmentId/download', auth, helpdeskController.downloadAttachment);
 router.post('/:ticketId/comments', auth, helpdeskController.addComment);

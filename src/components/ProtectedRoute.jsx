@@ -23,9 +23,18 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         return <Navigate to="/login" replace />;
     }
 
-    if (requiredRole && profile?.role !== requiredRole) {
-        // Rule 1 & 2: Redirect unauthorized users to their respective dashboards
-        const target = profile?.role === 'hr' ? '/hr/dashboard' : '/employee/dashboard';
+    const roleList = Array.isArray(requiredRole)
+        ? requiredRole
+        : requiredRole
+            ? [requiredRole]
+            : [];
+
+    if (roleList.length > 0 && !roleList.includes(profile?.role)) {
+        const target = profile?.role === 'admin'
+            ? '/admin/dashboard'
+            : profile?.role === 'hr'
+                ? '/hr/dashboard'
+                : '/employee/dashboard';
         return <Navigate to={target} replace />;
     }
 

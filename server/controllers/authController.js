@@ -13,7 +13,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 
 // ─── Signup (disabled) ───────────────────────────────────────────
 const signup = async (req, res) => {
-    return res.status(403).json({ error: 'Public signup is disabled. Please contact HR for account creation.' });
+    return res.status(403).json({ error: 'Public signup is disabled. Please contact an admin for account creation.' });
 };
 
 // ─── Login ───────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ const login = async (req, res) => {
             const lockedSince = new Date(user.locked_at).getTime();
             if (Date.now() - lockedSince < lockDuration) {
                 return res.status(403).json({
-                    error: 'Account is locked due to too many failed attempts. Please contact HR or try again in 30 minutes.'
+                    error: 'Account is locked due to too many failed attempts. Please contact an admin or try again in 30 minutes.'
                 });
             } else {
                 await pool.query(
@@ -63,7 +63,7 @@ const login = async (req, res) => {
                     [newAttempts, user.id]
                 );
                 return res.status(403).json({
-                    error: `Account locked after ${MAX_FAILED_ATTEMPTS} failed attempts. Contact HR to unlock.`
+                    error: `Account locked after ${MAX_FAILED_ATTEMPTS} failed attempts. Contact an admin to unlock.`
                 });
             }
             await pool.query(

@@ -98,7 +98,7 @@ const Navbar = ({ onMenuClick, isMobile }) => {
 
         socketRef.current.on('connect', () => {
             socketRef.current.emit('identify', profile.id);
-            if (profile?.role === 'hr') {
+            if (profile?.role === 'hr' || profile?.role === 'admin') {
                 socketRef.current.emit('join_room', {
                     roomId: 'hr_helpdesk',
                     userId: profile.employee_uuid,
@@ -372,7 +372,7 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                             <button
                                 onClick={() => {
                                     setShowProfile(false);
-                                    navigate('/profile');
+                                    navigate(profile?.role === 'admin' ? '/admin/profile' : profile?.role === 'hr' ? '/hr/profile' : '/employee/profile');
                                 }}
                                 className="dropdown-item"
                             >
@@ -380,7 +380,7 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                                 View Profile
                             </button>
                             <button
-                                onClick={() => navigate(profile?.role === 'hr' ? '/hr/settings' : '/employee/settings')}
+                                onClick={() => navigate(profile?.role === 'admin' ? '/admin/settings' : profile?.role === 'hr' ? '/hr/settings' : '/employee/settings')}
                                 className="dropdown-item"
                             >
                                 <Settings size={16} />

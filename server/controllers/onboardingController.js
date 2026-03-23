@@ -3,6 +3,57 @@ const { createOnboardingCaseFromTemplate } = require('../services/onboardingServ
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+const getOnboardingTaskColumns = async (client) => {
+    const cols = await client.query(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'onboarding_case_tasks'`
+    );
+    return new Set(cols.rows.map((r) => r.column_name));
+};
+
+const buildOnboardingTaskUpdate = ({ columns, isCompleted, actorId, taskId, documentUrl, includeDocumentUrl = false }) => {
+    const sets = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (columns.has('is_completed')) {
+        sets.push(`is_completed = $${paramIndex}`);
+        values.push(isCompleted);
+        paramIndex += 1;
+    }
+
+    if (columns.has('completed_at')) {
+        sets.push(`completed_at = CASE WHEN ${columns.has('is_completed') ? '$1' : 'TRUE'} THEN NOW() ELSE NULL END`);
+    }
+
+    if (columns.has('completed_by')) {
+        const completedRef = columns.has('is_completed') ? '$1' : 'TRUE';
+        sets.push(`completed_by = CASE WHEN ${completedRef} THEN $${paramIndex}::uuid ELSE NULL END`);
+        values.push(actorId || null);
+        paramIndex += 1;
+    }
+
+    if (includeDocumentUrl && columns.has('document_url')) {
+        sets.push(`document_url = $${paramIndex}`);
+        values.push(documentUrl);
+        paramIndex += 1;
+    }
+
+    if (columns.has('updated_at')) {
+        sets.push('updated_at = NOW()');
+    }
+
+    values.push(taskId);
+    const whereParam = `$${paramIndex}`;
+
+    return {
+        text: `UPDATE onboarding_case_tasks SET ${sets.join(', ')} WHERE id = ${whereParam} RETURNING *`,
+        values
+    };
+};
+
 const resolveEmployee = async (req) => {
     if (req.user?.employee_uuid) {
         const emp = await pool.query('SELECT id, full_name FROM employees WHERE id = $1', [req.user.employee_uuid]);
@@ -203,18 +254,16 @@ const hrUpdateTask = async (req, res) => {
     const client = await pool.connect();
     try {
         const actor = await resolveEmployee(req);
+        const taskColumns = await getOnboardingTaskColumns(client);
         await client.query('BEGIN');
 
-        const updated = await client.query(
-            `UPDATE onboarding_case_tasks
-             SET is_completed = $1,
-                 completed_at = CASE WHEN $1 THEN NOW() ELSE NULL END,
-                 completed_by = CASE WHEN $1 THEN $2 ELSE NULL END,
-                 updated_at = NOW()
-             WHERE id = $3
-             RETURNING *`,
-            [is_completed, actor?.id || null, id]
-        );
+        const updateQuery = buildOnboardingTaskUpdate({
+            columns: taskColumns,
+            isCompleted: is_completed,
+            actorId: actor?.id || null,
+            taskId: id
+        });
+        const updated = await client.query(updateQuery.text, updateQuery.values);
 
         if (updated.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -326,6 +375,8 @@ const employeeUpdateTask = async (req, res) => {
             return res.status(404).json({ error: 'Employee not found' });
         }
 
+        const taskColumns = await getOnboardingTaskColumns(client);
+
         await client.query('BEGIN');
 
         const current = await client.query(
@@ -342,7 +393,7 @@ const employeeUpdateTask = async (req, res) => {
         }
 
         const task = current.rows[0];
-        if (task.employee_id !== me.id) {
+        if (String(task.employee_id) !== String(me.id)) {
             await client.query('ROLLBACK');
             return res.status(403).json({ error: 'Forbidden' });
         }
@@ -355,17 +406,15 @@ const employeeUpdateTask = async (req, res) => {
             return res.status(400).json({ error: 'Document upload is required for this task' });
         }
 
-        const updated = await client.query(
-            `UPDATE onboarding_case_tasks
-             SET is_completed = $1,
-                 completed_at = CASE WHEN $1 THEN NOW() ELSE NULL END,
-                 completed_by = CASE WHEN $1 THEN $2 ELSE NULL END,
-                 document_url = $3,
-                 updated_at = NOW()
-             WHERE id = $4
-             RETURNING *`,
-            [is_completed, me.id, documentUrl, id]
-        );
+        const updateQuery = buildOnboardingTaskUpdate({
+            columns: taskColumns,
+            isCompleted: is_completed,
+            actorId: me.id,
+            taskId: id,
+            documentUrl,
+            includeDocumentUrl: true
+        });
+        const updated = await client.query(updateQuery.text, updateQuery.values);
 
         await updateCaseStatusIfCompleted(client, task.case_id);
         await client.query('COMMIT');

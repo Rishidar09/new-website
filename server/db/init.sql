@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
-  role TEXT CHECK (role IN ('hr', 'employee')),
+  role TEXT CHECK (role IN ('admin', 'hr', 'employee')),
   password_hash TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -18,6 +18,24 @@ DO $$ BEGIN
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP WITH TIME ZONE;
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive'));
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_name = 'profiles'
+      AND constraint_name = 'profiles_role_check'
+  ) THEN
+    ALTER TABLE profiles DROP CONSTRAINT profiles_role_check;
+  END IF;
+
+  ALTER TABLE profiles
+    ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin', 'hr', 'employee'));
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
 END $$;
 
 -- ─── 2. Employees ───────────────────────────────────────────────

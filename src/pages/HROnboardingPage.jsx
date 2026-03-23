@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
-import { Loader2, PlusCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Loader2, PlusCircle, RefreshCw } from 'lucide-react';
 
 const HROnboardingPage = () => {
     const [loading, setLoading] = useState(true);
@@ -81,22 +81,6 @@ const HROnboardingPage = () => {
         } catch (error) {
             console.error('Assign template failed', error);
             alert(error.message || 'Failed to assign onboarding template');
-        }
-    };
-
-    const updateTaskStatusByHR = async (taskId, is_completed) => {
-        try {
-            await api.patch(`/onboarding/tasks/${taskId}/hr`, { is_completed });
-            setActiveCases((prev) => prev.map((item) => {
-                const updatedTasks = item.tasks.map((task) => task.id === taskId ? { ...task, is_completed } : task);
-                const done = updatedTasks.filter((t) => t.is_completed).length;
-                const total = updatedTasks.length;
-                const completion_percentage = total === 0 ? 0 : Math.round((done * 100) / total);
-                return { ...item, tasks: updatedTasks, completed_tasks: done, total_tasks: total, completion_percentage };
-            }));
-        } catch (error) {
-            console.error('Failed to update task status', error);
-            alert('Task update failed');
         }
     };
 
@@ -182,6 +166,9 @@ const HROnboardingPage = () => {
 
             <div className="card" style={{ padding: '18px', marginTop: '16px' }}>
                 <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Active Onboarding Cases</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                    Task completion here is auto-synced from employee actions.
+                </p>
                 {activeCases.length === 0 ? (
                     <p style={{ color: 'var(--text-muted)' }}>No active onboarding cases.</p>
                 ) : (
@@ -204,18 +191,27 @@ const HROnboardingPage = () => {
 
                                 <div style={{ display: 'grid', gap: '6px' }}>
                                     {(item.tasks || []).map((task) => (
-                                        <label key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '8px', background: '#F8FAFC' }}>
+                                        <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '8px', background: '#F8FAFC' }}>
                                             <div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <input type="checkbox" checked={task.is_completed} onChange={(e) => updateTaskStatusByHR(task.id, e.target.checked)} />
+                                                    {task.is_completed ? (
+                                                        <CheckCircle2 size={15} color="#16A34A" />
+                                                    ) : (
+                                                        <span style={{ width: '15px', height: '15px', border: '1px solid #94A3B8', borderRadius: '50%', display: 'inline-block' }} />
+                                                    )}
                                                     <span style={{ fontSize: '13px', fontWeight: '600' }}>{task.title}</span>
                                                 </div>
                                                 {task.requires_document && <span style={{ fontSize: '11px', color: '#0369A1' }}>Document required</span>}
+                                                {task.is_completed && task.completed_by_name && (
+                                                    <span style={{ display: 'block', fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>
+                                                        Completed by {task.completed_by_name}
+                                                    </span>
+                                                )}
                                             </div>
                                             {task.document_url && (
                                                 <a href={task.document_url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--primary)' }}>View doc</a>
                                             )}
-                                        </label>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

@@ -82,7 +82,7 @@ const updateCycleStatus = async (req, res) => {
 // HR gets all, others get active + participated cycles
 const getCycles = async (req, res) => {
     try {
-        if (req.user.role === 'hr') {
+        if (['hr', 'admin'].includes(req.user.role)) {
             const result = await pool.query('SELECT * FROM appraisal_cycles ORDER BY start_date DESC');
             return res.json(result.rows);
         }
@@ -180,7 +180,7 @@ const getGoals = async (req, res) => {
         let targetEmployeeId = me.id;
 
         if (employee_id) {
-            if (req.user.role === 'hr' || await isManagerOf(me.id, employee_id)) {
+            if (['hr', 'admin'].includes(req.user.role) || await isManagerOf(me.id, employee_id)) {
                 targetEmployeeId = employee_id;
             } else {
                 return res.status(403).json({ error: 'Forbidden' });
@@ -270,7 +270,7 @@ const submitManagerAppraisal = async (req, res) => {
         const manager = await resolveEmployee(req);
         if (!manager) return res.status(404).json({ error: 'Manager not found' });
 
-        const allowed = req.user.role === 'hr' ? true : await isManagerOf(manager.id, employee_id);
+        const allowed = ['hr', 'admin'].includes(req.user.role) ? true : await isManagerOf(manager.id, employee_id);
         if (!allowed) return res.status(403).json({ error: 'Forbidden: Not your direct report' });
 
         await client.query('BEGIN');
@@ -348,12 +348,12 @@ const getPeerFeedback = async (req, res) => {
         const me = await resolveEmployee(req);
         if (!me) return res.status(404).json({ error: 'Employee not found' });
 
-        const allowed = req.user.role === 'hr' || me.id === employee_id || await isManagerOf(me.id, employee_id);
+        const allowed = ['hr', 'admin'].includes(req.user.role) || me.id === employee_id || await isManagerOf(me.id, employee_id);
         if (!allowed) return res.status(403).json({ error: 'Forbidden' });
 
         const result = await pool.query(
             `SELECT pf.id, pf.rating, pf.comment, pf.is_anonymous, pf.created_at,
-                    CASE WHEN pf.is_anonymous = TRUE AND $3 != 'hr' THEN 'Anonymous'
+                    CASE WHEN pf.is_anonymous = TRUE AND $3 NOT IN ('hr', 'admin') THEN 'Anonymous'
                          ELSE e.full_name END AS reviewer_name
              FROM peer_feedback pf
              JOIN employees e ON e.id = pf.reviewer_id

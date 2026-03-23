@@ -6,6 +6,16 @@ const getBaseUrl = () => {
 
 const API_URL = getBaseUrl();
 
+const parseResponse = async (res) => {
+    const raw = await res.text();
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return { error: raw };
+    }
+};
+
 const getHeaders = (body) => {
     const token = localStorage.getItem('token');
     const headers = {
@@ -26,8 +36,8 @@ export const api = {
         const res = await fetch(`${API_URL}${endpoint}`, {
             headers: getHeaders()
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'API Error');
+        const data = await parseResponse(res);
+        if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
         return data;
     },
 
@@ -37,8 +47,8 @@ export const api = {
             headers: getHeaders(body),
             body: body instanceof FormData ? body : JSON.stringify(body)
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'API Error');
+        const data = await parseResponse(res);
+        if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
         return data;
     },
 
@@ -48,8 +58,8 @@ export const api = {
             headers: getHeaders(body),
             body: body instanceof FormData ? body : JSON.stringify(body)
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'API Error');
+        const data = await parseResponse(res);
+        if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
         return data;
     },
 
@@ -59,8 +69,8 @@ export const api = {
             headers: getHeaders(body),
             body: body instanceof FormData ? body : JSON.stringify(body)
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'API Error');
+        const data = await parseResponse(res);
+        if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
         return data;
     },
 
@@ -69,8 +79,8 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'API Error');
+        const data = await parseResponse(res);
+        if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
         return data;
     }
 };

@@ -11,7 +11,6 @@ import {
     Network,
     BarChart3,
     Mail,
-    History,
     Settings,
     FileCheck,
     MessageSquare,
@@ -22,6 +21,8 @@ import {
     HandCoins,
     UserMinus,
     LifeBuoy,
+    Video,
+    HardDrive,
     LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -74,8 +75,9 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         { icon: <Briefcase size={20} />, label: 'Projects', path: '/hr/projects' },
         { icon: <CalendarCheck size={20} />, label: 'Calendar', path: '/hr/calendar' },
         { icon: <Mail size={20} />, label: 'Offer Letters', path: '/hr/offer-letters' },
-        { icon: <History size={20} />, label: 'Audit Logs', path: '/hr/audit-logs' },
-        { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
+        { icon: <MessageSquare size={20} />, label: 'Chat', path: '/hr/chat' },
+        { icon: <Video size={20} />, label: 'Meetings', path: '/hr/meetings' },
+        { icon: <HardDrive size={20} />, label: 'Drive', path: '/hr/drive' },
         { icon: <MessageSquare size={20} />, label: 'Complaints', path: '/hr/complaints' },
         { icon: <BarChart3 size={20} />, label: 'Performance', path: '/hr/performance' },
         { icon: <ClipboardList size={20} />, label: 'Onboarding', path: '/hr/onboarding' },

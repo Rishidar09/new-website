@@ -1,11 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import HRLayout from './components/HRLayout';
+import AdminLayout from './components/AdminLayout';
 import EmployeeLayout from './components/EmployeeLayout';
 import { useAuth } from './context/AuthContext';
 import HRDashboard from './pages/HRDashboard';
@@ -63,15 +64,30 @@ import HRSurveyCreatePage from './pages/HRSurveyCreatePage';
 import HRSurveyResultsPage from './pages/HRSurveyResultsPage';
 import EmployeeSurveysPage from './pages/EmployeeSurveysPage';
 import EmployeeSurveyFillPage from './pages/EmployeeSurveyFillPage';
+import AdminManagementPage from './pages/AdminManagementPage';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
-const CommonLayoutWrapper = ({ children }) => {
+const getRoleBasePath = (role) => {
+  if (role === 'admin') return '/admin';
+  if (role === 'hr') return '/hr';
+  return '/employee';
+};
+
+const LegacySharedRedirect = ({ section }) => {
   const { profile } = useAuth();
-  if (profile?.role === 'hr') {
-    return <HRLayout>{children}</HRLayout>;
+  const { id } = useParams();
+
+  if (!profile?.role) {
+    return <Navigate to="/login" replace />;
   }
-  return <EmployeeLayout>{children}</EmployeeLayout>;
+
+  const basePath = getRoleBasePath(profile.role);
+  const targetPath = section === 'meeting-room'
+    ? `${basePath}/meetings/${id}`
+    : `${basePath}/${section}`;
+
+  return <Navigate to={targetPath} replace />;
 };
 
 function App() {
@@ -87,13 +103,59 @@ function App() {
 
           {/* HR Routes */}
           <Route path="/hr/*" element={
-            <ProtectedRoute requiredRole="hr">
+            <ProtectedRoute requiredRole={['hr', 'admin']}>
               <HRLayout>
                 <Routes>
                   <Route path="dashboard" element={<HRDashboard />} />
                   <Route path="employees" element={<EmployeesPage />} />
                   <Route path="employees/offboarding" element={<HROffboardingPage />} />
                   <Route path="assets" element={<HRAssetsPage />} />
+                  <Route path="employees/:id" element={<EmployeeProfilePage />} />
+                  <Route path="leaves" element={<HRLeavesPage />} />
+                  <Route path="attendance" element={<HRAttendancePage />} />
+                  <Route path="projects" element={<HRProjectsPage />} />
+                  <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="offer-letters" element={<OfferLetterPage />} />
+                  <Route path="payroll" element={<HRPayrollPage />} />
+                  <Route path="payroll/:employeeId" element={<HRPayrollEmployeePage />} />
+                  <Route path="payroll/statutory-settings" element={<HRStatutorySettingsPage />} />
+                  <Route path="payroll/statutory-compliance" element={<HRStatutoryCompliancePage />} />
+                  <Route path="tax-declarations" element={<HRTaxDeclarationPage />} />
+                  <Route path="form16" element={<HRForm16Page />} />
+                  <Route path="complaints" element={<HRComplaintsPage />} />
+                  <Route path="performance" element={<HRPerformancePage />} />
+                  <Route path="onboarding" element={<HROnboardingPage />} />
+                  <Route path="departments" element={<HRDepartmentsPage />} />
+                  <Route path="org-chart" element={<HROrgChartPage />} />
+                  <Route path="expense-approvals" element={<HRExpenseApprovalsPage />} />
+                  <Route path="reimbursement-summary" element={<HRReimbursementSummaryPage />} />
+                  <Route path="shifts" element={<HRShiftManagementPage />} />
+                  <Route path="leave-encashment" element={<HRLeaveEncashmentPage />} />
+                  <Route path="helpdesk" element={<HRHelpDeskPage />} />
+                  <Route path="surveys" element={<HRSurveysPage />} />
+                  <Route path="surveys/create" element={<HRSurveyCreatePage />} />
+                  <Route path="surveys/:id/results" element={<HRSurveyResultsPage />} />
+                  <Route path="chat" element={<ChatPage />} />
+                  <Route path="meetings" element={<MeetingsPage />} />
+                  <Route path="meetings/:id" element={<MeetingRoomPage />} />
+                  <Route path="drive" element={<DrivePage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
+                </Routes>
+              </HRLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Admin Routes */}
+          <Route path="/admin/*" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout>
+                <Routes>
+                  <Route path="dashboard" element={<HRDashboard />} />
+                  <Route path="admin-management" element={<AdminManagementPage />} />
+                  <Route path="employees" element={<EmployeesPage />} />
+                  <Route path="employees/offboarding" element={<HROffboardingPage />} />
                   <Route path="employees/:id" element={<EmployeeProfilePage />} />
                   <Route path="leaves" element={<HRLeavesPage />} />
                   <Route path="attendance" element={<HRAttendancePage />} />
@@ -120,10 +182,16 @@ function App() {
                   <Route path="surveys" element={<HRSurveysPage />} />
                   <Route path="surveys/create" element={<HRSurveyCreatePage />} />
                   <Route path="surveys/:id/results" element={<HRSurveyResultsPage />} />
+                  <Route path="assets" element={<HRAssetsPage />} />
+                  <Route path="chat" element={<ChatPage />} />
+                  <Route path="meetings" element={<MeetingsPage />} />
+                  <Route path="meetings/:id" element={<MeetingRoomPage />} />
+                  <Route path="drive" element={<DrivePage />} />
+                  <Route path="profile" element={<ProfilePage />} />
                   <Route path="settings" element={<SettingsPage />} />
-                  <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
+                  <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                 </Routes>
-              </HRLayout>
+              </AdminLayout>
             </ProtectedRoute>
           } />
 
@@ -153,6 +221,11 @@ function App() {
                   <Route path="performance" element={<EmployeePerformancePage />} />
                   <Route path="onboarding" element={<EmployeeOnboardingPage />} />
                   <Route path="profile/:id" element={<EmployeeProfilePage />} />
+                  <Route path="chat" element={<ChatPage />} />
+                  <Route path="meetings" element={<MeetingsPage />} />
+                  <Route path="meetings/:id" element={<MeetingRoomPage />} />
+                  <Route path="drive" element={<DrivePage />} />
+                  <Route path="profile" element={<ProfilePage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
                 </Routes>
@@ -160,40 +233,30 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Common Routes with Dynamic Layout */}
+          {/* Legacy shared routes redirected to role-scoped routes */}
           <Route path="/chat" element={
             <ProtectedRoute>
-              <CommonLayoutWrapper>
-                <ChatPage />
-              </CommonLayoutWrapper>
+              <LegacySharedRedirect section="chat" />
             </ProtectedRoute>
           } />
           <Route path="/meetings" element={
             <ProtectedRoute>
-              <CommonLayoutWrapper>
-                <MeetingsPage />
-              </CommonLayoutWrapper>
+              <LegacySharedRedirect section="meetings" />
             </ProtectedRoute>
           } />
           <Route path="/meetings/:id" element={
             <ProtectedRoute>
-              <CommonLayoutWrapper>
-                <MeetingRoomPage />
-              </CommonLayoutWrapper>
+              <LegacySharedRedirect section="meeting-room" />
             </ProtectedRoute>
           } />
           <Route path="/drive" element={
             <ProtectedRoute>
-              <CommonLayoutWrapper>
-                <DrivePage />
-              </CommonLayoutWrapper>
+              <LegacySharedRedirect section="drive" />
             </ProtectedRoute>
           } />
           <Route path="/profile" element={
             <ProtectedRoute>
-              <CommonLayoutWrapper>
-                <ProfilePage />
-              </CommonLayoutWrapper>
+              <LegacySharedRedirect section="profile" />
             </ProtectedRoute>
           } />
 

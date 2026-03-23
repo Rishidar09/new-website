@@ -25,6 +25,19 @@ async function setupDatabase() {
 
         const seedUsers = [
             {
+                key: 'SUPERADMIN',
+                role: 'admin',
+                email: process.env.SEED_SUPERADMIN_EMAIL,
+                employeeId: process.env.SEED_SUPERADMIN_ID,
+                password: process.env.SEED_SUPERADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url'),
+                employeeProfile: {
+                    full_name: process.env.SEED_SUPERADMIN_NAME || 'Owner Admin',
+                    role: process.env.SEED_SUPERADMIN_ROLE || 'Super Admin',
+                    department: process.env.SEED_SUPERADMIN_DEPARTMENT || 'Administration',
+                    status: process.env.SEED_SUPERADMIN_STATUS || 'Active',
+                },
+            },
+            {
                 key: 'HR',
                 role: 'hr',
                 email: process.env.SEED_HR_EMAIL,
@@ -49,7 +62,12 @@ async function setupDatabase() {
 
         for (const user of seedUsers) {
             if (!user.email || !user.employeeId) {
-                console.log(`ℹ️  Skipping ${user.key} seed. Missing ${user.key === 'HR' ? 'SEED_HR_EMAIL/SEED_HR_EMPLOYEE_ID' : 'SEED_EMPLOYEE_EMAIL/SEED_EMPLOYEE_ID'}.`);
+                const missingEnvHint = user.key === 'SUPERADMIN'
+                    ? 'SEED_SUPERADMIN_EMAIL/SEED_SUPERADMIN_ID'
+                    : user.key === 'HR'
+                        ? 'SEED_HR_EMAIL/SEED_HR_EMPLOYEE_ID'
+                        : 'SEED_EMPLOYEE_EMAIL/SEED_EMPLOYEE_ID';
+                console.log(`ℹ️  Skipping ${user.key} seed. Missing ${missingEnvHint}.`);
                 continue;
             }
 
@@ -87,7 +105,12 @@ async function setupDatabase() {
             }
 
             console.log(`✅ Seeded ${user.key} account: ${user.email}`);
-            if (!process.env[`${user.key === 'HR' ? 'SEED_HR_PASSWORD' : 'SEED_EMPLOYEE_PASSWORD'}`]) {
+            const passwordEnvKey = user.key === 'SUPERADMIN'
+                ? 'SEED_SUPERADMIN_PASSWORD'
+                : user.key === 'HR'
+                    ? 'SEED_HR_PASSWORD'
+                    : 'SEED_EMPLOYEE_PASSWORD';
+            if (!process.env[passwordEnvKey]) {
                 console.log(`   Generated temporary password: ${user.password}`);
             }
         }

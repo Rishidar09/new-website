@@ -1,4 +1,7 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+const { sendOfferLetterEmail } = require('../services/emailService');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -6,16 +9,48 @@ const pool = new Pool({
 
 // ─── Create offer letter (HR) ───────────────────────────────────
 const createOfferLetter = async (req, res) => {
-    const { candidate_name, role, department, ctc, joining_date } = req.body;
     try {
+        const body = req.body || {};
+        const { candidate_name, email, role, department, ctc, joining_date } = body;
+
+        const missingFields = [];
+        if (!candidate_name || !String(candidate_name).trim()) missingFields.push('candidate_name');
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
+        }
+
+        if (!req.file?.buffer?.length) {
+            return res.status(400).json({ error: 'Generated offer letter PDF is missing in request' });
+        }
+
+        let savedFilePath = null;
+        if (req.file?.buffer?.length) {
+            const safeName = (candidate_name || 'candidate').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            const fileName = `offer_letter_${safeName || 'candidate'}_${Date.now()}.pdf`;
+            const uploadDir = path.join(__dirname, '..', 'uploads', 'offer_letters');
+            fs.mkdirSync(uploadDir, { recursive: true });
+            const fullPath = path.join(uploadDir, fileName);
+            fs.writeFileSync(fullPath, req.file.buffer);
+            savedFilePath = `/uploads/offer_letters/${fileName}`;
+        }
+
         const result = await pool.query(
-            "INSERT INTO offer_letters (candidate_name, role, department, ctc, joining_date) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [candidate_name, role, department, ctc, joining_date]
+            "INSERT INTO offer_letters (candidate_name, email, role, department, ctc, joining_date, file_path) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+            [
+                String(candidate_name).trim(),
+                email || null,
+                role || 'Software Developer - L1',
+                department || 'IT',
+                ctc || null,
+                joining_date || null,
+                savedFilePath,
+            ]
         );
         res.json(result.rows[0]);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Server error' });
+        console.error('createOfferLetter failed:', err);
+        res.status(500).json({ error: err?.message || 'Server error' });
     }
 };
 
@@ -33,8 +68,46 @@ const getOfferLetters = async (req, res) => {
 // ─── Send offer letter (HR) ─────────────────────────────────────
 const sendOfferLetter = async (req, res) => {
     try {
+        const existing = await pool.query(
+            "SELECT id, candidate_name, email, role, department, ctc, joining_date, type, file_path FROM offer_letters WHERE id = $1",
+            [req.params.id]
+        );
+
+        if (existing.rows.length === 0) {
+            return res.status(404).json({ error: 'Offer letter not found' });
+        }
+
+        const letter = existing.rows[0];
+        if (!letter.email) {
+            return res.status(400).json({ error: 'Candidate email is missing for this offer letter' });
+        }
+
+        if (!letter.file_path) {
+            return res.status(400).json({ error: 'Generated offer letter PDF is missing. Please regenerate before sending.' });
+        }
+
+        const attachmentPath = path.join(__dirname, '..', letter.file_path.replace(/^\/+/, '').replace(/\//g, path.sep));
+
+        if (!fs.existsSync(attachmentPath)) {
+            return res.status(400).json({ error: 'Generated offer letter PDF file not found on server. Please regenerate before sending.' });
+        }
+
+        await sendOfferLetterEmail({
+            to: letter.email,
+            candidateName: letter.candidate_name,
+            role: letter.role,
+            positionTitle: letter.role,
+            department: letter.department,
+            location: 'Hyderabad',
+            ctc: letter.ctc,
+            issueDate: null,
+            joiningDate: letter.joining_date,
+            type: letter.type || 'offer',
+            attachmentPath
+        });
+
         await pool.query("UPDATE offer_letters SET status = 'Sent' WHERE id = $1", [req.params.id]);
-        res.json({ message: 'Offer letter sent successfully (simulated)' });
+        res.json({ message: 'Offer letter sent successfully' });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Server error' });

@@ -1,4 +1,8 @@
 const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
+const { Buffer } = require('buffer');
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -10,10 +14,120 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const FROM = `"IndusInnovate Technologies" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
+const FROM = process.env.EMAIL_FROM || `"IndusInnovate Technologies" <${process.env.EMAIL_USER}>`;
+
+// ─── Generate Offer Letter PDF ───────────────────────────────────
+const generateOfferLetterPDF = (offerData) => {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ margin: 50, size: 'A4' });
+            const chunks = [];
+
+            // Collect PDF data
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => {
+                const pdfBuffer = Buffer.concat(chunks);
+                resolve(pdfBuffer);
+            });
+            doc.on('error', reject);
+
+            // Header
+            doc.fontSize(18).font('Helvetica-Bold').text('INDUSINNOVATE', { align: 'center' });
+            doc.fontSize(10).font('Helvetica').text('Innovating the future, the indus way', { align: 'center' });
+            doc.moveDown(0.3);
+
+            // Date
+            doc.fontSize(9).text(`Date: ${offerData.issueDate || new Date().toLocaleDateString('en-GB')}`);
+            doc.moveDown(0.2);
+            doc.text(`Dear ${offerData.candidateName},`);
+            doc.moveDown(0.4);
+
+            // Body
+            doc.fontSize(9).text('We are pleased to extend an offer of employment for the position mentioned below. Your exceptional qualifications make you an ideal fit for our organization.');
+            doc.moveDown(0.4);
+
+            // Position Details
+            doc.fontSize(10).font('Helvetica-Bold').text('POSITION DETAILS', { underline: true });
+            doc.moveDown(0.2);
+            doc.fontSize(9).font('Helvetica');
+            doc.text(`Position: ${offerData.positionTitle || 'Software Developer'}`);
+            doc.text(`Department: ${offerData.department || 'IT'}`);
+            doc.text(`Location: ${offerData.location || 'Hyderabad'}`);
+            doc.text(`Joining Date: ${offerData.joiningDate || 'To be confirmed'}`);
+            doc.moveDown(0.3);
+
+            // Salary Table Header
+            const monthlyCtc = offerData.ctc ? Math.round(offerData.ctc / 12) : 33334;
+            const employeePf = 1500;
+            const insurance = 334;
+            const gross = offerData.ctc ? Math.round(monthlyCtc - employeePf - insurance) : 31500;
+            const basic = offerData.ctc ? Math.round((gross * 55) / 100) : 17300;
+            const hra = offerData.ctc ? Math.round((gross * 27.8) / 100) : 8750;
+            const conveyance = 1500;
+            const special = offerData.ctc ? Math.round(gross - basic - hra - conveyance) : 3750;
+
+            doc.fontSize(9).font('Helvetica-Bold').text('SALARY ANNEXURE', { underline: true });
+            doc.moveDown(0.3);
+
+            // Simple table format
+            const tableTop = doc.y;
+            const col1 = 60;
+            const col2 = 300;
+            const col3 = 400;
+            const rowHeight = 18;
+
+            // Header row
+            doc.fontSize(8).font('Helvetica-Bold');
+            doc.text('Components', col1, tableTop);
+            doc.text('Per Month', col2, tableTop);
+            doc.text('Per Annum', col3, tableTop);
+            doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+
+            let y = tableTop + 20;
+            const rows = [
+                ['Basic Pay', `₹${basic.toLocaleString('en-IN')}`, `₹${(basic * 12).toLocaleString('en-IN')}`],
+                ['House Rent Allowance', `₹${hra.toLocaleString('en-IN')}`, `₹${(hra * 12).toLocaleString('en-IN')}`],
+                ['Conveyance', `₹${conveyance.toLocaleString('en-IN')}`, `₹${(conveyance * 12).toLocaleString('en-IN')}`],
+                ['Special Allowance', `₹${special.toLocaleString('en-IN')}`, `₹${(special * 12).toLocaleString('en-IN')}`],
+                ['Gross Salary (A)', `₹${gross.toLocaleString('en-IN')}`, `₹${(gross * 12).toLocaleString('en-IN')}`],
+                ['Employee PF', `₹${employeePf.toLocaleString('en-IN')}`, `₹${(employeePf * 12).toLocaleString('en-IN')}`],
+                ['Insurance', `₹${insurance.toLocaleString('en-IN')}`, `₹${(insurance * 12).toLocaleString('en-IN')}`],
+                ['Total CTC', `₹${monthlyCtc.toLocaleString('en-IN')}`, `₹${(offerData.ctc || '4,00,008').toLocaleString('en-IN')}`]
+            ];
+
+            doc.fontSize(7).font('Helvetica');
+            rows.forEach((row, i) => {
+                if (i === rows.length - 1) doc.font('Helvetica-Bold');
+                doc.text(row[0], col1, y);
+                doc.text(row[1], col2, y);
+                doc.text(row[2], col3, y);
+                y += rowHeight;
+            });
+
+            doc.moveDown(0.5);
+            doc.font('Helvetica');
+            doc.fontSize(8);
+            doc.text('• Employment will be subject to a probation period of 4 months');
+            doc.text('• Working hours: Monday to Friday, 9:00 AM - 6:00 PM');
+            doc.text('• Variable pay will be given every 6 months based on performance');
+
+            doc.moveDown(0.5);
+            doc.text('We welcome you to our organization. Looking forward to your positive response.');
+            doc.moveDown(0.5);
+            doc.text('Warm Regards,');
+            doc.text('HR Team');
+            doc.text('IndusInnovate Technologies');
+
+            // Finalize PDF
+            doc.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
 
 // ─── Send Welcome Email ──────────────────────────────────────────
-const sendWelcomeEmail = async ({ to, name, email, password, role }) => {
+const sendWelcomeEmail = async ({ to, name, email, password, role, resetLink }) => {
     await transporter.sendMail({
         from: FROM,
         to,
@@ -32,6 +146,8 @@ const sendWelcomeEmail = async ({ to, name, email, password, role }) => {
                     <p style="margin:8px 0 0;font-size:14px;color:#374151;"><strong>Temporary Password:</strong> ${password}</p>
                 </div>
                 <p style="color:#EF4444;font-size:13px;">⚠️ You will be required to change your password on first login.</p>
+                ${resetLink ? `<p style="color:#6B7280;font-size:13px;">Please follow the link below to change your password:</p>
+                <a href="${resetLink}" style="display:inline-block;background:#10B981;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:8px;">Change Password</a>` : ''}
                 <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px;">Login to Portal</a>
                 <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2025 IndusInnovate Technologies. All rights reserved.</p>
             </div>
@@ -140,30 +256,130 @@ const sendMeetingInvite = async ({ to, name, title, scheduledAt, agenda, meeting
 };
 
 // ─── Send Offer Letter Email ─────────────────────────────────────
-const sendOfferLetterEmail = async ({ to, candidateName, role, department, joiningDate, type }) => {
+const sendOfferLetterEmail = async ({ to, candidateName, role, positionTitle, department, location, ctc, issueDate, joiningDate, type, attachmentPath }) => {
     const isOffer = type === 'offer';
-    await transporter.sendMail({
+    const safeCandidateName = (candidateName || 'Candidate').replace(/\s+/g, '_');
+    const monthlyCtc = ctc ? Math.round(ctc / 12) : 33334;
+    
+    // Calculate salary components
+    const employeePf = 1500;
+    const insurance = 334;
+    const gross = ctc ? Math.round(monthlyCtc - employeePf - insurance) : 31500;
+    const basic = ctc ? Math.round((gross * 55) / 100) : 17300;
+    const hra = ctc ? Math.round((gross * 27.8) / 100) : 8750;
+    const conveyance = 1500;
+    const special = ctc ? Math.round(gross - basic - hra - conveyance) : 3750;
+
+    let normalizedPdfBuffer = null;
+
+    if (attachmentPath && fs.existsSync(attachmentPath)) {
+        normalizedPdfBuffer = fs.readFileSync(attachmentPath);
+    } else {
+        const pdfBuffer = await generateOfferLetterPDF({
+            candidateName,
+            positionTitle: positionTitle || role,
+            department,
+            location,
+            ctc,
+            issueDate,
+            joiningDate
+        });
+        normalizedPdfBuffer = Buffer.from(pdfBuffer || []);
+    }
+
+    if (!normalizedPdfBuffer || !normalizedPdfBuffer.length) {
+        throw new Error('Offer letter PDF generation failed');
+    }
+
+    try {
+        await transporter.sendMail({
         from: FROM,
         to,
         subject: `${isOffer ? 'Offer Letter' : 'Joining Letter'} – IndusInnovate Technologies`,
         html: `
-        <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
+        <div style="font-family:Inter,Arial,sans-serif;max-width:700px;margin:0 auto;background:#ffffff;">
             <div style="background:linear-gradient(135deg,#1E3A8A,#3B82F6);padding:32px;border-radius:12px 12px 0 0;text-align:center;">
-                <h1 style="color:white;margin:0;font-size:24px;">IndusInnovate Technologies</h1>
+                <h1 style="color:white;margin:0;font-size:28px;font-weight:700;">IndusInnovate Technologies</h1>
+                <p style="color:#E0E7FF;margin:8px 0 0 0;font-size:14px;">Innovating the future, the indus way</p>
             </div>
-            <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
-                <h2 style="color:#111827;">🎉 ${isOffer ? 'Congratulations!' : 'Welcome to the Team!'}</h2>
-                <p style="color:#6B7280;">Dear ${candidateName},</p>
-                <p style="color:#6B7280;">We are pleased to extend ${isOffer ? 'an offer' : 'a joining letter'} for the position of <strong>${role}</strong> in the <strong>${department}</strong> department.</p>
-                <div style="background:#F0FDF4;border-left:4px solid #10B981;padding:16px;border-radius:4px;margin:24px 0;">
-                    <p style="margin:0;font-size:14px;color:#374151;"><strong>Joining Date:</strong> ${joiningDate}</p>
+            <div style="padding:40px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:#111827;font-size:22px;margin-top:0;">🎉 ${isOffer ? 'Congratulations!' : 'Welcome to the Team!'}</h2>
+                <p style="color:#374151;font-size:15px;line-height:1.6;">Dear <strong>${candidateName}</strong>,</p>
+                
+                <p style="color:#374151;font-size:15px;line-height:1.6;">We are pleased to extend ${isOffer ? 'an offer' : 'a joining letter'} for the position of <strong>${positionTitle || role}</strong> in the <strong>${department}</strong> department. Your exceptional skills and experience make you an ideal fit for our team.</p>
+                
+                <div style="background:#F0FDF4;border-left:4px solid #10B981;padding:20px;border-radius:4px;margin:24px 0;">
+                    <p style="margin:8px 0;font-size:14px;color:#374151;"><strong>Position:</strong> ${positionTitle || role}</p>
+                    <p style="margin:8px 0;font-size:14px;color:#374151;"><strong>Department:</strong> ${department}</p>
+                    <p style="margin:8px 0;font-size:14px;color:#374151;"><strong>Location:</strong> ${location}</p>
+                    <p style="margin:8px 0;font-size:14px;color:#374151;"><strong>Joining Date:</strong> ${joiningDate}</p>
+                    <p style="margin:8px 0;font-size:14px;color:#374151;"><strong>Annual CTC:</strong> ₹${ctc ? ctc.toLocaleString('en-IN') : 'As discussed'}</p>
                 </div>
-                <p style="color:#6B7280;">Please find your ${isOffer ? 'offer letter' : 'joining letter'} attached. We look forward to having you on board.</p>
-                <p style="color:#374151;margin-top:24px;">Warm Regards,<br><strong>HR Team</strong><br>IndusInnovate Technologies</p>
-                <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2025 IndusInnovate Technologies. All rights reserved.</p>
+
+                <h3 style="color:#1F2937;font-size:16px;margin-top:24px;margin-bottom:12px;">📊 Compensation Breakdown (Monthly)</h3>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+                    <tr style="background:#F9FAFB;">
+                        <td style="padding:10px;border:1px solid #E5E7EB;"><strong>Basic Pay</strong></td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${basic.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px;border:1px solid #E5E7EB;">House Rent Allowance (HRA)</td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${hra.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr style="background:#F9FAFB;">
+                        <td style="padding:10px;border:1px solid #E5E7EB;">Conveyance Allowance</td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${conveyance.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px;border:1px solid #E5E7EB;">Special Allowance</td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${special.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr style="background:#E0F2FE;">
+                        <td style="padding:10px;border:1px solid #E5E7EB;"><strong>Gross Salary</strong></td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;"><strong>₹${gross.toLocaleString('en-IN')}</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px;border:1px solid #E5E7EB;">Employee PF Contribution</td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${employeePf.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr style="background:#F9FAFB;">
+                        <td style="padding:10px;border:1px solid #E5E7EB;">Insurance (Company Paid)</td>
+                        <td style="padding:10px;border:1px solid #E5E7EB;text-align:right;">₹${insurance.toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr style="background:#FEF3C7;">
+                        <td style="padding:12px;border:1px solid #E5E7EB;"><strong>Total CTC (A + Benefits)</strong></td>
+                        <td style="padding:12px;border:1px solid #E5E7EB;text-align:right;"><strong>₹${monthlyCtc.toLocaleString('en-IN')}</strong></td>
+                    </tr>
+                </table>
+
+                <h3 style="color:#1F2937;font-size:14px;margin-top:20px;margin-bottom:10px;">📋 Key Details:</h3>
+                <ul style="color:#374151;font-size:14px;line-height:1.8;padding-left:20px;">
+                    <li>Employment will be subject to a probation period of 4 months</li>
+                    <li>Working hours: Monday to Friday, 9:00 AM - 6:00 PM</li>
+                    <li>Based on your performance, variable pay will be given every 6 months</li>
+                    <li>Statutory deductions as per applicable laws will be made</li>
+                </ul>
+
+                <p style="color:#374151;font-size:14px;margin-top:24px;line-height:1.6;">Please find the complete offer letter attached. If you have any questions or require clarifications, feel free to reach out to our HR team.</p>
+                
+                <p style="color:#374151;margin-top:24px;font-size:15px;"><strong>Warm Regards,</strong><br>HR Team<br>IndusInnovate Technologies<br>📧 ${process.env.EMAIL_USER}<br>Innovating the future, the indus way</p>
+                
+                <p style="color:#9CA3AF;font-size:11px;margin-top:32px;padding-top:16px;border-top:1px solid #E5E7EB;">© 2026 IndusInnovate Technologies Private Limited. All rights reserved. This communication contains confidential information and is intended only for the addressee.</p>
             </div>
-        </div>`
-    });
+        </div>`,
+        attachments: [
+            {
+                filename: attachmentPath ? path.basename(attachmentPath) : `Offer_Letter_${safeCandidateName}.pdf`,
+                content: normalizedPdfBuffer,
+                contentType: 'application/pdf',
+                contentDisposition: 'attachment'
+            }
+        ]
+        });
+    } catch (err) {
+        const detail = err?.response || err?.message || 'Unknown mail transport error';
+        throw new Error(`Mail send failed: ${detail}`);
+    }
 };
 
 module.exports = {

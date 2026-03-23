@@ -132,7 +132,7 @@ const EmployeeProfilePage = () => {
             <>
                 <div style={{ padding: '40px', textAlign: 'center' }}>
                     <h2>Employee not found</h2>
-                    <button onClick={() => navigate('/hr/employees')}>Back to list</button>
+                    <button onClick={() => navigate(profile?.role === 'admin' ? '/admin/employees' : '/hr/employees')}>Back to list</button>
                 </div>
             </>
         );
@@ -142,7 +142,7 @@ const EmployeeProfilePage = () => {
         <>
             <div style={{ marginBottom: '24px' }}>
                 <button
-                    onClick={() => navigate(profile?.role === 'hr' ? '/hr/employees' : '/employee/dashboard')}
+                    onClick={() => navigate(profile?.role === 'admin' ? '/admin/employees' : profile?.role === 'hr' ? '/hr/employees' : '/employee/dashboard')}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -157,13 +157,21 @@ const EmployeeProfilePage = () => {
                     }}
                 >
                     <ArrowLeft size={18} />
-                    {profile?.role === 'hr' ? 'Back to Employees' : 'Back to Dashboard'}
+                    {(profile?.role === 'admin' || profile?.role === 'hr') ? 'Back to Employees' : 'Back to Dashboard'}
                 </button>
             </div>
 
             <div className="card" style={{ marginBottom: '32px', padding: '32px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <img src={employee.avatar_url || `https://i.pravatar.cc/150?u=${employee.id}`} alt={employee.full_name} style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+                    <img
+                        src={employee.avatar_url || '/avatar-placeholder.svg'}
+                        onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/avatar-placeholder.svg';
+                        }}
+                        alt={employee.full_name}
+                        style={{ width: '100px', height: '100px', borderRadius: '50%' }}
+                    />
                     <div>
                         <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>{employee.full_name}</h1>
                         <div style={{ display: 'flex', gap: '16px', color: 'var(--text-muted)', fontSize: '14px' }}>

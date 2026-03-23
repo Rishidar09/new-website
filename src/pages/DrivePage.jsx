@@ -151,7 +151,7 @@ const DrivePage = () => {
                         <NavButton active={viewType === 'my'} icon={<HardDrive size={18} />} label="My Files" onClick={() => { setViewType('my'); setCurrentPath([]); }} />
                         <NavButton active={viewType === 'shared'} icon={<Users size={18} />} label="Shared With Me" onClick={() => { setViewType('shared'); setCurrentPath([]); }} />
                         <NavButton active={viewType === 'company'} icon={<Plus size={18} />} label="Company Folder" onClick={() => { setViewType('company'); setCurrentPath([]); }} />
-                        {userRole === 'hr' && <NavButton active={viewType === 'hr'} icon={<ShieldAlert size={18} />} label="HR Documents" onClick={() => { setViewType('hr'); setCurrentPath([]); }} />}
+                        {(userRole === 'hr' || userRole === 'admin') && <NavButton active={viewType === 'hr'} icon={<ShieldAlert size={18} />} label="HR Documents" onClick={() => { setViewType('hr'); setCurrentPath([]); }} />}
                     </div>
 
                     <div className="card" style={{ padding: '20px', marginTop: 'auto' }}>

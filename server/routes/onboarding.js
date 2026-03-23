@@ -27,7 +27,7 @@ const upload = multer({ storage });
 router.use(auth);
 router.use(auditLogger('Employee Onboarding'));
 
-router.get('/templates', authorize(['hr']), onboardingController.getTemplates);
+router.get('/templates', authorize(['hr', 'admin']), onboardingController.getTemplates);
 router.post('/templates', authorize(['hr']), onboardingController.createTemplate);
 router.post('/assign', authorize(['hr']), onboardingController.assignTemplate);
 router.get('/cases/active', authorize(['hr']), onboardingController.getActiveCases);

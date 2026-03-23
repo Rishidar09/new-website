@@ -41,7 +41,10 @@ const auth = async (req, res, next) => {
  */
 const authorize = (roles = []) => {
     return (req, res, next) => {
-        if (roles.length && !roles.includes(req.user.role)) {
+        const allowedRoles = new Set(roles);
+        const hasHrInheritedAccess = req.user.role === 'admin' && allowedRoles.has('hr');
+
+        if (allowedRoles.size && !allowedRoles.has(req.user.role) && !hasHrInheritedAccess) {
             return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
         }
         next();

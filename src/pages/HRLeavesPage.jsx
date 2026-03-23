@@ -103,7 +103,15 @@ const HRLeavesPage = () => {
                                 <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <img src={req.avatar_url || `https://i.pravatar.cc/150?u=${req.employee_id}`} alt="Avatar" className="avatar" />
+                                            <img
+                                                src={req.avatar_url || '/avatar-placeholder.svg'}
+                                                onError={(e) => {
+                                                    e.currentTarget.onerror = null;
+                                                    e.currentTarget.src = '/avatar-placeholder.svg';
+                                                }}
+                                                alt="Avatar"
+                                                className="avatar"
+                                            />
                                             <div>
                                                 <p style={{ fontWeight: '600', fontSize: '14px' }}>{req.full_name}</p>
                                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{req.department}</p>

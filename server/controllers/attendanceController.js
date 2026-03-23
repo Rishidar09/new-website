@@ -199,7 +199,7 @@ const getMyAttendance = async (req, res) => {
 
 // ─── Get all attendance records (HR) ─────────────────────────────
 const getAllAttendance = async (req, res) => {
-    if (req.user.role !== 'hr') {
+    if (!['hr', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Access denied' });
     }
 

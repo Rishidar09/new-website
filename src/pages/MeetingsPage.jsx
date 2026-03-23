@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
     Video,
     Plus,
@@ -14,8 +15,16 @@ import {
     Info
 } from 'lucide-react';
 
+const getRoleBasePath = (role) => {
+    if (role === 'admin') return '/admin';
+    if (role === 'hr') return '/hr';
+    return '/employee';
+};
+
 const MeetingsPage = () => {
     const navigate = useNavigate();
+    const { profile } = useAuth();
+    const roleBasePath = getRoleBasePath(profile?.role);
     const [meetings, setMeetings] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -130,7 +139,7 @@ const MeetingsPage = () => {
                             </div>
 
                             <button
-                                onClick={() => navigate(`/meetings/${meeting.id}`)}
+                                onClick={() => navigate(`${roleBasePath}/meetings/${meeting.id}`)}
                                 className="btn-primary"
                                 style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px' }}
                             >

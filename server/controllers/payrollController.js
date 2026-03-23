@@ -296,7 +296,7 @@ const getPayroll = async (req, res) => {
         let query = 'SELECT p.*, e.full_name FROM payroll p JOIN employees e ON p.employee_id = e.id';
         let params = [];
 
-        if (req.user.role !== 'hr') {
+        if (!['hr', 'admin'].includes(req.user.role)) {
             const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
             if (emp.rows.length > 0) {
                 query += ' WHERE p.employee_id = $1';

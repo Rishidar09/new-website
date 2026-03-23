@@ -15,7 +15,15 @@ const LeaveRequests = ({ requests = [] }) => {
                     requests.map((req) => (
                         <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={req.avatar || `https://i.pravatar.cc/150?u=${req.id}`} alt={req.name} className="avatar" />
+                                <img
+                                    src={req.avatar || '/avatar-placeholder.svg'}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = '/avatar-placeholder.svg';
+                                    }}
+                                    alt={req.name}
+                                    className="avatar"
+                                />
                                 <div>
                                     <p style={{ fontWeight: '600', fontSize: '14px' }}>{req.name}</p>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{req.type}</p>

@@ -83,7 +83,15 @@ const HRPayrollPage = () => {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                <img src={emp.avatar_url || `https://i.pravatar.cc/150?u=${emp.id}`} className="avatar" style={{ width: '36px', height: '36px' }} />
+                                <img
+                                    src={emp.avatar_url || '/avatar-placeholder.svg'}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = '/avatar-placeholder.svg';
+                                    }}
+                                    className="avatar"
+                                    style={{ width: '36px', height: '36px' }}
+                                />
                                 <div>
                                     <p style={{ fontSize: '14px', fontWeight: '600' }}>{emp.full_name}</p>
                                     <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{emp.role}</p>

@@ -3,16 +3,21 @@ import { Search, Plus, Eye, Edit2, Trash2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
+    const { profile } = useAuth();
+    const isAdminUser = profile?.role === 'admin';
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
     const [departmentFilter, setDepartmentFilter] = useState(() => searchParams.get('department') || 'All');
     const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'All');
+    const [managerFilter, setManagerFilter] = useState(() => searchParams.get('manager_id') || 'All');
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
+    const employeeDetailBase = profile?.role === 'admin' ? '/admin/employees' : '/hr/employees';
 
     useEffect(() => {
         fetchEmployees();
@@ -23,6 +28,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
         setSearchTerm(searchParams.get('q') || '');
         setDepartmentFilter(searchParams.get('department') || 'All');
         setStatusFilter(searchParams.get('status') || 'All');
+        setManagerFilter(searchParams.get('manager_id') || 'All');
     }, [searchParams]);
 
     // Persist filters in URL for refresh/share/back-forward support.
@@ -31,13 +37,14 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
         if (searchTerm.trim()) next.set('q', searchTerm.trim());
         if (departmentFilter !== 'All') next.set('department', departmentFilter);
         if (statusFilter !== 'All') next.set('status', statusFilter);
+        if (managerFilter !== 'All') next.set('manager_id', managerFilter);
 
         const nextString = next.toString();
         const currentString = searchParams.toString();
         if (nextString !== currentString) {
             setSearchParams(next, { replace: true });
         }
-    }, [searchTerm, departmentFilter, statusFilter, searchParams, setSearchParams]);
+    }, [searchTerm, departmentFilter, statusFilter, managerFilter, searchParams, setSearchParams]);
 
     const fetchEmployees = async () => {
         try {
@@ -78,13 +85,22 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
         const matchesDept = departmentFilter === 'All' || emp.department === departmentFilter;
         const normalizedStatus = (emp.status || 'Active').toLowerCase();
         const matchesStatus = statusFilter === 'All' || normalizedStatus === statusFilter.toLowerCase();
+        const matchesManager = managerFilter === 'All' || emp.manager_id === managerFilter;
 
-        return matchesSearch && matchesDept && matchesStatus;
+        return matchesSearch && matchesDept && matchesStatus && matchesManager;
     });
 
     const departmentOptions = Array.from(
         new Set((employees || []).map((emp) => emp.department).filter(Boolean))
     ).sort((a, b) => a.localeCompare(b));
+
+    const hrManagerOptions = Array.from(
+        new Map(
+            (employees || [])
+                .filter((emp) => (emp.account_role || '').toLowerCase() === 'hr')
+                .map((emp) => [emp.id, { id: emp.id, full_name: emp.full_name }])
+        ).values()
+    ).sort((a, b) => a.full_name.localeCompare(b.full_name));
 
     return (
         <div className="card" style={{ padding: '0' }}>
@@ -146,6 +162,28 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                     </select>
+                    {isAdminUser && (
+                        <select
+                            value={managerFilter}
+                            onChange={(e) => setManagerFilter(e.target.value)}
+                            style={{
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)',
+                                background: 'var(--card-bg)',
+                                color: 'var(--text-main)',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                fontSize: 'var(--font-md)',
+                                outline: 'none'
+                            }}
+                        >
+                            <option value="All">All Managers</option>
+                            {hrManagerOptions.map((manager) => (
+                                <option key={manager.id} value={manager.id}>{manager.full_name}</option>
+                            ))}
+                        </select>
+                    )}
                     <button
                         onClick={onAddClick}
                         style={{
@@ -192,7 +230,15 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                             <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '12px 24px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <img src={emp.avatar_url ? (emp.avatar_url.startsWith('http') ? emp.avatar_url : `${emp.avatar_url}`) : `https://i.pravatar.cc/150?u=${emp.id}`} alt={emp.full_name} className="avatar" />
+                                        <img
+                                            src={emp.avatar_url ? (emp.avatar_url.startsWith('http') ? emp.avatar_url : `${emp.avatar_url}`) : '/avatar-placeholder.svg'}
+                                            onError={(e) => {
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = '/avatar-placeholder.svg';
+                                            }}
+                                            alt={emp.full_name}
+                                            className="avatar"
+                                        />
                                         <span style={{ fontWeight: '600', fontSize: 'var(--font-md)', color: 'var(--text-main)' }}>{emp.full_name}</span>
                                     </div>
                                 </td>
@@ -211,7 +257,7 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                                 <td style={{ padding: '12px 24px', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                                         <button
-                                            onClick={() => navigate(`/hr/employees/${emp.id}`)}
+                                            onClick={() => navigate(`${employeeDetailBase}/${emp.id}`)}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
                                         >
                                             <Eye size={18} />

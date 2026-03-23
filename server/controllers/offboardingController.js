@@ -477,7 +477,7 @@ const updateChecklistAssignment = async (req, res) => {
 };
 
 const canActorClearItem = async (client, req, item) => {
-    if (req.user?.role === 'hr') return true;
+    if (['hr', 'admin'].includes(req.user?.role)) return true;
 
     const actor = await getActorEmployee(client, req);
     if (!actor) return false;

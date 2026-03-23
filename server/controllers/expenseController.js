@@ -127,10 +127,10 @@ const getReviewableClaims = async (req, res) => {
         if (!viewer) return res.status(404).json({ error: 'Employee not found' });
 
         const status = req.query.status || 'Pending';
-        const isHr = req.user.role === 'hr';
+        const hasHrAccess = ['hr', 'admin'].includes(req.user.role);
 
         let result;
-        if (isHr) {
+        if (hasHrAccess) {
             result = await pool.query(
                 `SELECT ec.*, e.full_name AS employee_name, e.email AS employee_email,
                         r.full_name AS reviewer_name
@@ -199,7 +199,7 @@ const reviewExpenseClaim = async (req, res) => {
             return res.status(400).json({ error: 'Only pending claims can be reviewed' });
         }
 
-        const canReview = req.user.role === 'hr' || claim.reporting_manager_id === reviewer.id;
+        const canReview = ['hr', 'admin'].includes(req.user.role) || claim.reporting_manager_id === reviewer.id;
         if (!canReview) {
             await client.query('ROLLBACK');
             return res.status(403).json({ error: 'Forbidden: cannot review this claim' });

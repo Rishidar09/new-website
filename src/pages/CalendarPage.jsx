@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const CalendarPage = () => {
     const { profile } = useAuth();
-    const isHR = profile?.role === 'hr';
+    const isHR = profile?.role === 'hr' || profile?.role === 'admin';
 
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);

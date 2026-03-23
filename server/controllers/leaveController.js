@@ -12,7 +12,7 @@ const getLeaves = async (req, res) => {
         let params = [];
         let pIndex = 1;
 
-        if (req.user.role !== 'hr') {
+        if (!['hr', 'admin'].includes(req.user.role)) {
             const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
             if (emp.rows.length > 0) {
                 query += ` AND l.employee_id = $${pIndex++}`;

@@ -24,6 +24,10 @@ const HRDashboard = () => {
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const handleAnnouncementDeleted = (id) => {
+        setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -109,7 +113,7 @@ const HRDashboard = () => {
                     <AttendanceChart data={deptData} />
                     <div className="responsive-grid-2">
                         <UpcomingBirthdays birthdays={birthdays} />
-                        <Announcements announcements={announcements} />
+                        <Announcements announcements={announcements} onDeleted={handleAnnouncementDeleted} />
                     </div>
                 </div>
 

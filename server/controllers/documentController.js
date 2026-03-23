@@ -10,7 +10,7 @@ const getDocuments = async (req, res) => {
         let query = 'SELECT d.*, e.full_name as employee_name FROM documents d LEFT JOIN employees e ON d.employee_id = e.id';
         let params = [];
 
-        if (req.user.role !== 'hr') {
+        if (!['hr', 'admin'].includes(req.user.role)) {
             const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
             if (emp.rows.length > 0) {
                 query += ' WHERE d.employee_id = $1 OR d.employee_id IS NULL';

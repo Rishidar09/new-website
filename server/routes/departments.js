@@ -5,7 +5,7 @@ const { auditLogger } = require('../middleware/auditLogger');
 const departmentController = require('../controllers/departmentController');
 
 router.use(auth);
-router.use(authorize(['hr']));
+router.use(authorize(['hr', 'admin']));
 router.use(auditLogger('Departments & Org Chart'));
 
 router.get('/', departmentController.getDepartments);

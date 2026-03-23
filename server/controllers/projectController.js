@@ -10,7 +10,7 @@ const getProjects = async (req, res) => {
         let query;
         let params = [];
 
-        if (req.user.role === 'hr') {
+        if (['hr', 'admin'].includes(req.user.role)) {
             query = `
                 SELECT p.*, 
                 (SELECT json_agg(e.full_name) FROM project_members pm JOIN employees e ON pm.employee_id = e.id WHERE pm.project_id = p.id) as team_names
