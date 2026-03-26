@@ -34,7 +34,7 @@ const ForgotPasswordPage = () => {
                     </div>
                     <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '12px' }}>Check your email</h2>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: '1.5' }}>
-                        If an account exists for <strong>{email}</strong>, we've sent a password reset link to your inbox.
+                        We've sent a password reset link to <strong>{email}</strong>. Please check your inbox.
                     </p>
                     <Link to="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>
                         <ArrowLeft size={18} /> Back to Login

@@ -16,8 +16,26 @@ DO $$ BEGIN
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT TRUE;
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS failed_login_attempts INT DEFAULT 0;
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP WITH TIME ZONE;
-  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive'));
+  ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending_activation'));
   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_name = 'profiles'
+      AND constraint_name = 'profiles_status_check'
+  ) THEN
+    ALTER TABLE profiles DROP CONSTRAINT profiles_status_check;
+  END IF;
+
+  ALTER TABLE profiles
+    ADD CONSTRAINT profiles_status_check CHECK (status IN ('active', 'inactive', 'pending_activation'));
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
 END $$;
 
 DO $$
@@ -430,7 +448,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
   check_in TIMESTAMP WITH TIME ZONE NOT NULL,
   check_out TIMESTAMP WITH TIME ZONE,
-  status TEXT CHECK (status IN ('Present', 'Absent', 'Late', 'Half-Day')),
+  status TEXT CHECK (status IN ('Present', 'On Leave', 'Late', 'Half-Day')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

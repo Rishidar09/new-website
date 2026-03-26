@@ -188,9 +188,9 @@ All pages accessible via `/hr/*` routes after HR login (balichak.suman@iit.org.i
   - Export attendance CSV report
   - Inspect check-in/check-out times and location
   - Calculate and view hours worked
-  - Review status (Present, Late, Absent, Half-Day)
+  - Review status (Present, Late, On Leave, Half-Day)
 - **DATA SHOWN:**
-  - Attendance stats cards (total records, present today, late entries, leaves/absent)
+  - Attendance stats cards (total records, present today, late entries, on leave)
   - Attendance table (employee name, department, check-in time with location, check-out time, hours worked, status)
   - Date/department filters
 - **API CALLS:**
@@ -944,7 +944,7 @@ All pages accessible via `/employee/*` routes after Employee login (balichaksuma
   - Check out (Square button)
   - Navigate between dates (date picker)
   - View attendance records for month
-  - View status summary (present, late, half-day, absent counts)
+  - View status summary (present, late, half-day, on leave counts)
   - View active session duration (live running timer)
   - Download attendance report (if enabled)
 - **DATA SHOWN:**
@@ -952,7 +952,7 @@ All pages accessible via `/employee/*` routes after Employee login (balichaksuma
   - Selected date
   - Check-in/check-out buttons
   - Today's records (check-in time, check-out time, status, hours worked, location)
-  - Monthly stats cards (days present, late, half-day, absent)
+  - Monthly stats cards (days present, late, half-day, on leave)
   - Attendance history list
   - Active session timer (updates every second)
 - **API CALLS:**

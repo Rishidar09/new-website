@@ -12,7 +12,9 @@ const EmployeeHelpDeskPage = () => {
     const { user } = useAuth();
     const [socket, setSocket] = useState(null);
     const [activeTab, setActiveTab] = useState('list');
+    const [ticketViewType, setTicketViewType] = useState('created'); // 'created' or 'assigned'
     const [tickets, setTickets] = useState([]);
+    const [assignedTickets, setAssignedTickets] = useState([]);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -47,12 +49,14 @@ const EmployeeHelpDeskPage = () => {
             // Listen for real-time updates
                 socket.on('status_changed', handleRemoteStatusChanged);
                 socket.on('comment_added', handleRemoteCommentAdded);
+                socket.on('assignment_changed', handleRemoteAssignmentChanged);
         }
 
         return () => {
                 if (socket) {
                     socket.off('status_changed');
                     socket.off('comment_added');
+                    socket.off('assignment_changed');
             }
         };
         }, [socket, user]);
@@ -60,7 +64,7 @@ const EmployeeHelpDeskPage = () => {
     // Fetch tickets on mount
     useEffect(() => {
         fetchTickets();
-    }, [filters]);
+    }, [filters, ticketViewType]);
 
     const fetchTickets = async () => {
         try {
@@ -69,11 +73,21 @@ const EmployeeHelpDeskPage = () => {
             if (filters.status !== 'all') params.status = filters.status;
             if (filters.category !== 'all') params.category = filters.category;
 
-            const data = await api.get('/helpdesk/my/tickets', { params });
-            setTickets(data);
-            if (selectedTicket && data.length > 0) {
-                const updated = data.find(t => t.id === selectedTicket.id);
-                if (updated) setSelectedTicket(updated);
+            const endpoint = ticketViewType === 'assigned' ? '/helpdesk/my/assigned' : '/helpdesk/my/tickets';
+            const data = await api.get(endpoint, { params });
+            
+            if (ticketViewType === 'assigned') {
+                setAssignedTickets(data);
+                if (selectedTicket && data.length > 0) {
+                    const updated = data.find(t => t.id === selectedTicket.id);
+                    if (updated) setSelectedTicket(updated);
+                }
+            } else {
+                setTickets(data);
+                if (selectedTicket && data.length > 0) {
+                    const updated = data.find(t => t.id === selectedTicket.id);
+                    if (updated) setSelectedTicket(updated);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch tickets:', error);
@@ -89,12 +103,37 @@ const EmployeeHelpDeskPage = () => {
         setTickets(prev =>
             prev.map(t => t.id === data.ticketId ? { ...t, status: data.status } : t)
         );
+        setAssignedTickets(prev =>
+            prev.map(t => t.id === data.ticketId ? { ...t, status: data.status } : t)
+        );
     };
 
     const handleRemoteCommentAdded = (data) => {
         if (selectedTicket?.id === data.ticketId) {
             fetchTicketDetails(data.ticketId);
         }
+    };
+
+    const handleRemoteAssignmentChanged = (data) => {
+        if (selectedTicket?.id === data.ticketId) {
+            setSelectedTicket(prev => ({
+                ...prev,
+                assigned_to: data.assigned_to,
+                assigned_to_name: data.assigned_to_name || null
+            }));
+        }
+        setTickets(prev =>
+            prev.map(t => t.id === data.ticketId
+                ? { ...t, assigned_to: data.assigned_to, assigned_to_name: data.assigned_to_name || null }
+                : t
+            )
+        );
+        setAssignedTickets(prev =>
+            prev.map(t => t.id === data.ticketId
+                ? { ...t, assigned_to: data.assigned_to, assigned_to_name: data.assigned_to_name || null }
+                : t
+            )
+        );
     };
 
     const fetchTicketDetails = async (ticketId) => {
@@ -348,16 +387,35 @@ const EmployeeHelpDeskPage = () => {
                     </div>
 
                     <div className="tickets-list">
-                        <h3>Your Tickets ({tickets.length})</h3>
+                        <div className="tickets-tabs">
+                            <button
+                                className={`tab-button ${ticketViewType === 'created' ? 'active' : ''}`}
+                                onClick={() => {
+                                    setTicketViewType('created');
+                                    setSelectedTicket(null);
+                                }}
+                            >
+                                My Tickets ({tickets.length})
+                            </button>
+                            <button
+                                className={`tab-button ${ticketViewType === 'assigned' ? 'active' : ''}`}
+                                onClick={() => {
+                                    setTicketViewType('assigned');
+                                    setSelectedTicket(null);
+                                }}
+                            >
+                                Assigned to Me ({assignedTickets.length})
+                            </button>
+                        </div>
                         {loading ? (
                             <p className="loading-text">Loading tickets...</p>
-                        ) : tickets.length === 0 ? (
+                        ) : (ticketViewType === 'created' ? tickets : assignedTickets).length === 0 ? (
                             <div className="empty-list">
                                 <FileText size={32} />
-                                <p>No tickets found</p>
+                                <p>{ticketViewType === 'created' ? 'No tickets created yet' : 'No tickets assigned to you'}</p>
                             </div>
                         ) : (
-                            tickets.map(ticket => (
+                            (ticketViewType === 'created' ? tickets : assignedTickets).map(ticket => (
                                 <div
                                     key={ticket.id}
                                     className={`ticket-item ${selectedTicket?.id === ticket.id ? 'active' : ''}`}

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = () => {
     const [role, setRole] = useState('admin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
@@ -30,15 +31,14 @@ const LoginPage = () => {
         setError(null);
 
         try {
-            const data = await login(email, password);
-
             const expectedRole = role === 'admin'
                 ? ['admin', 'hr']
                 : ['employee'];
 
-            if (!expectedRole.includes(data.user.role)) {
-                throw new Error(`Unauthorized. This account is registered as ${data.user.role.toUpperCase()}, but you tried to login as ${role.toUpperCase()}.`);
-            }
+            const data = await login(email, password, {
+                allowedRoles: expectedRole,
+                selectedRole: role,
+            });
 
             if (data.user.role === 'admin') {
                 navigate('/admin/dashboard');
@@ -200,7 +200,7 @@ const LoginPage = () => {
                                 color: 'var(--text-muted)'
                             }} />
                             <input
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -208,7 +208,7 @@ const LoginPage = () => {
                                 style={{
                                     width: '100%',
                                     paddingLeft: '40px',
-                                    paddingRight: '12px',
+                                    paddingRight: '44px',
                                     paddingTop: '10px',
                                     paddingBottom: '10px',
                                     borderRadius: '8px',
@@ -217,6 +217,28 @@ const LoginPage = () => {
                                     fontSize: '14px'
                                 }}
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                title={showPassword ? 'Hide password' : 'Show password'}
+                                style={{
+                                    position: 'absolute',
+                                    right: '10px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                     </div>
 

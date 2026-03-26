@@ -30,6 +30,7 @@ router.use(auditLogger('Employee Onboarding'));
 router.get('/templates', authorize(['hr', 'admin']), onboardingController.getTemplates);
 router.post('/templates', authorize(['hr']), onboardingController.createTemplate);
 router.post('/assign', authorize(['hr']), onboardingController.assignTemplate);
+router.get('/cases', authorize(['hr', 'admin']), onboardingController.getAllCases);
 router.get('/cases/active', authorize(['hr']), onboardingController.getActiveCases);
 router.patch('/tasks/:id/hr', authorize(['hr']), onboardingController.hrUpdateTask);
 

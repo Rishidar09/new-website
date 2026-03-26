@@ -64,6 +64,50 @@ const createProject = async (req, res) => {
     }
 };
 
+// ─── Close a project (HR/Admin) ─────────────────────────────────
+const closeProject = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `UPDATE projects
+             SET status = 'Completed'
+             WHERE id = $1
+             RETURNING *`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Reopen a project (HR/Admin) ────────────────────────────────
+const reopenProject = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `UPDATE projects
+             SET status = 'Active'
+             WHERE id = $1
+             RETURNING *`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 // ─── Get project details with tasks and team ─────────────────────
 const getProjectById = async (req, res) => {
     try {
@@ -157,6 +201,8 @@ const getMyReports = async (req, res) => {
 module.exports = {
     getProjects,
     createProject,
+    closeProject,
+    reopenProject,
     getProjectById,
     createTask,
     createReport,

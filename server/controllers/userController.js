@@ -32,27 +32,97 @@ const getProfile = async (req, res) => {
 
 // ─── Update user profile ────────────────────────────────────────
 const updateProfile = async (req, res) => {
-    const { name, email, role, dob, address } = req.body;
+    const { name, email, role, dob, address, aadhaar_card, adhar_card, pan, pan_card, bank_account, emergency_contact } = req.body;
     const profilePhoto = req.file ? `/uploads/profiles/${req.file.filename}` : undefined;
+    const nameValidationRegex = /^[A-Za-z][A-Za-z\s.'-]*$/;
+    const allowedRoles = new Set(['admin', 'hr', 'employee']);
+    const normalizedRole = typeof role === 'string' ? role.trim().toLowerCase() : '';
+    const aadhaarRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+    const bankAccountRegex = /^\d{9,18}$/;
+    const emergencyContactRegex = /^\d{10}$/;
+
+    if (typeof name === 'string' && name.trim() && !nameValidationRegex.test(name.trim())) {
+        return res.status(400).json({
+            error: 'Full Name can contain only alphabets, spaces, apostrophes, dots, and hyphens.'
+        });
+    }
+
+    if (typeof role === 'string' && role.trim() && !allowedRoles.has(normalizedRole)) {
+        return res.status(400).json({ error: 'Invalid role selected.' });
+    }
+
+    if (role !== undefined && role !== null && typeof role !== 'string') {
+        return res.status(400).json({ error: 'Invalid role selected.' });
+    }
+
+    if (dob) {
+        const parsedDob = new Date(`${String(dob).trim()}T00:00:00`);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (Number.isNaN(parsedDob.getTime())) {
+            return res.status(400).json({ error: 'Invalid Date of Birth.' });
+        }
+
+        if (parsedDob > today) {
+            return res.status(400).json({ error: 'Date of Birth cannot be in the future' });
+        }
+    }
+
+    const normalizedAadhaar = String(aadhaar_card || adhar_card || '').replace(/\s+/g, '').trim();
+    if (normalizedAadhaar && !aadhaarRegex.test(normalizedAadhaar)) {
+        return res.status(400).json({ error: 'Aadhaar Number must be exactly 12 digits.' });
+    }
+
+    const normalizedPan = String(pan || pan_card || '').replace(/\s+/g, '').toUpperCase().trim();
+    if (normalizedPan && !panRegex.test(normalizedPan)) {
+        return res.status(400).json({ error: 'PAN Number must be in format ABCDE1234F.' });
+    }
+
+    const normalizedBankAccount = String(bank_account || '').replace(/\s+/g, '').trim();
+    if (normalizedBankAccount && !bankAccountRegex.test(normalizedBankAccount)) {
+        return res.status(400).json({ error: 'Bank Account Number must be 9 to 18 digits.' });
+    }
+
+    const normalizedEmergencyContact = String(emergency_contact || '').replace(/\s+/g, '').trim();
+    if (normalizedEmergencyContact && !emergencyContactRegex.test(normalizedEmergencyContact)) {
+        return res.status(400).json({ error: 'Emergency Contact Number must be exactly 10 digits.' });
+    }
+
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        const userResult = await client.query('SELECT email FROM profiles WHERE id = $1', [req.user.id]);
+        const userResult = await client.query('SELECT email, role FROM profiles WHERE id = $1', [req.user.id]);
         const currentEmail = userResult.rows[0].email;
+        const currentRole = String(userResult.rows[0].role || '').toLowerCase();
+        const incomingEmail = String(email || '').trim().toLowerCase();
+        const normalizedCurrentEmail = String(currentEmail || '').trim().toLowerCase();
+
+        if (incomingEmail && incomingEmail !== normalizedCurrentEmail) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Email cannot be changed once the account is created.' });
+        }
+
+        if (normalizedRole && normalizedRole !== currentRole) {
+            if (req.user?.role !== 'admin') {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ error: 'Only admin can change account roles.' });
+            }
+
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Admin cannot change their own role.' });
+        }
 
         let profileUpdateQuery = 'UPDATE profiles SET updated_at = NOW()';
         let profileParams = [req.user.id];
         let pIdx = 2;
 
-        if (email) {
-            profileUpdateQuery += `, email = $${pIdx++}`;
-            profileParams.push(email);
-        }
-        if (role) {
+        if (typeof role === 'string' && role.trim()) {
             profileUpdateQuery += `, role = $${pIdx++}`;
-            profileParams.push(role);
+            profileParams.push(normalizedRole);
         }
         profileUpdateQuery += ' WHERE id = $1';
         await client.query(profileUpdateQuery, profileParams);
@@ -65,11 +135,7 @@ const updateProfile = async (req, res) => {
 
             if (name) {
                 empUpdateQuery += `, full_name = $${eIdx++}`;
-                empParams.push(name);
-            }
-            if (email) {
-                empUpdateQuery += `, email = $${eIdx++}`;
-                empParams.push(email);
+                empParams.push(name.trim());
             }
             if (dob) {
                 empUpdateQuery += `, dob = $${eIdx++}`;
@@ -78,6 +144,22 @@ const updateProfile = async (req, res) => {
             if (address) {
                 empUpdateQuery += `, address = $${eIdx++}`;
                 empParams.push(address);
+            }
+            if (normalizedAadhaar) {
+                empUpdateQuery += `, aadhaar_card = $${eIdx++}`;
+                empParams.push(normalizedAadhaar);
+            }
+            if (normalizedPan) {
+                empUpdateQuery += `, pan = $${eIdx++}`;
+                empParams.push(normalizedPan);
+            }
+            if (normalizedBankAccount) {
+                empUpdateQuery += `, bank_account = $${eIdx++}`;
+                empParams.push(normalizedBankAccount);
+            }
+            if (normalizedEmergencyContact) {
+                empUpdateQuery += `, emergency_contact = $${eIdx++}`;
+                empParams.push(normalizedEmergencyContact);
             }
             if (profilePhoto) {
                 empUpdateQuery += `, avatar_url = $${eIdx++}`;

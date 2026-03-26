@@ -526,14 +526,15 @@ const getMyOverview = async (req, res) => {
             }
         }
 
-        const cycleParticipants = await pool.query(
-            `SELECT DISTINCT e.id, e.full_name
-             FROM employees e
-             JOIN goals g ON g.employee_id = e.id
-             WHERE g.cycle_id = $1 AND e.id != $2
-             ORDER BY e.full_name`,
-            [cycle.id, me.id]
-        );
+                const cycleParticipants = await pool.query(
+                        `SELECT DISTINCT e.id, e.full_name
+                         FROM employees e
+                         WHERE e.id != $1
+                             AND COALESCE(LOWER(e.status), 'active') = 'active'
+                             AND COALESCE(LOWER(e.role), 'employee') NOT IN ('hr', 'admin')
+                         ORDER BY e.full_name`,
+                        [me.id]
+                );
 
         res.json({
             current_cycle: cycle,

@@ -204,29 +204,39 @@ const getAllAttendance = async (req, res) => {
     }
 
     try {
-        const { date, department, employee_id } = req.query;
+        const date = req.query.date || parseAttendanceDate();
+        const { department, employee_id } = req.query;
         let query = `
-            SELECT a.*, e.full_name, e.department, e.role as emp_role
-            FROM attendance a
-            JOIN employees e ON a.employee_id = e.id
+            SELECT
+                e.id AS employee_id,
+                e.full_name,
+                e.department,
+                e.role AS emp_role,
+                a.id,
+                a.check_in,
+                a.check_out,
+                COALESCE(a.status, 'On Leave') AS status,
+                a.location
+            FROM employees e
+            LEFT JOIN attendance a
+                ON a.employee_id = e.id
+               AND DATE(a.check_in) = $1::date
             WHERE 1=1
         `;
         const params = [];
 
-        if (date) {
-            params.push(date);
-            query += ` AND DATE(a.check_in) = $${params.length}`;
-        }
+        params.push(date);
+
         if (department) {
             params.push(department);
             query += ` AND e.department = $${params.length}`;
         }
         if (employee_id) {
             params.push(employee_id);
-            query += ` AND a.employee_id = $${params.length}`;
+            query += ` AND e.id = $${params.length}`;
         }
 
-        query += " ORDER BY a.check_in DESC";
+        query += " ORDER BY e.full_name ASC";
 
         const result = await pool.query(query, params);
         res.json(result.rows);

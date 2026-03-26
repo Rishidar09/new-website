@@ -124,32 +124,45 @@ const HRSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
                         display: none; /* For Chrome, Safari, and Opera */
                     }
                 `}</style>
-                {menuItems.map((item, index) => {
-                    const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-                    return (
-                        <Link
-                            key={index}
-                            to={item.path}
-                            onClick={() => isMobile && toggleSidebar()}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '12px 24px',
-                                textDecoration: 'none',
-                                color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                                background: isActive ? 'var(--input-bg)' : 'transparent',
-                                borderLeft: isActive ? '4px solid var(--primary)' : '4px solid transparent',
-                                fontSize: 'var(--font-lg)',
-                                fontWeight: isActive ? '600' : '500',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {React.cloneElement(item.icon, { color: isActive ? 'var(--primary)' : 'var(--text-muted)' })}
-                            <span>{item.label}</span>
-                        </Link>
-                    );
-                })}
+                {(() => {
+                    // Find the deepest matching path
+                    let maxMatchLen = -1;
+                    let activeIndex = -1;
+                    menuItems.forEach((item, idx) => {
+                        if (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) {
+                            if (item.path.length > maxMatchLen) {
+                                maxMatchLen = item.path.length;
+                                activeIndex = idx;
+                            }
+                        }
+                    });
+                    return menuItems.map((item, index) => {
+                        const isActive = index === activeIndex;
+                        return (
+                            <Link
+                                key={index}
+                                to={item.path}
+                                onClick={() => isMobile && toggleSidebar()}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '12px 24px',
+                                    textDecoration: 'none',
+                                    color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                                    background: isActive ? 'var(--input-bg)' : 'transparent',
+                                    borderLeft: isActive ? '4px solid var(--primary)' : '4px solid transparent',
+                                    fontSize: 'var(--font-lg)',
+                                    fontWeight: isActive ? '600' : '500',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {React.cloneElement(item.icon, { color: isActive ? 'var(--primary)' : 'var(--text-muted)' })}
+                                <span>{item.label}</span>
+                            </Link>
+                        );
+                    });
+                })()}
             </nav>
 
             {/* Logout */}

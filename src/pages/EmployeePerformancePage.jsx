@@ -216,14 +216,18 @@ const EmployeePerformancePage = () => {
                 <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>360 Peer Feedback</h3>
                 <form onSubmit={submitPeer} style={{ display: 'grid', gridTemplateColumns: '1.1fr 120px 1.6fr auto', gap: '8px', marginBottom: '10px' }}>
                     <select className="input-field" value={peerForm.employee_id} onChange={(e) => setPeerForm({ ...peerForm, employee_id: e.target.value })} required>
+                        <option value="" disabled>Select peer</option>
                         {(overview.cycle_participants || []).map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                     </select>
                     <select className="input-field" value={peerForm.rating} onChange={(e) => setPeerForm({ ...peerForm, rating: Number(e.target.value) })}>
                         {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}/5</option>)}
                     </select>
                     <input className="input-field" placeholder="Feedback comment" value={peerForm.comment} onChange={(e) => setPeerForm({ ...peerForm, comment: e.target.value })} />
-                    <button type="submit" className="btn-primary" style={{ borderRadius: '8px' }}>Submit</button>
+                    <button type="submit" className="btn-primary" style={{ borderRadius: '8px' }} disabled={!peerForm.employee_id}>Submit</button>
                 </form>
+                {(!overview.cycle_participants || overview.cycle_participants.length === 0) && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No eligible peers found right now.</p>
+                )}
                 <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input type="checkbox" checked={peerForm.is_anonymous} onChange={(e) => setPeerForm({ ...peerForm, is_anonymous: e.target.checked })} /> Submit anonymously
                 </label>

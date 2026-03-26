@@ -37,6 +37,48 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
     const [templates, setTemplates] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [managerOptions, setManagerOptions] = useState([]);
+    const jobRoleRegex = /^[A-Za-z][A-Za-z\s.&'/-]*$/;
+    const aadhaarRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+    const bankAccountRegex = /^\d{9,18}$/;
+    const emergencyContactRegex = /^\d{10}$/;
+    const phoneRegex = /^(\d{10}|\+91\d{10})$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const employeeRoleOptions = [
+        'Software Engineer',
+        'Senior Software Engineer',
+        'Frontend Developer',
+        'Backend Developer',
+        'Full Stack Developer',
+        'QA Engineer',
+        'DevOps Engineer',
+        'Business Analyst',
+        'Product Manager',
+        'UI/UX Designer'
+    ];
+    const hrRoleOptions = [
+        'HR Manager',
+        'HR Executive',
+        'HR Generalist',
+        'Talent Acquisition Specialist',
+        'HR Business Partner'
+    ];
+
+    const normalizePanByPosition = (rawValue) => {
+        const source = String(rawValue || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+        let next = '';
+
+        for (const ch of source) {
+            const idx = next.length;
+            const needsLetter = idx < 5 || idx === 9;
+            const needsDigit = idx >= 5 && idx <= 8;
+            if (needsLetter && /[A-Z]/.test(ch)) next += ch;
+            if (needsDigit && /\d/.test(ch)) next += ch;
+            if (next.length >= 10) break;
+        }
+
+        return next;
+    };
 
     React.useEffect(() => {
         if (employeeData) {
@@ -123,13 +165,62 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
 
         // Phone number validation: Allow only +, space, and digits
         if (name === 'phone') {
-            const cleanedValue = value.replace(/[^\d+ ]/g, '');
+            const compact = String(value || '').replace(/[^\d+]/g, '');
+            const hasPlusPrefix = compact.startsWith('+');
+            const digitsOnly = compact.replace(/\+/g, '');
+            const limitedDigits = digitsOnly.slice(0, hasPlusPrefix ? 12 : 10);
+            const cleanedValue = `${hasPlusPrefix ? '+' : ''}${limitedDigits}`;
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
+        if (name === 'designation') {
+            const cleanedValue = value.replace(/[^A-Za-z\s.&'/-]/g, '');
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
+        if (name === 'account_role') {
+            setFormData((prev) => {
+                const nextOptions = value === 'hr' ? hrRoleOptions : employeeRoleOptions;
+                const nextRole = nextOptions.includes(prev.role) ? prev.role : nextOptions[0];
+                return { ...prev, account_role: value, role: nextRole };
+            });
+            return;
+        }
+
+        if (name === 'aadhaar_card') {
+            const cleanedValue = value.replace(/\D/g, '').slice(0, 12);
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
+        if (name === 'bank_account') {
+            const cleanedValue = value.replace(/\D/g, '').slice(0, 18);
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
+        if (name === 'emergency_contact') {
+            const cleanedValue = value.replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+            return;
+        }
+
+        if (name === 'pan' || name === 'pan_card') {
+            const cleanedValue = normalizePanByPosition(value);
             setFormData(prev => ({ ...prev, [name]: cleanedValue }));
             return;
         }
 
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const selectedAccountType = String(formData.account_role || employeeData?.account_role || 'employee').toLowerCase();
+    const baseRoleOptions = selectedAccountType === 'hr' ? hrRoleOptions : employeeRoleOptions;
+    const roleOptions = formData.role && !baseRoleOptions.includes(formData.role)
+        ? [formData.role, ...baseRoleOptions]
+        : baseRoleOptions;
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -142,10 +233,63 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Final phone validation: pattern check (+ country code followed by 10 digits)
-        const phoneRegex = /^\+\d+\s\d{10}$|^\+\d{12}$/;
-        if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s+/g, ''))) {
-            toast.error('Invalid phone format. Please use: +[CountryCode] [10 Digits]');
+        const normalizedFullName = String(formData.full_name || '').trim();
+        if (!normalizedFullName) {
+            toast.error('Please enter full name');
+            return;
+        }
+
+        const normalizedPhone = String(formData.phone || '').replace(/[\s-]/g, '').trim();
+        if (!normalizedPhone || !phoneRegex.test(normalizedPhone)) {
+            toast.error('Phone Number must be 10 digits or +91 followed by 10 digits.');
+            return;
+        }
+
+        const normalizedRole = String(formData.role || '').trim();
+        if (!normalizedRole || !jobRoleRegex.test(normalizedRole)) {
+            toast.error('Role must contain only alphabets and valid separators (no numbers).');
+            return;
+        }
+
+        const normalizedDesignation = String(formData.designation || '').trim();
+        if (normalizedDesignation && !jobRoleRegex.test(normalizedDesignation)) {
+            toast.error('Designation must contain only alphabets and valid separators (no numbers).');
+            return;
+        }
+
+        const normalizedEmail = String(formData.email || '').trim().toLowerCase();
+        if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+            toast.error('Please enter a valid work email address.');
+            return;
+        }
+
+        const normalizedPersonalEmail = String(formData.personal_email || '').trim().toLowerCase();
+        if (normalizedPersonalEmail && !emailRegex.test(normalizedPersonalEmail)) {
+            toast.error('Please enter a valid personal email address.');
+            return;
+        }
+
+        const normalizedAadhaar = String(formData.aadhaar_card || '').replace(/\s+/g, '').trim();
+        if (normalizedAadhaar && !aadhaarRegex.test(normalizedAadhaar)) {
+            toast.error('Aadhaar Number must be exactly 12 digits.');
+            return;
+        }
+
+        const normalizedPan = String(formData.pan || formData.pan_card || '').replace(/\s+/g, '').toUpperCase().trim();
+        if (normalizedPan && !panRegex.test(normalizedPan)) {
+            toast.error('PAN Number must be in format ABCDE1234F.');
+            return;
+        }
+
+        const normalizedBankAccount = String(formData.bank_account || '').replace(/\s+/g, '').trim();
+        if (normalizedBankAccount && !bankAccountRegex.test(normalizedBankAccount)) {
+            toast.error('Bank Account Number must be 9 to 18 digits.');
+            return;
+        }
+
+        const normalizedEmergencyContact = String(formData.emergency_contact || '').replace(/\s+/g, '').trim();
+        if (normalizedEmergencyContact && !emergencyContactRegex.test(normalizedEmergencyContact)) {
+            toast.error('Emergency Contact Number must be exactly 10 digits.');
             return;
         }
 
@@ -153,7 +297,9 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
             setLoading(true);
             const data = new FormData();
             Object.keys(formData).forEach(key => {
-                const value = formData[key];
+                let value = formData[key];
+                if (key === 'full_name') value = normalizedFullName;
+                if (key === 'phone') value = normalizedPhone;
                 if (value !== '' && value !== null && value !== undefined) {
                     data.append(key, value);
                 }
@@ -209,7 +355,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                 setPreviewUrl(null);
             }
         } catch (error) {
-            toast.error('Action failed: ' + error.message);
+            toast.error(error.message || 'Action failed');
         } finally {
             setLoading(false);
         }
@@ -241,7 +387,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                 <form onSubmit={handleSubmit} className="add-employee-modal-form" style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
                     <div className="add-employee-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Full Name</label>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Full Name <span style={{ color: 'red' }}>*</span></label>
                             <input
                                 name="full_name"
                                 type="text"
@@ -253,7 +399,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Email Address</label>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Email Address <span style={{ color: 'red' }}>*</span></label>
                             <input
                                 name="email"
                                 type="email"
@@ -262,11 +408,18 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 required
                                 value={formData.email}
                                 onChange={handleChange}
+                                disabled={Boolean(employeeData)}
+                                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                             />
+                            {employeeData && (
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                                    Email cannot be changed once the account is created.
+                                </p>
+                            )}
                         </div>
-                        {isAdminUser && !employeeData && (
+                        {isAdminUser && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: '500' }}>Account Type</label>
+                                <label style={{ fontSize: '14px', fontWeight: '500' }}>Account Type <span style={{ color: 'red' }}>*</span></label>
                                 <select
                                     name="account_role"
                                     className="input-field"
@@ -275,20 +428,24 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 >
                                     <option value="employee">Employee Login</option>
                                     <option value="hr">HR Login</option>
+                                    {employeeData && <option value="admin">Admin Login</option>}
                                 </select>
                             </div>
                         )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Role</label>
-                            <input
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Role <span style={{ color: 'red' }}>*</span></label>
+                            <select
                                 name="role"
-                                type="text"
                                 className="input-field"
-                                placeholder="Software Engineer"
                                 required
                                 value={formData.role}
                                 onChange={handleChange}
-                            />
+                            >
+                                <option value="">Select role</option>
+                                {roleOptions.map((option) => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                            </select>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <label style={{ fontSize: '14px', fontWeight: '500' }}>Employee Code</label>
@@ -360,20 +517,22 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Phone Number</label>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Phone Number <span style={{ color: 'red' }}>*</span></label>
                             <input
                                 name="phone"
                                 type="tel"
                                 className="input-field"
-                                placeholder="+1 2345678901"
+                                placeholder="9876543210 or +919876543210"
                                 required
                                 value={formData.phone}
                                 onChange={handleChange}
-                                title="Please enter country code followed by 10 digits (e.g., +1 1234567890)"
+                                inputMode="tel"
+                                maxLength={13}
+                                title="Enter 10 digits or +91 followed by 10 digits"
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Joining Date</label>
+                            <label style={{ fontSize: '14px', fontWeight: '500' }}>Joining Date <span style={{ color: 'red' }}>*</span></label>
                             <input
                                 name="joining_date"
                                 type="date"
@@ -404,6 +563,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 placeholder="john.personal@gmail.com"
                                 value={formData.personal_email || ''}
                                 onChange={handleChange}
+                                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -412,9 +572,11 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 name="emergency_contact"
                                 type="text"
                                 className="input-field"
-                                placeholder="+91XXXXXXXXXX"
+                                placeholder="9876543210"
                                 value={formData.emergency_contact || ''}
                                 onChange={handleChange}
+                                inputMode="numeric"
+                                maxLength={10}
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -447,9 +609,12 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 name="aadhaar_card"
                                 type="text"
                                 className="input-field"
-                                placeholder="XXXX XXXX XXXX"
+                                placeholder="123412341234"
                                 value={formData.aadhaar_card || ''}
                                 onChange={handleChange}
+                                inputMode="numeric"
+                                minLength={12}
+                                maxLength={12}
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -461,6 +626,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 placeholder="ABCDE1234F"
                                 value={formData.pan || ''}
                                 onChange={handleChange}
+                                maxLength={10}
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -472,6 +638,9 @@ const AddEmployeeModal = ({ isOpen, onClose, onRefresh, employeeData = null }) =
                                 placeholder="123456789012"
                                 value={formData.bank_account || ''}
                                 onChange={handleChange}
+                                inputMode="numeric"
+                                minLength={9}
+                                maxLength={18}
                             />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

@@ -49,6 +49,10 @@ const EmployeeAttendancePage = () => {
     const [loading, setLoading] = useState(true);
     const [activeDuration, setActiveDuration] = useState(0);
     const [currentShift, setCurrentShift] = useState(null);
+    const [viewport, setViewport] = useState({
+        width: window.innerWidth,
+        height: window.innerHeight
+    });
 
     // Determine if today is restricted
     const selectedDateObj = new Date(`${selectedDate}T00:00:00`);
@@ -78,6 +82,15 @@ const EmployeeAttendancePage = () => {
         fetchAttendance();
         return () => clearInterval(timer);
     }, [selectedDate]);
+
+    useEffect(() => {
+        const onResize = () => {
+            setViewport({ width: window.innerWidth, height: window.innerHeight });
+        };
+
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     const fetchAttendance = async () => {
         try {
@@ -231,6 +244,8 @@ const EmployeeAttendancePage = () => {
     const calendarMonth = selectedDateObj.getMonth();
     const daysInMonth = getDaysInMonth(calendarYear, calendarMonth);
     const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
+    const isShortViewport = viewport.height <= 860;
+    const isVeryShortViewport = viewport.height <= 760;
 
     const getStatusColor = (dateString) => {
         const record = attendance.find(rec => rec.check_in.startsWith(dateString));
@@ -238,25 +253,25 @@ const EmployeeAttendancePage = () => {
         switch (record.status) {
             case 'Present': return 'var(--status-approved-text)';
             case 'Late': return 'var(--status-pending-text)';
-            case 'Absent': return 'var(--status-rejected-text)';
+            case 'On Leave': return 'var(--status-rejected-text)';
             case 'Half-Day': return 'var(--primary)';
             default: return 'var(--status-approved-text)';
         }
     };
 
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <header style={{ marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '28px', color: 'var(--text-main)', marginBottom: '8px' }}>Attendance Tracker</h1>
+        <div style={{ maxWidth: '920px', margin: '-6px auto 0', height: '100%', minHeight: 0, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <header style={{ marginBottom: isShortViewport ? '8px' : '12px', flexShrink: 0 }}>
+                <h1 style={{ fontSize: '24px', color: 'var(--text-main)', marginBottom: '6px' }}>Attendance Tracker</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Keep track of your daily presence and work hours.</p>
                 <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '13px' }}>
                     Assigned Shift: {currentShift?.name ? `${currentShift.name} (${String(currentShift.start_time).slice(0, 5)} - ${String(currentShift.end_time).slice(0, 5)})` : 'Not assigned'}
                 </p>
-                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ marginTop: isShortViewport ? '6px' : '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                         className="btn-secondary"
                         onClick={() => setSelectedDate((d) => shiftDate(d, -1))}
-                        style={{ padding: '8px 12px' }}
+                        style={{ padding: '7px 12px', fontSize: '13px' }}
                     >
                         Previous Day
                     </button>
@@ -265,32 +280,32 @@ const EmployeeAttendancePage = () => {
                         className="input-field"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        style={{ width: '170px' }}
+                        style={{ width: '165px', padding: '8px 10px', fontSize: '13px' }}
                     />
                     <button
                         className="btn-secondary"
                         onClick={() => setSelectedDate((d) => shiftDate(d, 1))}
-                        style={{ padding: '8px 12px' }}
+                        style={{ padding: '7px 12px', fontSize: '13px' }}
                     >
                         Next Day
                     </button>
                     <button
                         className="btn-secondary"
                         onClick={() => setSelectedDate(getTodayYmd())}
-                        style={{ padding: '8px 12px' }}
+                        style={{ padding: '7px 12px', fontSize: '13px' }}
                     >
                         Today
                     </button>
                 </div>
             </header>
 
-            <div className="responsive-grid-2-1" style={{ marginBottom: '32px' }}>
+            <div className="responsive-grid-2-1" style={{ marginBottom: isShortViewport ? '8px' : '12px', alignItems: 'start', flexShrink: 0 }}>
                 {/* Check-in Card */}
-                <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '48px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '8px' }}>
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: isShortViewport ? '14px 18px' : '18px 20px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '42px', fontWeight: '700', color: 'var(--text-main)', marginBottom: '4px', lineHeight: 1.1 }}>
                         {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </div>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: isShortViewport ? '10px' : '14px', fontSize: '14px' }}>
                         {currentTime.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
 
@@ -299,13 +314,13 @@ const EmployeeAttendancePage = () => {
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
-                                padding: '16px 40px',
+                                gap: '8px',
+                                padding: '11px 20px',
                                 background: 'var(--input-bg)',
                                 color: 'var(--text-muted)',
                                 border: '1px solid var(--border)',
                                 borderRadius: '50px',
-                                fontSize: '18px',
+                                fontSize: '16px',
                                 fontWeight: '600',
                                 cursor: 'not-allowed'
                             }}>
@@ -318,13 +333,13 @@ const EmployeeAttendancePage = () => {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '16px 40px',
+                                    gap: '8px',
+                                    padding: '11px 20px',
                                     background: loading ? 'var(--text-muted)' : 'var(--primary)',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '50px',
-                                    fontSize: '18px',
+                                    fontSize: '16px',
                                     fontWeight: '600',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     boxShadow: loading ? 'none' : '0 4px 14px rgba(59, 130, 246, 0.4)',
@@ -337,15 +352,15 @@ const EmployeeAttendancePage = () => {
                             </button>
                         )
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                             <div style={{
-                                fontSize: '32px',
+                                fontSize: '26px',
                                 fontWeight: '700',
                                 color: 'var(--primary)',
                                 fontFamily: 'monospace',
                                 background: 'rgba(59, 130, 246, 0.1)',
-                                padding: '12px 24px',
-                                borderRadius: '12px'
+                                padding: '8px 14px',
+                                borderRadius: '10px'
                             }}>
                                 {formatDuration(activeDuration)}
                             </div>
@@ -355,13 +370,13 @@ const EmployeeAttendancePage = () => {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '16px 40px',
+                                    gap: '8px',
+                                    padding: '11px 20px',
                                     background: loading ? 'var(--text-muted)' : '#EF4444',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '50px',
-                                    fontSize: '18px',
+                                    fontSize: '16px',
                                     fontWeight: '600',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     boxShadow: loading ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.4)',
@@ -376,18 +391,18 @@ const EmployeeAttendancePage = () => {
                     )}
 
                     {todayRecord && (
-                        <div style={{ marginTop: '24px', display: 'flex', gap: '24px' }}>
+                        <div style={{ marginTop: isShortViewport ? '10px' : '14px', display: 'flex', gap: isShortViewport ? '10px' : '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
                             <div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>CHECK-IN</p>
-                                <p style={{ fontWeight: '600' }}>{new Date(todayRecord.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CHECK-IN</p>
+                                <p style={{ fontWeight: '600', fontSize: '14px' }}>{new Date(todayRecord.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                             <div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>CHECK-OUT</p>
-                                <p style={{ fontWeight: '600' }}>{todayRecord.check_out ? new Date(todayRecord.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CHECK-OUT</p>
+                                <p style={{ fontWeight: '600', fontSize: '14px' }}>{todayRecord.check_out ? new Date(todayRecord.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
                             </div>
                             <div>
-                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>STATUS</p>
-                                <span className={`status-badge ${todayRecord.status.toLowerCase()}`}>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>STATUS</p>
+                                <span className={`attendance-status-badge ${(todayRecord.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
                                     {todayRecord.status}
                                 </span>
                             </div>
@@ -396,43 +411,43 @@ const EmployeeAttendancePage = () => {
                 </div>
 
                 {/* Summary Stats */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isShortViewport ? '8px' : '10px' }}>
                     <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '4px solid #F59E0B' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Hours Worked (Today)</p>
-                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>{calculateTotalTodayHours()}h</h3>
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Hours Worked (Today)</p>
+                                <h3 style={{ fontSize: '18px', marginTop: '2px', color: 'var(--text-main)' }}>{calculateTotalTodayHours()}h</h3>
                             </div>
-                            <Timer color="#F59E0B" size={32} />
+                            <Timer color="#F59E0B" size={24} />
                         </div>
                     </div>
                     <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '4px solid var(--primary)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Present (Month)</p>
-                                <h3 style={{ fontSize: '24px', marginTop: '4px', color: 'var(--text-main)' }}>
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Present (Month)</p>
+                                <h3 style={{ fontSize: '18px', marginTop: '2px', color: 'var(--text-main)' }}>
                                     {calculateTotalPresentForMonth()}
                                 </h3>
                             </div>
-                            <AlertCircle color="var(--primary)" size={32} />
+                            <AlertCircle color="var(--primary)" size={24} />
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Heatmap Calendar */}
-            <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '18px', color: 'var(--text-main)' }}>Attendance History</h3>
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
+            <div className="card" style={{ padding: isShortViewport ? '10px' : '12px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isVeryShortViewport ? '6px' : '8px', flexShrink: 0 }}>
+                    <h3 style={{ fontSize: '14px', color: 'var(--text-main)' }}>Attendance History</h3>
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--status-approved-text)', borderRadius: '2px' }}></div> Present
+                            <div style={{ width: '8px', height: '8px', background: 'var(--status-approved-text)', borderRadius: '2px' }}></div> Present
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--status-pending-text)', borderRadius: '2px' }}></div> Late
+                            <div style={{ width: '8px', height: '8px', background: 'var(--status-pending-text)', borderRadius: '2px' }}></div> Late
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--status-rejected-text)', borderRadius: '2px' }}></div> Absent
+                            <div style={{ width: '8px', height: '8px', background: 'var(--status-rejected-text)', borderRadius: '2px' }}></div> On Leave
                         </div>
                     </div>
                 </div>
@@ -440,11 +455,14 @@ const EmployeeAttendancePage = () => {
                 <div className="calendar-grid" style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
-                    gap: '8px',
-                    textAlign: 'center'
+                    gridAutoRows: isVeryShortViewport ? 'minmax(22px, 1fr)' : 'minmax(24px, 1fr)',
+                    gap: isVeryShortViewport ? '4px' : '5px',
+                    textAlign: 'center',
+                    flex: 1,
+                    minHeight: 0
                 }}>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', paddingBottom: '8px' }}>{day}</div>
+                        <div key={day} style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', paddingBottom: '4px' }}>{day}</div>
                     ))}
                     {[...Array(firstDayOfMonth)].map((_, i) => <div key={`empty-${i}`}></div>)}
                     {[...Array(daysInMonth)].map((_, i) => {
@@ -457,14 +475,14 @@ const EmployeeAttendancePage = () => {
                                 key={day}
                                 onClick={() => setSelectedDate(dateString)}
                                 style={{
-                                    aspectRatio: '1',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     background: statusColor,
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
                                     fontWeight: '500',
+                                    minHeight: isVeryShortViewport ? '22px' : '24px',
                                     color: statusColor === 'var(--input-bg)' ? 'var(--text-main)' : 'white',
                                     cursor: 'pointer',
                                     border: isSelected ? '2px solid var(--primary)' : '1px solid transparent',

@@ -27,6 +27,8 @@ router.get('/contents', auth, driveController.getContents);
 router.get('/storage-usage', auth, driveController.getStorageUsage);
 router.post('/upload', auth, upload.single('file'), driveController.uploadFile);
 router.post('/folder', auth, driveController.createFolder);
+router.patch('/folders/:id', auth, driveController.renameFolder);
+router.delete('/folders/:id', auth, driveController.deleteFolder);
 router.delete('/files/:id', auth, driveController.deleteFile);
 router.get('/download/:id', auth, driveController.downloadFile);
 

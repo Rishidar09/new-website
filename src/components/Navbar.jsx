@@ -4,6 +4,23 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { api } from '../lib/api';
+import toast from 'react-hot-toast';
+
+const getRoleBasePath = (role) => {
+    if (role === 'admin') return '/admin';
+    if (role === 'hr') return '/hr';
+    return '/employee';
+};
+
+const isNotificationRead = (notification) => {
+    const value = notification?.is_read;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === 'true' || normalized === '1';
+    }
+    if (typeof value === 'number') return value === 1;
+    return Boolean(value);
+};
 
 const Navbar = ({ onMenuClick, isMobile }) => {
     const { profile, signOut } = useAuth();
@@ -16,7 +33,8 @@ const Navbar = ({ onMenuClick, isMobile }) => {
     const profileRef = useRef(null);
     const socketRef = useRef(null);
 
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const unreadCount = notifications.filter((n) => !isNotificationRead(n)).length;
+    const visibleNotifications = notifications.filter((n) => !isNotificationRead(n));
 
     const getNotificationIcon = (type) => {
         const normalized = (type || '').toLowerCase();
@@ -62,11 +80,12 @@ const Navbar = ({ onMenuClick, isMobile }) => {
     };
 
     const markAllNotificationsAsRead = async () => {
-        if (!notifications.some(n => !n.is_read)) return;
+        if (!notifications.some((n) => !isNotificationRead(n))) return;
 
         setNotifications((prev) => prev.map(n => ({ ...n, is_read: true })));
         try {
             await api.patch('/notifications/read', {});
+            await fetchNotifications();
         } catch (err) {
             console.error('Failed to mark all notifications as read:', err.message);
             fetchNotifications();
@@ -130,6 +149,8 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                 if (payload?.id && prev.some(n => n.id === payload.id)) return prev;
                 return [item, ...prev].slice(0, 50);
             });
+
+            toast(item.message || item.title || 'New notification');
         };
 
         socketRef.current.on('notification_created', (payload) => {
@@ -162,23 +183,36 @@ const Navbar = ({ onMenuClick, isMobile }) => {
             }, 'helpdesk');
         });
 
+        socketRef.current.on('meeting_invite', (payload) => {
+            if (payload?.targetUserId && payload.targetUserId !== profile.employee_uuid) return;
+
+            pushRealtimeNotification({
+                title: payload?.title || 'Meeting Invite',
+                message: payload?.message || `${payload?.inviterName || 'Someone'} invited you to a meeting.`,
+                type: 'meeting',
+                created_at: payload?.date_time || payload?.created_at || new Date().toISOString(),
+            }, 'meeting');
+
+            if (!payload?.meetingId) return;
+
+            const accept = window.confirm(`${payload?.message || 'You have a meeting invite.'}\n\nJoin now?`);
+            if (accept) {
+                navigate(`${getRoleBasePath(profile?.role)}/meetings/${payload.meetingId}`);
+            }
+        });
+
         return () => {
             if (socketRef.current) {
                 socketRef.current.off('notification_created');
                 socketRef.current.off('ticket_created');
                 socketRef.current.off('comment_added');
                 socketRef.current.off('status_changed');
+                socketRef.current.off('meeting_invite');
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
         };
     }, [profile?.id, profile?.role, profile?.employee_uuid, profile?.full_name, profile?.email]);
-
-    useEffect(() => {
-        if (showNotifications) {
-            markAllNotificationsAsRead();
-        }
-    }, [showNotifications]);
 
     // Close dropdowns on click outside
     useEffect(() => {
@@ -264,30 +298,49 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                     {showNotifications && (
                         <div className="card shadow-lg" style={{
                             position: 'absolute',
-                            right: 0,
-                            top: '40px',
+                            right: '100%', // place to the left of the bell icon
+                            top: '0',
+                            marginRight: '16px', // add a gap between bell and popup
                             width: '320px',
                             padding: '16px',
                             zIndex: 1000,
                             maxHeight: '400px',
                             overflowY: 'auto',
                             background: 'var(--card-bg)',
-                            color: 'var(--text-main)'
+                            color: 'var(--text-main)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                            borderRadius: '16px',
+                            transition: 'right 0.2s',
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                 <h4 style={{ fontSize: 'var(--font-lg)', fontWeight: '700', color: 'var(--text-main)' }}>Notifications</h4>
-                                <span
-                                    style={{ fontSize: 'var(--font-xs)', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer' }}
-                                    onClick={markAllNotificationsAsRead}
+                                <button
+                                    type="button"
+                                    style={{
+                                        fontSize: 'var(--font-xs)',
+                                        color: 'var(--primary)',
+                                        fontWeight: '700',
+                                        cursor: unreadCount > 0 ? 'pointer' : 'not-allowed',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        padding: 0,
+                                        opacity: unreadCount > 0 ? 1 : 0.6
+                                    }}
+                                    disabled={unreadCount === 0}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        markAllNotificationsAsRead();
+                                    }}
                                 >
                                     Mark all as read
-                                </span>
+                                </button>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {notifications.length === 0 ? (
-                                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>No notifications yet</p>
+                                {visibleNotifications.length === 0 ? (
+                                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', margin: 0 }}>No unread notifications</p>
                                 ) : (
-                                    notifications.map(n => (
+                                    visibleNotifications.map(n => (
                                         <div
                                             key={n.id}
                                             style={{
@@ -295,18 +348,11 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                                                 gap: '12px',
                                                 padding: '8px',
                                                 borderRadius: '8px',
-                                                cursor: 'pointer',
+                                                cursor: 'default',
                                                 transition: 'all 0.2s',
-                                                opacity: n.is_read ? 0.75 : 1
+                                                opacity: isNotificationRead(n) ? 0.75 : 1
                                             }}
                                             className="hover-bg"
-                                            onClick={() => {
-                                                if (!n.is_read && typeof n.id === 'string' && !n.id.startsWith('rt_')) {
-                                                    markOneNotificationAsRead(n.id);
-                                                } else if (!n.is_read && typeof n.id !== 'string') {
-                                                    markOneNotificationAsRead(n.id);
-                                                }
-                                            }}
                                         >
                                             <div style={{ marginTop: '2px' }}>{getNotificationIcon(n.type)}</div>
                                             <div>
@@ -314,7 +360,7 @@ const Navbar = ({ onMenuClick, isMobile }) => {
                                                     fontSize: 'var(--font-sm)',
                                                     color: 'var(--text-main)',
                                                     lineHeight: '1.4',
-                                                    fontWeight: n.is_read ? '500' : '700',
+                                                    fontWeight: isNotificationRead(n) ? '500' : '700',
                                                     margin: 0
                                                 }}>
                                                     {n.message || n.title}

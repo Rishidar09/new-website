@@ -12,12 +12,28 @@ const createOfferLetter = async (req, res) => {
     try {
         const body = req.body || {};
         const { candidate_name, email, role, department, ctc, joining_date } = body;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const rawCtc = String(ctc ?? '').trim();
 
         const missingFields = [];
         if (!candidate_name || !String(candidate_name).trim()) missingFields.push('candidate_name');
 
         if (missingFields.length > 0) {
             return res.status(400).json({ error: `Missing required fields: ${missingFields.join(', ')}` });
+        }
+
+        if (normalizedEmail && !emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({ error: 'Please provide a valid candidate email address.' });
+        }
+
+        let normalizedCtc = 0;
+        if (rawCtc) {
+            const parsedCtc = Number(rawCtc);
+            if (!Number.isFinite(parsedCtc) || parsedCtc < 0) {
+                return res.status(400).json({ error: 'CTC must be a valid non-negative number.' });
+            }
+            normalizedCtc = parsedCtc;
         }
 
         if (!req.file?.buffer?.length) {
@@ -39,10 +55,10 @@ const createOfferLetter = async (req, res) => {
             "INSERT INTO offer_letters (candidate_name, email, role, department, ctc, joining_date, file_path) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
             [
                 String(candidate_name).trim(),
-                email || null,
+                normalizedEmail || null,
                 role || 'Software Developer - L1',
                 department || 'IT',
-                ctc || null,
+                normalizedCtc,
                 joining_date || null,
                 savedFilePath,
             ]
@@ -68,6 +84,7 @@ const getOfferLetters = async (req, res) => {
 // ─── Send offer letter (HR) ─────────────────────────────────────
 const sendOfferLetter = async (req, res) => {
     try {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const existing = await pool.query(
             "SELECT id, candidate_name, email, role, department, ctc, joining_date, type, file_path FROM offer_letters WHERE id = $1",
             [req.params.id]
@@ -80,6 +97,9 @@ const sendOfferLetter = async (req, res) => {
         const letter = existing.rows[0];
         if (!letter.email) {
             return res.status(400).json({ error: 'Candidate email is missing for this offer letter' });
+        }
+        if (!emailRegex.test(String(letter.email).trim())) {
+            return res.status(400).json({ error: 'Candidate email format is invalid for this offer letter.' });
         }
 
         if (!letter.file_path) {

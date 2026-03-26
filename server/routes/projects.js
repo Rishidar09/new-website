@@ -6,6 +6,8 @@ const projectController = require('../controllers/projectController');
 // --- Projects ---
 router.get('/', auth, projectController.getProjects);
 router.post('/', auth, authorize(['hr']), projectController.createProject);
+router.patch('/:id/close', auth, authorize(['hr', 'admin']), projectController.closeProject);
+router.patch('/:id/reopen', auth, authorize(['hr', 'admin']), projectController.reopenProject);
 router.get('/reports/my', auth, projectController.getMyReports);
 router.get('/:id', auth, projectController.getProjectById);
 

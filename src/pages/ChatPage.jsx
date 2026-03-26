@@ -409,6 +409,7 @@ const ChatPage = () => {
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [sendingMessage, setSendingMessage] = useState(false);
 
     // Direct chat features
     const [isSearchActive, setIsSearchActive] = useState(false);
@@ -439,6 +440,7 @@ const ChatPage = () => {
     const socket = useRef(null);
     const messageContainerRef = useRef(null);
     const fileInputRef = useRef(null);
+    const sendLockRef = useRef(false);
 
     const commonEmojis = ['😊', '😂', '❤️', '👍', '🔥', '🎉', '🙌', '👀', '✨', '✅', '🚀', '⭐'];
 
@@ -569,20 +571,32 @@ const ChatPage = () => {
 
     const handleSendMessage = async (e, attachmentUrl = null) => {
         if (e) e.preventDefault();
-        if (!attachmentUrl && !newMessage.trim()) return;
+        if (sendingMessage || sendLockRef.current) return;
+
+        const trimmedMessage = newMessage.trim();
+        if (!attachmentUrl && !trimmedMessage) return;
         if (!activeChat) return;
+
+        const outgoingText = attachmentUrl ? null : trimmedMessage;
+        sendLockRef.current = true;
+        setSendingMessage(true);
+
+        // Clear text immediately so repeated Enter cannot resend same pending payload.
+        if (!attachmentUrl) setNewMessage('');
 
         try {
             const payload = {
-                content: attachmentUrl ? (attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'Sent an image' : 'Sent a file') : newMessage,
+                content: attachmentUrl ? (attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'Sent an image' : 'Sent a file') : outgoingText,
                 [activeChat.type === 'group' ? 'group_id' : 'receiver_id']: activeChat.id,
                 attachment_url: attachmentUrl
             };
 
             await api.post('/chat/message', payload);
-            if (!attachmentUrl) setNewMessage('');
         } catch (error) {
             console.error('Send error:', error);
+        } finally {
+            sendLockRef.current = false;
+            setSendingMessage(false);
         }
     };
 
@@ -1071,11 +1085,11 @@ const ChatPage = () => {
 
                                     <input
                                         type="text"
-                                        placeholder={uploading ? "Uploading..." : "Type your message..."}
+                                        placeholder={uploading ? "Uploading..." : (sendingMessage ? 'Sending...' : "Type your message...")}
                                         style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', padding: '8px', fontSize: '14px' }}
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
-                                        disabled={uploading}
+                                        disabled={uploading || sendingMessage}
                                     />
 
                                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -1125,7 +1139,7 @@ const ChatPage = () => {
 
                                     <button
                                         type="submit"
-                                        disabled={uploading || (!newMessage.trim())}
+                                        disabled={uploading || sendingMessage || (!newMessage.trim())}
                                         style={{
                                             background: 'var(--primary)',
                                             color: 'white',

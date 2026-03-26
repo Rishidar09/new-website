@@ -36,7 +36,7 @@ const formatIssueDate = (value) => {
 
 const toInr = (value) => {
     const n = Number(value || 0);
-    if (!Number.isFinite(n) || n <= 0) return 'RS ________________';
+    if (!Number.isFinite(n) || n <= 0) return 'Unpaid';
     return `RS ${n.toLocaleString('en-IN')}`;
 };
 
@@ -215,25 +215,27 @@ const OfferLetterPDF = ({ data }) => {
     const location = data.location || 'Hyderabad';
     const issueDate = formatIssueDate(data.issue_date);
     const joiningDate = formatDisplayDate(data.joining_date);
-    const annualCtc = Number(data.ctc || 0);
+    const parsedCtc = Number(data.ctc);
+    const annualCtc = Number.isFinite(parsedCtc) && parsedCtc > 0 ? parsedCtc : 0;
+    const hasPaidCtc = annualCtc > 0;
     const ctcText = toInr(annualCtc);
 
     // Calculate salary components based on CTC using Indian salary structure
-    const monthlyCtc = annualCtc > 0 ? Math.round(annualCtc / 12) : 33334;
+    const monthlyCtc = hasPaidCtc ? Math.round(annualCtc / 12) : 0;
     
     // Standard deductions/benefits (fixed amounts)
-    const employeePfMonth = 1500;
-    const insuranceMonth = 334;
-    const professionalTaxMonth = 200;
+    const employeePfMonth = hasPaidCtc ? 1500 : 0;
+    const insuranceMonth = hasPaidCtc ? 334 : 0;
+    const professionalTaxMonth = hasPaidCtc ? 200 : 0;
     
     // Gross = CTC - (PF + Insurance)
-    const grossMonth = annualCtc > 0 ? Math.round(monthlyCtc - employeePfMonth - insuranceMonth) : 31500;
+    const grossMonth = hasPaidCtc ? Math.round(monthlyCtc - employeePfMonth - insuranceMonth) : 0;
     
     // Salary breakdown: Basic (55%), HRA (27.8%), Conveyance (fixed), Special (rest)
-    const basicPayMonth = annualCtc > 0 ? Math.round((grossMonth * 55) / 100) : 17300;
-    const hraMonth = annualCtc > 0 ? Math.round((grossMonth * 27.8) / 100) : 8750;
-    const conveyanceMonth = 1500; // Fixed
-    const specialAllowanceMonth = annualCtc > 0 ? Math.round(grossMonth - basicPayMonth - hraMonth - conveyanceMonth) : 3750;
+    const basicPayMonth = hasPaidCtc ? Math.round((grossMonth * 55) / 100) : 0;
+    const hraMonth = hasPaidCtc ? Math.round((grossMonth * 27.8) / 100) : 0;
+    const conveyanceMonth = hasPaidCtc ? 1500 : 0; // Fixed when paid CTC is provided
+    const specialAllowanceMonth = hasPaidCtc ? Math.round(grossMonth - basicPayMonth - hraMonth - conveyanceMonth) : 0;
 
     return (
         <Document>
@@ -586,7 +588,11 @@ const OfferLetterPDF = ({ data }) => {
                     <View style={styles.tr}><Text style={styles.tdComponent}>Employee PF Contribution</Text><Text style={styles.tdMonth}>{employeePfMonth.toLocaleString('en-IN')}</Text><Text style={styles.tdYear}>{(employeePfMonth * 12).toLocaleString('en-IN')}</Text></View>
                     <View style={styles.tr}><Text style={styles.tdComponent}>Insurance (Company Paid)</Text><Text style={styles.tdMonth}>{insuranceMonth.toLocaleString('en-IN')}</Text><Text style={styles.tdYear}>{(insuranceMonth * 12).toLocaleString('en-IN')}</Text></View>
                     <View style={styles.tr}><Text style={styles.tdComponent}>Professional Tax</Text><Text style={styles.tdMonth}>{professionalTaxMonth.toLocaleString('en-IN')}</Text><Text style={styles.tdYear}>{(professionalTaxMonth * 12).toLocaleString('en-IN')}</Text></View>
-                    <View style={styles.tr}><Text style={styles.tdComponent}>Total CTC (A + Benefits)</Text><Text style={styles.tdMonth}>{monthlyCtc.toLocaleString('en-IN')}</Text><Text style={styles.tdYear}>{annualCtc > 0 ? annualCtc.toLocaleString('en-IN') : '4,00,008'}</Text></View>
+                    <View style={styles.tr}>
+                        <Text style={styles.tdComponent}>Total CTC (A + Benefits)</Text>
+                        <Text style={styles.tdMonth}>{hasPaidCtc ? monthlyCtc.toLocaleString('en-IN') : 'Unpaid'}</Text>
+                        <Text style={styles.tdYear}>{hasPaidCtc ? annualCtc.toLocaleString('en-IN') : 'Unpaid'}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.bulletRow}><Text style={styles.bulletDot}>•</Text><Text style={styles.bulletText}>Based on your Performance your variable pay will be given for every 6 months.</Text></View>
@@ -660,12 +666,19 @@ const OfferLetterPage = () => {
     };
 
     const handleSave = async () => {
+        const normalizedEmail = String(formData.email || '').trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (normalizedEmail && !emailRegex.test(normalizedEmail)) {
+            toast.error('Please enter a valid candidate email address.');
+            return;
+        }
+
         try {
             setLoading(true);
             const generatedBlob = await pdf(<OfferLetterPDF data={formData} />).toBlob();
             const payload = new FormData();
             payload.append('candidate_name', formData.candidate_name || '');
-            payload.append('email', formData.email || '');
+            payload.append('email', normalizedEmail);
             payload.append('role', formData.role || '');
             payload.append('department', formData.department || '');
             payload.append('ctc', formData.ctc || '');

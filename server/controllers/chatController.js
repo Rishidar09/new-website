@@ -1,8 +1,14 @@
 const { Pool } = require('pg');
+const { sendChatMessageNotificationEmail } = require('../services/emailService');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
+
+const isEmailNotificationEnabled = () => {
+    const value = String(process.env.CHAT_MESSAGE_EMAIL_NOTIFICATIONS || '').toLowerCase();
+    return value === '1' || value === 'true' || value === 'yes';
+};
 
 // ─── Get contacts ────────────────────────────────────────────────
 const getContacts = async (req, res) => {
@@ -217,7 +223,85 @@ const sendMessage = async (req, res) => {
         const roomId = group_id ? `group_${group_id}` : [sender_id, receiver_id].sort().join('_');
         req.io.to(roomId).emit('receive_message', message);
 
+        // Respond immediately after message delivery. Notification side-effects should not block chat UX.
         res.json(message);
+
+        // Create recipient notification for direct chats.
+        if (!group_id && receiver_id && String(receiver_id) !== String(sender_id)) {
+            void (async () => {
+                try {
+                    const recipientRes = await pool.query(
+                        `SELECT p.id AS profile_id,
+                                p.email,
+                                COALESCE(e.full_name, p.email) AS recipient_name
+                         FROM employees e
+                         JOIN profiles p
+                           ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+                           OR (p.employee_id IS NOT NULL AND p.employee_id::text = e.id::text)
+                           OR (p.employee_id IS NOT NULL AND e.employee_id IS NOT NULL AND p.employee_id = e.employee_id)
+                         WHERE e.id = $1
+                         ORDER BY
+                            CASE WHEN LOWER(TRIM(p.email)) = LOWER(TRIM(e.email)) THEN 0 ELSE 1 END,
+                            CASE WHEN p.employee_id::text = e.id::text THEN 0 ELSE 1 END,
+                            p.updated_at DESC NULLS LAST
+                         LIMIT 1`,
+                        [receiver_id]
+                    );
+
+                    const senderDisplayName = message.sender_name || 'Someone';
+                    const preview = String(content || attachment_url || 'New message').trim();
+                    const safePreview = preview.length > 80 ? `${preview.slice(0, 77)}...` : preview;
+
+                    let emittedPayload = {
+                        id: `rt_msg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                        title: 'New message received',
+                        message: `${senderDisplayName}: ${safePreview}`,
+                        type: 'chat_message',
+                        is_read: false,
+                        created_at: new Date().toISOString(),
+                    };
+
+                    if (recipientRes.rows[0]?.profile_id) {
+                        const notificationRes = await pool.query(
+                            `INSERT INTO notifications (user_id, title, message, type)
+                             VALUES ($1, $2, $3, $4)
+                             RETURNING id, user_id, title, message, type, is_read, created_at`,
+                            [
+                                recipientRes.rows[0].profile_id,
+                                'New message received',
+                                `${senderDisplayName}: ${safePreview}`,
+                                'chat_message',
+                            ]
+                        );
+
+                        emittedPayload = notificationRes.rows[0];
+
+                        // Emit to both known identity rooms for reliability across app areas.
+                        req.io.to(recipientRes.rows[0].profile_id).emit('notification_created', emittedPayload);
+                        req.io.to(String(receiver_id)).emit('notification_created', emittedPayload);
+
+                        if (isEmailNotificationEnabled() && recipientRes.rows[0].email) {
+                            sendChatMessageNotificationEmail({
+                                to: recipientRes.rows[0].email,
+                                recipientName: recipientRes.rows[0].recipient_name,
+                                senderName: senderDisplayName,
+                                messagePreview: safePreview,
+                            }).catch((emailErr) => {
+                                console.warn('[Chat Email] Notification email failed:', emailErr.message);
+                            });
+                        }
+                    } else {
+                        // Fallback realtime emit even if DB profile lookup fails.
+                        req.io.to(String(receiver_id)).emit('notification_created', emittedPayload);
+                        console.warn('[Chat Notify] Recipient profile not found for receiver_id:', receiver_id);
+                    }
+                } catch (notifyErr) {
+                    // Do not block chat delivery if notification persistence/realtime emit fails.
+                    console.warn('[Chat Notify] Failed to create/emit recipient notification:', notifyErr.message);
+                }
+            })();
+        }
+        return;
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Server error' });

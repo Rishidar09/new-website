@@ -4,6 +4,12 @@ import { Loader2, PlusCircle, Save, Trash2 } from 'lucide-react';
 
 const emptySlab = () => ({ income_from: 0, income_to: '', rate: 0 });
 
+const formatInr = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '0';
+    return Math.round(num).toLocaleString('en-IN');
+};
+
 const HRStatutorySettingsPage = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -63,6 +69,16 @@ const HRStatutorySettingsPage = () => {
             ...prev,
             tds_slabs: prev.tds_slabs.filter((_, idx) => idx !== index)
         }));
+    };
+
+    const getSlabSummary = (slab) => {
+        const from = Number(slab.income_from) || 0;
+        const to = slab.income_to === '' || slab.income_to == null ? null : Number(slab.income_to);
+        const rate = Number(slab.rate) || 0;
+        const rangeLabel = to === null
+            ? `INR ${formatInr(from)} and above`
+            : `INR ${formatInr(from)} - INR ${formatInr(to)}`;
+        return `${rangeLabel} at ${rate}%`;
     };
 
     const saveSettings = async (e) => {
@@ -144,29 +160,42 @@ const HRStatutorySettingsPage = () => {
                         </button>
                     </div>
 
+                    <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        Each slab is editable directly. Update values and click Save Settings to apply.
+                    </p>
+
                     <div style={{ display: 'grid', gap: '8px' }}>
                         {form.tds_slabs.map((slab, index) => (
-                            <div key={index} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+                            <div key={index} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                    <div>
+                                        <p style={{ margin: 0, color: 'var(--text-main)', fontWeight: 600 }}>Slab {index + 1}</p>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>{getSlabSummary(slab)}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSlab(index)}
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                        title="Remove slab"
+                                    >
+                                        <Trash2 size={16} /> Remove
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', alignItems: 'end' }}>
                                 <div>
                                     <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Income From (INR)</label>
-                                    <input className="input-field" type="number" value={slab.income_from} onChange={(e) => updateSlab(index, { income_from: e.target.value })} />
+                                    <input className="input-field" type="number" min="0" value={slab.income_from} onChange={(e) => updateSlab(index, { income_from: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Income To (INR, blank for no upper cap)</label>
+                                    <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Income To (INR, blank = no upper cap)</label>
                                     <input className="input-field" type="number" value={slab.income_to} onChange={(e) => updateSlab(index, { income_to: e.target.value })} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rate (%)</label>
-                                    <input className="input-field" type="number" step="0.01" value={slab.rate} onChange={(e) => updateSlab(index, { rate: e.target.value })} />
+                                    <input className="input-field" type="number" min="0" step="0.01" value={slab.rate} onChange={(e) => updateSlab(index, { rate: e.target.value })} />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => removeSlab(index)}
-                                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#DC2626', paddingBottom: '10px' }}
-                                    title="Remove slab"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -93,7 +93,7 @@ const EmployeeExitInterviewPage = () => {
     return (
         <>
             <div style={{ marginBottom: '20px' }}>
-                <h1 style={{ fontSize: '26px', color: 'var(--text-main)', fontWeight: '700' }}>Exit Interview & Offboarding</h1>
+                <h1 style={{ fontSize: '26px', color: 'var(--text-main)', fontWeight: '700' }}>Offboarding</h1>
                 <p style={{ color: 'var(--text-muted)', marginTop: '6px' }}>
                     Share your feedback and track offboarding completion.
                 </p>
@@ -119,7 +119,7 @@ const EmployeeExitInterviewPage = () => {
                     </div>
 
                     <div className="card" style={{ padding: '16px', marginBottom: '14px' }}>
-                        <h3 style={{ fontSize: '17px', marginBottom: '10px' }}>Exit Interview Form</h3>
+                        <h3 style={{ fontSize: '17px', marginBottom: '10px' }}>Offboarding Form</h3>
                         <form onSubmit={submitExitInterview} style={{ display: 'grid', gap: '10px' }}>
                             <div>
                                 <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Reason For Leaving</label>

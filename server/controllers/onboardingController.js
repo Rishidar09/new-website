@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const { createOnboardingCaseFromTemplate } = require('../services/onboardingService');
+const { sendOnboardingAssignedEmail } = require('../services/emailService');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -69,6 +70,69 @@ const resolveEmployee = async (req) => {
         [req.user.id]
     );
     return emp.rows[0] || null;
+};
+
+const isOnboardingAssignmentEmailEnabled = () => String(process.env.ONBOARDING_ASSIGNMENT_EMAIL_NOTIFICATIONS || 'false').toLowerCase() === 'true';
+
+const notifyOnboardingAssignment = async ({ employeeId, io, templateName }) => {
+    try {
+        const lookup = await pool.query(
+            `SELECT e.id, e.full_name, e.email, p.id AS profile_id
+             FROM employees e
+             LEFT JOIN profiles p
+               ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+               OR (
+                    p.employee_id IS NOT NULL
+                AND e.employee_id IS NOT NULL
+                AND LOWER(TRIM(p.employee_id)) = LOWER(TRIM(e.employee_id))
+               )
+             WHERE e.id = $1
+             LIMIT 1`,
+            [employeeId]
+        );
+
+        const employee = lookup.rows[0];
+        if (!employee) return;
+
+        const title = 'New Onboarding Checklist Assigned';
+        const message = `You have been assigned onboarding template \"${templateName || 'New Hire Onboarding'}\". Please complete your checklist.`;
+
+        if (employee.profile_id) {
+            const inserted = await pool.query(
+                `INSERT INTO notifications (user_id, title, message, type)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING *`,
+                [employee.profile_id, title, message, 'onboarding']
+            );
+
+            if (io) {
+                const payload = inserted.rows[0];
+                io.to(employee.profile_id).emit('notification_created', payload);
+                io.to(`employee_${employee.id}`).emit('notification_created', payload);
+                io.to(String(employee.id)).emit('notification_created', payload);
+            }
+        } else if (io) {
+            io.to(`employee_${employee.id}`).emit('notification_created', {
+                title,
+                message,
+                type: 'onboarding',
+                created_at: new Date().toISOString(),
+                targetUserId: employee.id,
+            });
+        }
+
+        if (isOnboardingAssignmentEmailEnabled() && employee.email) {
+            sendOnboardingAssignedEmail({
+                to: employee.email,
+                name: employee.full_name || 'Employee',
+                templateName: templateName || 'Onboarding Checklist',
+            }).catch((err) => {
+                console.warn('[Onboarding] Assignment email failed:', err.message);
+            });
+        }
+    } catch (err) {
+        console.warn('[Onboarding] Assignment notification failed:', err.message);
+    }
 };
 
 const getTemplates = async (req, res) => {
@@ -163,7 +227,18 @@ const assignTemplate = async (req, res) => {
             templateId: template_id,
             assignedBy: assigner?.id || null
         });
+
+        const templateRes = await client.query(
+            'SELECT name FROM onboarding_templates WHERE id = $1 LIMIT 1',
+            [template_id]
+        );
         await client.query('COMMIT');
+
+        void notifyOnboardingAssignment({
+            employeeId: employee_id,
+            io: req.io,
+            templateName: templateRes.rows[0]?.name || 'Onboarding Checklist'
+        });
 
         res.json(created);
     } catch (err) {
@@ -172,6 +247,44 @@ const assignTemplate = async (req, res) => {
         res.status(500).json({ error: err.message || 'Server error' });
     } finally {
         client.release();
+    }
+};
+
+const getAllCases = async (req, res) => {
+    try {
+        const cases = await pool.query(
+            `SELECT oc.*, e.full_name AS employee_name, e.email AS employee_email,
+                    t.name AS template_name,
+                    COALESCE(SUM(CASE WHEN oct.is_completed THEN 1 ELSE 0 END), 0)::int AS completed_tasks,
+                    COUNT(oct.id)::int AS total_tasks,
+                    CASE WHEN COUNT(oct.id) = 0 THEN 0
+                         ELSE ROUND((SUM(CASE WHEN oct.is_completed THEN 1 ELSE 0 END)::numeric * 100) / COUNT(oct.id), 0)
+                    END::int AS completion_percentage
+             FROM onboarding_cases oc
+             JOIN employees e ON e.id = oc.employee_id
+             JOIN onboarding_templates t ON t.id = oc.template_id
+             LEFT JOIN onboarding_case_tasks oct ON oct.case_id = oc.id
+             GROUP BY oc.id, e.full_name, e.email, t.name
+             ORDER BY oc.created_at DESC`
+        );
+
+        const tasks = await pool.query(
+            `SELECT oct.*, e.full_name AS completed_by_name
+             FROM onboarding_case_tasks oct
+             LEFT JOIN employees e ON e.id = oct.completed_by
+             ORDER BY oct.sort_order ASC, oct.created_at ASC`
+        );
+
+        const taskMap = tasks.rows.reduce((acc, row) => {
+            if (!acc[row.case_id]) acc[row.case_id] = [];
+            acc[row.case_id].push(row);
+            return acc;
+        }, {});
+
+        res.json(cases.rows.map((c) => ({ ...c, tasks: taskMap[c.id] || [] })));
+    } catch (err) {
+        console.error('getAllCases error:', err.message);
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
@@ -434,6 +547,7 @@ module.exports = {
     createTemplate,
     assignTemplate,
     getActiveCases,
+    getAllCases,
     hrUpdateTask,
     getMyChecklist,
     getMySummary,

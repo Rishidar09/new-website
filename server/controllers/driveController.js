@@ -12,6 +12,12 @@ const getEmpId = async (email) => {
     return res.rows[0]?.id;
 };
 
+const canManageFolder = (folder, myId, role) => {
+    if (!folder) return false;
+    if (['hr', 'admin'].includes(role)) return true;
+    return String(folder.owner_id) === String(myId);
+};
+
 // ─── Get drive contents ──────────────────────────────────────────
 const getContents = async (req, res) => {
     const { folder_id, type } = req.query;
@@ -118,6 +124,106 @@ const createFolder = async (req, res) => {
     }
 };
 
+// ─── Rename folder ───────────────────────────────────────────────
+const renameFolder = async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: 'Folder name is required' });
+    }
+
+    try {
+        const myId = await getEmpId(req.user.email);
+        if (!myId) return res.status(404).json({ error: 'Profile not found' });
+
+        const folderRes = await pool.query('SELECT * FROM folders WHERE id = $1', [id]);
+        if (folderRes.rows.length === 0) return res.status(404).json({ error: 'Folder not found' });
+
+        const folder = folderRes.rows[0];
+        if (!canManageFolder(folder, myId, req.user.role)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const updated = await pool.query(
+            'UPDATE folders SET name = $1 WHERE id = $2 RETURNING *',
+            [String(name).trim(), id]
+        );
+
+        res.json(updated.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Delete folder (recursive) ───────────────────────────────────
+const deleteFolder = async (req, res) => {
+    const { id } = req.params;
+    const client = await pool.connect();
+
+    try {
+        const myId = await getEmpId(req.user.email);
+        if (!myId) return res.status(404).json({ error: 'Profile not found' });
+
+        await client.query('BEGIN');
+
+        const folderRes = await client.query('SELECT * FROM folders WHERE id = $1', [id]);
+        if (folderRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Folder not found' });
+        }
+
+        const folder = folderRes.rows[0];
+        if (!canManageFolder(folder, myId, req.user.role)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Gather files in the folder subtree so physical files can be removed from disk.
+        const filesRes = await client.query(
+            `WITH RECURSIVE folder_tree AS (
+                SELECT id FROM folders WHERE id = $1
+                UNION ALL
+                SELECT f.id
+                FROM folders f
+                JOIN folder_tree ft ON f.parent_id = ft.id
+             )
+             SELECT storage_path
+             FROM files
+             WHERE folder_id IN (SELECT id FROM folder_tree)`,
+            [id]
+        );
+
+        await client.query('DELETE FROM folders WHERE id = $1', [id]);
+        await client.query('COMMIT');
+
+        for (const row of filesRes.rows) {
+            if (!row.storage_path) continue;
+            const fullPath = path.join(__dirname, '..', row.storage_path);
+            if (fs.existsSync(fullPath)) {
+                try {
+                    fs.unlinkSync(fullPath);
+                } catch (fileErr) {
+                    console.warn('[Drive] Failed to remove file from disk:', fileErr.message);
+                }
+            }
+        }
+
+        res.json({ message: 'Folder deleted' });
+    } catch (err) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (_) {
+            // ignore rollback failures
+        }
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    } finally {
+        client.release();
+    }
+};
+
 // ─── Delete file ─────────────────────────────────────────────────
 const deleteFile = async (req, res) => {
     try {
@@ -153,4 +259,4 @@ const downloadFile = async (req, res) => {
     }
 };
 
-module.exports = { getContents, getStorageUsage, uploadFile, createFolder, deleteFile, downloadFile };
+module.exports = { getContents, getStorageUsage, uploadFile, createFolder, renameFolder, deleteFolder, deleteFile, downloadFile };

@@ -42,6 +42,7 @@ router.get('/hr-accounts', auth, authorize(['admin']), employeeController.getHrA
 router.get('/:id', auth, employeeController.getEmployeeById);
 router.post('/', auth, authorize(['hr', 'admin']), upload.single('avatar'), employeeController.createEmployee);
 router.patch('/:id', auth, authorize(['hr', 'admin']), upload.single('avatar'), employeeController.updateEmployee);
+router.patch('/:id/reactivate', auth, authorize(['hr', 'admin']), employeeController.reactivateEmployee);
 router.delete('/:id', auth, authorize(['hr', 'admin']), employeeController.deleteEmployee);
 
 module.exports = router;

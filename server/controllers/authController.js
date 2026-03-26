@@ -11,6 +11,39 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const MAX_FAILED_ATTEMPTS = 5;
 
+const isBounceEvent = (eventType, eventPayload) => {
+    const typeText = String(eventType || '').toLowerCase();
+    if (typeText.includes('bounce') || typeText.includes('reject') || typeText.includes('fail') || typeText.includes('complaint')) {
+        return true;
+    }
+
+    if (eventPayload && typeof eventPayload === 'object') {
+        return Boolean(eventPayload.bounce || eventPayload.complaint);
+    }
+
+    return false;
+};
+
+const extractEmailFromBounceEvent = (event) => {
+    if (!event || typeof event !== 'object') return null;
+
+    const direct = event.email || event.recipient || event.to;
+    if (direct) return String(direct).trim().toLowerCase();
+
+    const sesDestination = event.mail?.destination;
+    if (Array.isArray(sesDestination) && sesDestination.length > 0) {
+        return String(sesDestination[0]).trim().toLowerCase();
+    }
+
+    const recipients = event.bounce?.bouncedRecipients;
+    if (Array.isArray(recipients) && recipients.length > 0) {
+        const bouncedEmail = recipients[0]?.emailAddress;
+        if (bouncedEmail) return String(bouncedEmail).trim().toLowerCase();
+    }
+
+    return null;
+};
+
 // ─── Signup (disabled) ───────────────────────────────────────────
 const signup = async (req, res) => {
     return res.status(403).json({ error: 'Public signup is disabled. Please contact an admin for account creation.' });
@@ -18,21 +51,41 @@ const signup = async (req, res) => {
 
 // ─── Login ───────────────────────────────────────────────────────
 const login = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, requestedRole } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     try {
         const result = await pool.query(`
             SELECT p.*, e.full_name 
             FROM profiles p 
             LEFT JOIN employees e ON p.email = e.email 
             WHERE p.email = $1
-        `, [email]);
+        `, [normalizedEmail]);
 
         if (result.rows.length === 0) {
-            console.log(`[Login Debug] Email not found: ${email}`);
-            return res.status(401).json({ error: 'Invalid credentials' });
+            console.log(`[Login Debug] Email not found: ${normalizedEmail}`);
+            return res.status(401).json({ error: 'No account found with this email address.' });
         }
 
         const user = result.rows[0];
+        const normalizedRequestedRole = typeof requestedRole === 'string'
+            ? requestedRole.trim().toLowerCase()
+            : null;
+
+        if (String(user.status || '').toLowerCase() === 'inactive') {
+            return res.status(403).json({
+                error: 'Account is inactive. Please contact an admin.'
+            });
+        }
+
+        if (String(user.status || '').toLowerCase() === 'pending_activation') {
+            return res.status(403).json({
+                error: 'Account is pending activation. Please complete password setup from your welcome/reset email.'
+            });
+        }
+
+        if (normalizedRequestedRole && !['admin', 'employee'].includes(normalizedRequestedRole)) {
+            return res.status(400).json({ error: 'Invalid login role selected' });
+        }
 
         // Account Lock Check
         if (user.locked_at) {
@@ -55,7 +108,7 @@ const login = async (req, res) => {
         // Password Check
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
-            console.log(`[Login Debug] Password mismatch for: ${email}`);
+            console.log(`[Login Debug] Password mismatch for: ${normalizedEmail}`);
             const newAttempts = (user.failed_login_attempts || 0) + 1;
             if (newAttempts >= MAX_FAILED_ATTEMPTS) {
                 await pool.query(
@@ -71,7 +124,7 @@ const login = async (req, res) => {
                 [newAttempts, user.id]
             );
             return res.status(401).json({
-                error: `Invalid credentials. ${MAX_FAILED_ATTEMPTS - newAttempts} attempt(s) remaining before lockout.`
+                error: `Incorrect password. ${MAX_FAILED_ATTEMPTS - newAttempts} attempt(s) remaining before lockout.`
             });
         }
 
@@ -80,6 +133,18 @@ const login = async (req, res) => {
             'UPDATE profiles SET failed_login_attempts = 0, locked_at = NULL, updated_at = NOW() WHERE id = $1',
             [user.id]
         );
+
+        if (normalizedRequestedRole) {
+            const allowedRolesForPortal = normalizedRequestedRole === 'admin'
+                ? ['admin', 'hr']
+                : ['employee'];
+
+            if (!allowedRolesForPortal.includes(user.role)) {
+                return res.status(403).json({
+                    error: 'Access denied'
+                });
+            }
+        }
 
         const emp = await pool.query('SELECT id FROM employees WHERE email = $1', [user.email]);
         const employee_uuid = emp.rows[0]?.id || null;
@@ -192,9 +257,40 @@ const changePassword = async (req, res) => {
 const forgotPassword = async (req, res) => {
     const { email } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM profiles WHERE email = $1', [email]);
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        if (!normalizedEmail) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const result = await pool.query(
+            `SELECT
+                p.*,
+                e.full_name AS employee_full_name,
+                e.email AS employee_email
+             FROM profiles p
+             LEFT JOIN employees e
+               ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+               OR (p.employee_id IS NOT NULL AND p.employee_id = e.employee_id)
+             WHERE LOWER(TRIM(p.email)) = $1
+                OR LOWER(TRIM(e.email)) = $1
+             ORDER BY CASE WHEN LOWER(TRIM(p.email)) = $1 THEN 0 ELSE 1 END
+             LIMIT 1`,
+            [normalizedEmail]
+        );
+
         if (result.rows.length === 0) {
-            return res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
+            const employeeOnly = await pool.query(
+                'SELECT id FROM employees WHERE LOWER(TRIM(email)) = $1 LIMIT 1',
+                [normalizedEmail]
+            );
+
+            if (employeeOnly.rows.length > 0) {
+                return res.status(404).json({
+                    error: 'Employee record exists, but no login account is linked yet. Please contact HR/Admin.'
+                });
+            }
+
+            return res.status(404).json({ error: 'No account found with this email address.' });
         }
 
         const user = result.rows[0];
@@ -214,17 +310,17 @@ const forgotPassword = async (req, res) => {
         }
         const resetLink = `${baseURL}/reset-password?token=${token}`;
 
-        const emp = await pool.query('SELECT full_name FROM employees WHERE email = $1', [email]);
-        const name = emp.rows[0]?.full_name || email.split('@')[0];
+        const name = user.employee_full_name || normalizedEmail.split('@')[0];
+        const recipientEmail = String(user.email || normalizedEmail).trim().toLowerCase();
 
         try {
-            await sendPasswordResetEmail({ to: email, name, resetLink });
+            await sendPasswordResetEmail({ to: recipientEmail, name, resetLink });
         } catch (emailErr) {
             console.warn('[Email] Password reset email failed (SMTP may not be configured):', emailErr.message);
-            console.log(`[Debug] Reset link for ${email}: ${resetLink}`);
+            console.log(`[Debug] Reset link for ${recipientEmail}: ${resetLink}`);
         }
 
-        res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
+        res.json({ message: 'Password reset link has been sent to your email address.' });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Server error' });
@@ -253,8 +349,8 @@ const resetPassword = async (req, res) => {
         const password_hash = await bcrypt.hash(new_password, salt);
 
         await pool.query(
-            'UPDATE profiles SET password_hash = $1, is_first_login = FALSE, updated_at = NOW() WHERE id = $2',
-            [password_hash, resetRecord.profile_id]
+            'UPDATE profiles SET password_hash = $1, is_first_login = FALSE, status = $3, updated_at = NOW() WHERE id = $2',
+            [password_hash, resetRecord.profile_id, 'active']
         );
 
         await pool.query('UPDATE password_reset_tokens SET used = TRUE WHERE id = $1', [resetRecord.id]);
@@ -262,6 +358,86 @@ const resetPassword = async (req, res) => {
         res.json({ message: 'Password reset successfully. You can now log in.' });
     } catch (err) {
         console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Bounce Webhook (auto deactivate on bounce) ────────────────
+const handleEmailBounceWebhook = async (req, res) => {
+    try {
+        const configuredSecret = String(process.env.BOUNCE_WEBHOOK_SECRET || '').trim();
+        if (!configuredSecret) {
+            return res.status(503).json({ error: 'Bounce webhook is not configured' });
+        }
+
+        const providedSecret = String(req.headers['x-bounce-secret'] || '').trim();
+        if (!providedSecret || providedSecret !== configuredSecret) {
+            return res.status(403).json({ error: 'Unauthorized bounce webhook call' });
+        }
+
+        let rawPayload = req.body;
+        if (rawPayload && rawPayload.Type === 'Notification' && typeof rawPayload.Message === 'string') {
+            try {
+                rawPayload = JSON.parse(rawPayload.Message);
+            } catch (_) {
+                // Keep raw payload as-is when SNS wrapper message is not JSON.
+            }
+        }
+
+        const events = Array.isArray(rawPayload)
+            ? rawPayload
+            : [rawPayload];
+
+        let processedEvents = 0;
+        const deactivatedEmails = [];
+
+        for (const event of events) {
+            const eventType = event?.event || event?.type || event?.notificationType || event?.bounce?.bounceType;
+            if (!isBounceEvent(eventType, event)) continue;
+
+            const bouncedEmail = extractEmailFromBounceEvent(event);
+            if (!bouncedEmail) continue;
+
+            const profileResult = await pool.query(
+                `UPDATE profiles
+                 SET status = 'inactive', updated_at = NOW()
+                 WHERE LOWER(TRIM(email)) = $1
+                 RETURNING employee_id, email`,
+                [bouncedEmail]
+            );
+
+            if (profileResult.rows.length === 0) continue;
+
+            processedEvents += 1;
+            deactivatedEmails.push(bouncedEmail);
+
+            for (const row of profileResult.rows) {
+                const linkedEmployeeId = row.employee_id || null;
+                if (linkedEmployeeId) {
+                    await pool.query(
+                        `UPDATE employees
+                         SET status = 'Inactive', updated_at = NOW()
+                         WHERE id::text = $1`,
+                        [linkedEmployeeId]
+                    );
+                }
+
+                await pool.query(
+                    `UPDATE employees
+                     SET status = 'Inactive', updated_at = NOW()
+                     WHERE LOWER(TRIM(email)) = $1`,
+                    [bouncedEmail]
+                );
+            }
+        }
+
+        res.json({
+            message: 'Bounce webhook processed',
+            processed_events: processedEvents,
+            deactivated_emails: deactivatedEmails
+        });
+    } catch (err) {
+        console.error('[Bounce Webhook] Failed:', err.message);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -293,5 +469,6 @@ module.exports = {
     changePassword,
     forgotPassword,
     resetPassword,
-    getMe
+    getMe,
+    handleEmailBounceWebhook
 };

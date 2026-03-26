@@ -128,7 +128,7 @@ const generateOfferLetterPDF = (offerData) => {
 
 // ─── Send Welcome Email ──────────────────────────────────────────
 const sendWelcomeEmail = async ({ to, name, email, password, role, resetLink }) => {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
         from: FROM,
         to,
         subject: 'Welcome to IndusInnovate Technologies – Your Account Details',
@@ -153,6 +153,8 @@ const sendWelcomeEmail = async ({ to, name, email, password, role, resetLink }) 
             </div>
         </div>`
     });
+
+    return info;
 };
 
 // ─── Send Password Reset Email ────────────────────────────────────
@@ -204,7 +206,11 @@ const sendLeaveStatusEmail = async ({ to, name, status, leaveType, fromDate, toD
 };
 
 // ─── Send Payslip Notification Email ────────────────────────────
-const sendPayslipEmail = async ({ to, name, month, year, netSalary }) => {
+const sendPayslipEmail = async ({ to, name, month, year, netSalary, attachmentBuffer, attachmentFileName }) => {
+    if (!attachmentBuffer || !attachmentBuffer.length) {
+        throw new Error('Payslip attachment is required to send email');
+    }
+
     await transporter.sendMail({
         from: FROM,
         to,
@@ -221,11 +227,17 @@ const sendPayslipEmail = async ({ to, name, month, year, netSalary }) => {
                     <p style="color:#6B7280;font-size:13px;margin:0;">Net Take Home</p>
                     <p style="color:#1E40AF;font-size:32px;font-weight:700;margin:8px 0;">₹${Number(netSalary).toLocaleString('en-IN')}</p>
                 </div>
-                <p style="color:#6B7280;">Log in to the portal to view and download your detailed payslip.</p>
-                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/employee/payslips" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:8px;">View Payslip</a>
+                <p style="color:#6B7280;">Your payslip PDF is attached to this email.</p>
                 <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2025 IndusInnovate Technologies. All rights reserved.</p>
             </div>
-        </div>`
+        </div>`,
+        attachments: [
+            {
+                filename: attachmentFileName || `Payslip_${String(name || 'Employee').replace(/\s+/g, '_')}_${month}_${year}.pdf`,
+                content: attachmentBuffer,
+                contentType: 'application/pdf',
+            },
+        ],
     });
 };
 
@@ -250,6 +262,116 @@ const sendMeetingInvite = async ({ to, name, title, scheduledAt, agenda, meeting
                 </div>
                 ${meetingLink ? `<a href="${meetingLink}" style="display:inline-block;background:#10B981;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Join Meeting</a>` : ''}
                 <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2025 IndusInnovate Technologies. All rights reserved.</p>
+            </div>
+        </div>`
+    });
+};
+
+// ─── Send Account Status Change Email ──────────────────────────
+const sendAccountStatusEmail = async ({ to, name, status }) => {
+    const normalizedStatus = String(status || '').toLowerCase();
+    const isActive = normalizedStatus === 'active';
+    const heading = isActive ? 'Account Reactivated' : 'Account Deactivated';
+    const accent = isActive ? '#10B981' : '#EF4444';
+    const icon = isActive ? '✅' : '⚠️';
+    const portalUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
+
+    await transporter.sendMail({
+        from: FROM,
+        to,
+        subject: `${heading} – IndusInnovate Technologies`,
+        html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
+            <div style="background:linear-gradient(135deg,#1E3A8A,#3B82F6);padding:32px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="color:white;margin:0;font-size:24px;">IndusInnovate Technologies</h1>
+            </div>
+            <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:${accent};margin-top:0;">${icon} ${heading}</h2>
+                <p style="color:#6B7280;">Hi ${name}, your employee account status has been updated.</p>
+                <div style="background:#F9FAFB;border:1px solid #E5E7EB;padding:16px;border-radius:8px;margin:20px 0;">
+                    <p style="margin:0;font-size:14px;color:#374151;"><strong>Current Status:</strong> ${isActive ? 'Active' : 'Inactive'}</p>
+                </div>
+                ${isActive
+                    ? `<p style="color:#374151;">You can now access the portal using your registered credentials.</p>
+                       <a href="${portalUrl}" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:8px;">Login to Portal</a>`
+                    : '<p style="color:#374151;">Your access to the portal is currently disabled. Please contact HR/admin for assistance.</p>'}
+                <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2026 IndusInnovate Technologies. All rights reserved.</p>
+            </div>
+        </div>`
+    });
+};
+
+// ─── Send Chat Message Notification Email (Optional) ───────────
+const sendChatMessageNotificationEmail = async ({ to, recipientName, senderName, messagePreview }) => {
+    await transporter.sendMail({
+        from: FROM,
+        to,
+        subject: `New message from ${senderName} – IndusInnovate Technologies`,
+        html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
+            <div style="background:linear-gradient(135deg,#1E3A8A,#3B82F6);padding:32px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="color:white;margin:0;font-size:24px;">IndusInnovate Technologies</h1>
+            </div>
+            <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:#111827;">New Message Received</h2>
+                <p style="color:#6B7280;">Hi ${recipientName || 'there'}, you received a new message.</p>
+                <div style="background:#F9FAFB;border:1px solid #E5E7EB;padding:16px;border-radius:8px;margin:20px 0;">
+                    <p style="margin:0;font-size:14px;color:#374151;"><strong>Sender:</strong> ${senderName}</p>
+                    <p style="margin:8px 0 0;font-size:14px;color:#374151;"><strong>Message:</strong> ${messagePreview}</p>
+                </div>
+                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Open Chat</a>
+                <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2026 IndusInnovate Technologies. All rights reserved.</p>
+            </div>
+        </div>`
+    });
+};
+
+// ─── Send Shift Assignment Email (Optional) ─────────────────────
+const sendShiftAssignmentEmail = async ({ to, name, shiftName, startTime, endTime, effectiveFrom }) => {
+    const shiftWindow = `${String(startTime || '').slice(0, 5)} - ${String(endTime || '').slice(0, 5)}`;
+    await transporter.sendMail({
+        from: FROM,
+        to,
+        subject: `Shift Assigned: ${shiftName} – IndusInnovate Technologies`,
+        html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
+            <div style="background:linear-gradient(135deg,#1E3A8A,#3B82F6);padding:32px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="color:white;margin:0;font-size:24px;">IndusInnovate Technologies</h1>
+            </div>
+            <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:#111827;">New Shift Assignment</h2>
+                <p style="color:#6B7280;">Hi ${name || 'there'}, your shift assignment has been updated.</p>
+                <div style="background:#F9FAFB;border:1px solid #E5E7EB;padding:16px;border-radius:8px;margin:20px 0;">
+                    <p style="margin:0;font-size:14px;color:#374151;"><strong>Shift:</strong> ${shiftName}</p>
+                    <p style="margin:8px 0 0;font-size:14px;color:#374151;"><strong>Timing:</strong> ${shiftWindow}</p>
+                    <p style="margin:8px 0 0;font-size:14px;color:#374151;"><strong>Effective From:</strong> ${effectiveFrom}</p>
+                </div>
+                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/employee/attendance" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">View Attendance</a>
+                <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2026 IndusInnovate Technologies. All rights reserved.</p>
+            </div>
+        </div>`
+    });
+};
+
+// ─── Send Onboarding Assignment Email (Optional) ─────────────────
+const sendOnboardingAssignedEmail = async ({ to, name, templateName }) => {
+    await transporter.sendMail({
+        from: FROM,
+        to,
+        subject: `Onboarding Assigned: ${templateName} – IndusInnovate Technologies`,
+        html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;">
+            <div style="background:linear-gradient(135deg,#1E3A8A,#3B82F6);padding:32px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="color:white;margin:0;font-size:24px;">IndusInnovate Technologies</h1>
+            </div>
+            <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+                <h2 style="color:#111827;">Onboarding Checklist Assigned</h2>
+                <p style="color:#6B7280;">Hi ${name || 'there'}, a new onboarding checklist has been assigned to you.</p>
+                <div style="background:#F9FAFB;border:1px solid #E5E7EB;padding:16px;border-radius:8px;margin:20px 0;">
+                    <p style="margin:0;font-size:14px;color:#374151;"><strong>Template:</strong> ${templateName}</p>
+                </div>
+                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/employee/onboarding" style="display:inline-block;background:#3B82F6;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Open Onboarding</a>
+                <p style="color:#9CA3AF;font-size:12px;margin-top:32px;">© 2026 IndusInnovate Technologies. All rights reserved.</p>
             </div>
         </div>`
     });
@@ -388,5 +510,9 @@ module.exports = {
     sendLeaveStatusEmail,
     sendPayslipEmail,
     sendMeetingInvite,
+    sendAccountStatusEmail,
+    sendChatMessageNotificationEmail,
+    sendShiftAssignmentEmail,
+    sendOnboardingAssignedEmail,
     sendOfferLetterEmail,
 };

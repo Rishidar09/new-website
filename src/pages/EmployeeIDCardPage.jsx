@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import IDCard from '../components/IDCard';
 import { toPng } from 'html-to-image';
+import { downloadIdCardPdf } from '../lib/idCardExport';
 import { Download, Share2, FileDown, Loader2, ArrowLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,7 @@ const EmployeeIDCardPage = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [pdfExporting, setPdfExporting] = useState(false);
 
     useEffect(() => {
         const fetchEmployeeData = async () => {
@@ -60,6 +62,22 @@ const EmployeeIDCardPage = () => {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        if (!idCardRef.current || !employee) return;
+        try {
+            setPdfExporting(true);
+            await downloadIdCardPdf({
+                node: idCardRef.current,
+                fullName: employee.full_name,
+                fallbackName: employee.employee_id || employee.id || 'Employee'
+            });
+        } catch (err) {
+            console.error('PDF Export failed', err);
+        } finally {
+            setPdfExporting(false);
+        }
+    };
+
     if (loading) {
         return (
             <>
@@ -101,12 +119,13 @@ const EmployeeIDCardPage = () => {
                     </button>
 
                     <button
-                        onClick={() => window.print()}
+                        onClick={handleDownloadPdf}
+                        disabled={pdfExporting}
                         className="btn-export"
                         style={{ background: '#F9FAFB', color: 'var(--text-main)', border: '1px solid var(--border)' }}
                     >
                         <FileDown size={18} />
-                        Save as PDF
+                        {pdfExporting ? 'Saving...' : 'Download PDF'}
                     </button>
 
                     <button

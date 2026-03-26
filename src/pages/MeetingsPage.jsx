@@ -128,7 +128,7 @@ const MeetingsPage = () => {
                             <Calendar size={16} /> {new Date(meeting.date_time).toLocaleDateString()} at {new Date(meeting.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
 
-                        <p style={{ fontSize: '14px', color: 'var(--text-main)', fontStyle: 'italic' }}>"{meeting.agenda}"</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-main)', fontStyle: 'italic' }}>&quot;{meeting.agenda}&quot;</p>
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -141,9 +141,10 @@ const MeetingsPage = () => {
                             <button
                                 onClick={() => navigate(`${roleBasePath}/meetings/${meeting.id}`)}
                                 className="btn-primary"
-                                style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px' }}
+                                style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', opacity: meeting.status === 'completed' || meeting.status === 'ended' ? 0.5 : 1, pointerEvents: meeting.status === 'completed' || meeting.status === 'ended' ? 'none' : 'auto' }}
+                                disabled={meeting.status === 'completed' || meeting.status === 'ended'}
                             >
-                                Join Room
+                                {meeting.status === 'completed' || meeting.status === 'ended' ? 'Meeting Ended' : 'Join Room'}
                                 <ArrowRight size={16} />
                             </button>
                         </div>
@@ -154,18 +155,18 @@ const MeetingsPage = () => {
             {/* Schedule Modal */}
             {isModalOpen && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-                    <div className="card" style={{ width: '600px', padding: '32px', position: 'relative' }}>
-                        <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', right: '24px', top: '24px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                    <div className="card" style={{ width: '600px', padding: '32px', position: 'relative', border: '1px solid var(--border)' }}>
+                        <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', right: '24px', top: '24px', border: '1px solid var(--border)', background: 'var(--input-bg)', cursor: 'pointer', color: 'var(--text-main)', borderRadius: '8px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <X size={24} />
                         </button>
 
-                        <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>Schedule Group Meeting</h2>
+                        <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-main)' }}>Schedule Group Meeting</h2>
                         <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>Organize a virtual session with your teammates.</p>
 
                         <form onSubmit={handleSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>MEETING TITLE</label>
+                                    <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>MEETING TITLE</label>
                                     <input
                                         type="text"
                                         required
@@ -176,7 +177,7 @@ const MeetingsPage = () => {
                                     />
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>DATE & TIME</label>
+                                    <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>DATE & TIME</label>
                                     <input
                                         type="datetime-local"
                                         required
@@ -188,7 +189,7 @@ const MeetingsPage = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>MEETING AGENDA</label>
+                                <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>MEETING AGENDA</label>
                                 <textarea
                                     className="input-field"
                                     rows="3"
@@ -200,8 +201,8 @@ const MeetingsPage = () => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '11px', fontWeight: '800', color: '#64748B' }}>PARTICIPANTS ({formData.participants.length} SELECT)</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '120px', overflowY: 'auto', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>PARTICIPANTS ({formData.participants.length} SELECT)</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '120px', overflowY: 'auto', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--input-bg)' }}>
                                     {employees.map(emp => (
                                         <div
                                             key={emp.id}
@@ -212,8 +213,9 @@ const MeetingsPage = () => {
                                                 fontSize: '12px',
                                                 fontWeight: '600',
                                                 cursor: 'pointer',
-                                                background: formData.participants.includes(emp.id) ? 'var(--primary)' : '#F1F5F9',
+                                                background: formData.participants.includes(emp.id) ? 'var(--primary)' : 'var(--card-bg)',
                                                 color: formData.participants.includes(emp.id) ? 'white' : 'var(--text-main)',
+                                                border: formData.participants.includes(emp.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: '6px',

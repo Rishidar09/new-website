@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { sendShiftAssignmentEmail } = require('../services/emailService');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -63,6 +64,73 @@ const getActorEmployeeId = async (req) => {
     return null;
 };
 
+const isShiftAssignmentEmailEnabled = () => String(process.env.SHIFT_ASSIGNMENT_EMAIL_NOTIFICATIONS || 'false').toLowerCase() === 'true';
+
+const notifyShiftAssignment = async ({ employee, shift, effectiveFrom, io }) => {
+    if (!employee?.id || !shift?.name) return;
+
+    const shiftWindow = `${String(shift.start_time || '').slice(0, 5)} - ${String(shift.end_time || '').slice(0, 5)}`;
+    const title = 'Shift Assigned';
+    const message = `You have been assigned to shift ${shift.name} (${shiftWindow}) effective from ${effectiveFrom}.`;
+
+    try {
+        const profileRes = await pool.query(
+            `SELECT p.id AS profile_id
+             FROM employees e
+             LEFT JOIN profiles p
+               ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+               OR (
+                    p.employee_id IS NOT NULL
+                AND e.employee_id IS NOT NULL
+                AND LOWER(TRIM(p.employee_id)) = LOWER(TRIM(e.employee_id))
+               )
+             WHERE e.id = $1
+             LIMIT 1`,
+            [employee.id]
+        );
+
+        const profileId = profileRes.rows[0]?.profile_id || null;
+        if (profileId) {
+            const notificationRes = await pool.query(
+                `INSERT INTO notifications (user_id, title, message, type)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING *`,
+                [profileId, title, message, 'shift']
+            );
+
+            if (io) {
+                const payload = notificationRes.rows[0];
+                io.to(profileId).emit('notification_created', payload);
+                io.to(`employee_${employee.id}`).emit('notification_created', payload);
+                io.to(String(employee.id)).emit('notification_created', payload);
+            }
+        } else if (io) {
+            io.to(`employee_${employee.id}`).emit('notification_created', {
+                title,
+                message,
+                type: 'shift',
+                created_at: new Date().toISOString(),
+                targetUserId: employee.id,
+            });
+        }
+    } catch (notifyErr) {
+        console.warn('[Shifts] In-app notification failed:', notifyErr.message);
+    }
+
+    if (isShiftAssignmentEmailEnabled() && employee.email) {
+        sendShiftAssignmentEmail({
+            to: employee.email,
+            name: employee.full_name || 'Employee',
+            shiftName: shift.name,
+            startTime: shift.start_time,
+            endTime: shift.end_time,
+            effectiveFrom,
+        }).catch((emailErr) => {
+            console.warn('[Shifts] Shift assignment email failed:', emailErr.message);
+        });
+    }
+};
+
 const createShift = async (req, res) => {
     const { name, start_time, end_time } = req.body;
 
@@ -123,13 +191,13 @@ const assignShiftToEmployee = async (req, res) => {
 
         await client.query('BEGIN');
 
-        const employee = await client.query('SELECT id, full_name FROM employees WHERE id = $1', [employee_id]);
+        const employee = await client.query('SELECT id, full_name, email, employee_id FROM employees WHERE id = $1', [employee_id]);
         if (employee.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Employee not found' });
         }
 
-        const shift = await client.query('SELECT id, name FROM shifts WHERE id = $1', [shift_id]);
+        const shift = await client.query('SELECT id, name, start_time, end_time FROM shifts WHERE id = $1', [shift_id]);
         if (shift.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Shift not found' });
@@ -154,6 +222,12 @@ const assignShiftToEmployee = async (req, res) => {
         );
 
         await client.query('COMMIT');
+        void notifyShiftAssignment({
+            employee: employee.rows[0],
+            shift: shift.rows[0],
+            effectiveFrom,
+            io: req.io,
+        });
         res.json(assigned.rows[0]);
     } catch (err) {
         try {
@@ -187,14 +261,14 @@ const assignShiftToDepartment = async (req, res) => {
 
         await client.query('BEGIN');
 
-        const shift = await client.query('SELECT id FROM shifts WHERE id = $1', [shift_id]);
+        const shift = await client.query('SELECT id, name, start_time, end_time FROM shifts WHERE id = $1', [shift_id]);
         if (shift.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Shift not found' });
         }
 
         const employeesRes = await client.query(
-            `SELECT id
+                        `SELECT id, full_name, email, employee_id
              FROM employees
              WHERE department_id = $1
                AND COALESCE(status, 'Active') <> 'Inactive'`,
@@ -229,6 +303,14 @@ const assignShiftToDepartment = async (req, res) => {
         }
 
         await client.query('COMMIT');
+        for (const employee of employeesRes.rows) {
+            void notifyShiftAssignment({
+                employee,
+                shift: shift.rows[0],
+                effectiveFrom,
+                io: req.io,
+            });
+        }
         res.json({ assigned_count: assignedCount });
     } catch (err) {
         try {

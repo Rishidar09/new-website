@@ -249,23 +249,49 @@ const getStatutorySettingsData = async () => {
     };
 };
 
-const computeAnnualTds = (annualIncome, slabs) => {
+const computeAnnualTdsDetails = (annualIncome, slabs) => {
     const income = Math.max(0, Number(annualIncome) || 0);
     let annualTds = 0;
+    const breakdown = [];
 
     for (const slab of slabs) {
         const from = Number(slab.income_from) || 0;
         const to = slab.income_to == null ? Number.POSITIVE_INFINITY : Number(slab.income_to);
         const rate = Number(slab.rate) || 0;
+        const hasUpperCap = Number.isFinite(to);
 
-        if (income <= from) continue;
+        if (income <= from) {
+            breakdown.push({
+                income_from: from,
+                income_to: hasUpperCap ? to : null,
+                rate,
+                taxable_income: 0,
+                tax_amount: 0,
+                applied: false,
+            });
+            continue;
+        }
 
         const taxableInThisSlab = Math.max(0, Math.min(income, to) - from);
-        annualTds += taxableInThisSlab * (rate / 100);
+        const taxInThisSlab = taxableInThisSlab * (rate / 100);
+        annualTds += taxInThisSlab;
+        breakdown.push({
+            income_from: from,
+            income_to: hasUpperCap ? to : null,
+            rate,
+            taxable_income: round2(taxableInThisSlab),
+            tax_amount: round2(taxInThisSlab),
+            applied: taxableInThisSlab > 0,
+        });
     }
 
-    return round2(annualTds);
+    return {
+        annual_tds: round2(annualTds),
+        breakdown,
+    };
 };
+
+const computeAnnualTds = (annualIncome, slabs) => computeAnnualTdsDetails(annualIncome, slabs).annual_tds;
 
 const computeStatutoryBreakup = ({ grossSalary, settings, slabs, annualTaxableIncome }) => {
     const gross = Math.max(0, Number(grossSalary) || 0);
@@ -276,7 +302,8 @@ const computeStatutoryBreakup = ({ grossSalary, settings, slabs, annualTaxableIn
     const annualBasis = typeof annualTaxableIncome === 'number'
         ? Math.max(0, annualTaxableIncome)
         : gross * 12;
-    const annualTds = computeAnnualTds(annualBasis, slabs || []);
+    const tdsDetails = computeAnnualTdsDetails(annualBasis, slabs || []);
+    const annualTds = tdsDetails.annual_tds;
     const monthlyTds = round2(annualTds / 12);
 
     return {
@@ -284,7 +311,10 @@ const computeStatutoryBreakup = ({ grossSalary, settings, slabs, annualTaxableIn
         pf_employer: pfEmployer,
         esi_employee: esiEmployee,
         esi_employer: esiEmployer,
+        annual_taxable_income: round2(annualBasis),
+        annual_tds: annualTds,
         tds: monthlyTds,
+        tds_breakdown: tdsDetails.breakdown,
     };
 };
 
@@ -387,7 +417,7 @@ const createPayroll = async (req, res) => {
         const proratedSpecialAllowance = round2(baseSpecialAllowance * prorationFactor);
         const proratedAllowances = round2(baseAllowances * prorationFactor);
         const proratedPtax = round2(basePtax * prorationFactor);
-        const proratedOtherDeduction = round2(baseOtherDeduction * prorationFactor);
+        const proratedOtherDeduction = round2(baseOtherDeduction);
         const proratedGross = round2(baseGross * prorationFactor);
 
         const financialYear = getFinancialYearFromPayrollMonth(month, year);
@@ -748,11 +778,55 @@ const getPayrollAttendanceMetrics = async (req, res) => {
 // ─── Send payslip (HR) ──────────────────────────────────────────
 const sendPayslip = async (req, res) => {
     try {
-        await pool.query("UPDATE payroll SET status = 'Sent' WHERE id = $1", [req.params.id]);
-        res.json({ message: 'Payslip sent to employee email successfully (simulated)' });
+        const { sendPayslipEmail } = require('../services/emailService');
+        const { pdfFileName } = req.body || {};
+
+        const pdfBuffer = req.file?.buffer || null;
+
+        if (!pdfBuffer?.length) {
+            return res.status(400).json({ error: 'Payslip PDF upload is required for email attachment' });
+        }
+
+        // Fetch payroll record with employee details
+        const payrollRes = await pool.query(
+            `SELECT p.*, e.full_name, e.email
+             FROM payroll p
+             JOIN employees e ON p.employee_id = e.id
+             WHERE p.id = $1`,
+            [req.params.id]
+        );
+
+        if (payrollRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Payslip not found' });
+        }
+
+        const payroll = payrollRes.rows[0];
+
+        if (!payroll.email) {
+            return res.status(400).json({ error: 'Employee email not configured' });
+        }
+
+        // Send payslip email
+        await sendPayslipEmail({
+            to: payroll.email,
+            name: payroll.full_name,
+            month: payroll.month,
+            year: payroll.year,
+            netSalary: payroll.net_salary,
+            attachmentBuffer: pdfBuffer,
+            attachmentFileName: pdfFileName || req.file?.originalname,
+        });
+
+        // Mark as sent
+        await pool.query(
+            "UPDATE payroll SET status = 'Sent', sent_at = NOW() WHERE id = $1",
+            [req.params.id]
+        );
+
+        res.json({ message: `Payslip sent successfully to ${payroll.email}` });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Server error' });
+        console.error('sendPayslip error:', err.message);
+        res.status(500).json({ error: err.message || 'Failed to send payslip email' });
     }
 };
 

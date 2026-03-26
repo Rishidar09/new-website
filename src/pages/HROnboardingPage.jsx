@@ -6,7 +6,7 @@ const HROnboardingPage = () => {
     const [loading, setLoading] = useState(true);
     const [templates, setTemplates] = useState([]);
     const [employees, setEmployees] = useState([]);
-    const [activeCases, setActiveCases] = useState([]);
+    const [allCases, setAllCases] = useState([]);
 
     const [templateForm, setTemplateForm] = useState({
         name: '',
@@ -22,11 +22,11 @@ const HROnboardingPage = () => {
             const [templatesData, employeesData, casesData] = await Promise.all([
                 api.get('/onboarding/templates'),
                 api.get('/employees'),
-                api.get('/onboarding/cases/active')
+                api.get('/onboarding/cases')
             ]);
             setTemplates(templatesData || []);
             setEmployees(employeesData || []);
-            setActiveCases(casesData || []);
+            setAllCases(casesData || []);
         } catch (error) {
             console.error('Failed to fetch onboarding data', error);
         } finally {
@@ -85,6 +85,8 @@ const HROnboardingPage = () => {
     };
 
     const employeeOptions = useMemo(() => employees.map((e) => ({ id: e.id, name: e.full_name })), [employees]);
+    const activeCases = useMemo(() => (allCases || []).filter((c) => c.status === 'active'), [allCases]);
+    const completedCases = useMemo(() => (allCases || []).filter((c) => c.status === 'completed'), [allCases]);
 
     return (
         <>
@@ -187,6 +189,64 @@ const HROnboardingPage = () => {
                                 </div>
                                 <div style={{ width: '100%', height: '8px', background: '#E2E8F0', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px' }}>
                                     <div style={{ width: `${item.completion_percentage}%`, height: '100%', background: 'var(--primary)' }} />
+                                </div>
+
+                                <div style={{ display: 'grid', gap: '6px' }}>
+                                    {(item.tasks || []).map((task) => (
+                                        <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', borderRadius: '8px', background: '#F8FAFC' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    {task.is_completed ? (
+                                                        <CheckCircle2 size={15} color="#16A34A" />
+                                                    ) : (
+                                                        <span style={{ width: '15px', height: '15px', border: '1px solid #94A3B8', borderRadius: '50%', display: 'inline-block' }} />
+                                                    )}
+                                                    <span style={{ fontSize: '13px', fontWeight: '600' }}>{task.title}</span>
+                                                </div>
+                                                {task.requires_document && <span style={{ fontSize: '11px', color: '#0369A1' }}>Document required</span>}
+                                                {task.is_completed && task.completed_by_name && (
+                                                    <span style={{ display: 'block', fontSize: '11px', color: '#16A34A', marginTop: '2px' }}>
+                                                        Completed by {task.completed_by_name}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {task.document_url && (
+                                                <a href={task.document_url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--primary)' }}>View doc</a>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="card" style={{ padding: '18px', marginTop: '16px' }}>
+                <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Completed Onboarding Cases</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                    Completed onboarding history remains visible for audit and review.
+                </p>
+                {completedCases.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)' }}>No completed onboarding cases yet.</p>
+                ) : (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                        {completedCases.map((item) => (
+                            <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <div>
+                                        <p style={{ fontWeight: '700' }}>{item.employee_name}</p>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.template_name}</p>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <p style={{ fontWeight: '700', color: '#16A34A' }}>Completed</p>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : '-'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div style={{ width: '100%', height: '8px', background: '#E2E8F0', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px' }}>
+                                    <div style={{ width: `${item.completion_percentage}%`, height: '100%', background: '#16A34A' }} />
                                 </div>
 
                                 <div style={{ display: 'grid', gap: '6px' }}>

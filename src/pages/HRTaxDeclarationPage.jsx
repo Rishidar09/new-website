@@ -10,6 +10,15 @@ const getCurrentFinancialYear = () => {
     return `${startYear}-${startYear + 1}`;
 };
 
+const getFinancialYearOptions = (count = 6) => {
+    const currentFy = getCurrentFinancialYear();
+    const currentStartYear = Number(currentFy.split('-')[0]);
+    return Array.from({ length: count }, (_, index) => {
+        const start = currentStartYear - index;
+        return `${start}-${start + 1}`;
+    });
+};
+
 const money = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
 
 const HRTaxDeclarationPage = () => {
@@ -20,6 +29,7 @@ const HRTaxDeclarationPage = () => {
     const [financialYear, setFinancialYear] = useState(getCurrentFinancialYear());
     const [statusFilter, setStatusFilter] = useState('All');
     const [reviewDraft, setReviewDraft] = useState({});
+    const financialYearOptions = useMemo(() => getFinancialYearOptions(6), []);
 
     const fetchDeclarations = async (fy = financialYear, status = statusFilter) => {
         try {
@@ -107,7 +117,11 @@ const HRTaxDeclarationPage = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'grid', gap: '8px', marginBottom: '10px' }}>
-                        <input className="input-field" value={financialYear} onChange={(e) => setFinancialYear(e.target.value)} />
+                        <select className="input-field" value={financialYear} onChange={(e) => setFinancialYear(e.target.value)}>
+                            {financialYearOptions.map((fy) => (
+                                <option key={fy} value={fy}>{fy}</option>
+                            ))}
+                        </select>
                         <select className="input-field" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                             <option value="All">All</option>
                             <option value="draft">draft</option>
@@ -135,7 +149,7 @@ const HRTaxDeclarationPage = () => {
                             >
                                 <p style={{ fontWeight: 700 }}>{row.full_name}</p>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.department || '-'}</p>
-                                <p style={{ fontSize: '12px' }}>Status: {row.status}</p>
+                                <p style={{ fontSize: '12px' }}>Status: {row.status} | v{row.version || 1}</p>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                                     Items: {row.total_items} | Pending: {row.pending_items}
                                 </p>
@@ -152,7 +166,7 @@ const HRTaxDeclarationPage = () => {
                             <div style={{ marginBottom: '10px' }}>
                                 <h3 style={{ fontSize: '18px' }}>{selectedDeclaration.employee_name}</h3>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                    FY {selectedDeclaration.financial_year} | Status: {selectedDeclaration.status} | Approved Total: {money(approvedTotal)}
+                                    FY {selectedDeclaration.financial_year} | Version v{selectedDeclaration.version || 1} | Status: {selectedDeclaration.status} | Approved Total: {money(approvedTotal)}
                                 </p>
                             </div>
 

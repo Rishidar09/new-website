@@ -31,6 +31,8 @@ router.use(auth);
 router.use(auditLogger('Income Tax Declaration'));
 
 router.get('/my', authorize(['employee']), incomeTaxController.getMyDeclaration);
+router.get('/my/list', authorize(['employee']), incomeTaxController.getMyDeclarationsList);
+router.post('/my/versions', authorize(['employee']), incomeTaxController.createMyDeclarationVersion);
 router.put('/my', authorize(['employee']), incomeTaxController.saveMyDeclaration);
 router.post('/my/submit', authorize(['employee']), incomeTaxController.submitMyDeclaration);
 router.post('/my/items/:itemId/proofs', authorize(['employee']), upload.single('proof'), incomeTaxController.uploadProof);

@@ -576,11 +576,9 @@ const getMyCase = async (req, res) => {
             [actor.id]
         );
 
-        if (caseRes.rows.length === 0) {
-            return res.json({ case: null, checklist: [], assignments: [] });
-        }
-
-        const details = await getCaseByIdInternal(client, caseRes.rows[0].id);
+        const details = caseRes.rows.length > 0
+            ? await getCaseByIdInternal(client, caseRes.rows[0].id)
+            : null;
 
         const actorBuckets = [
             normalizeRoleBucket(actor.department),
@@ -607,7 +605,11 @@ const getMyCase = async (req, res) => {
             assignmentParams
         );
 
-        return res.json({ case: details, checklist: details.checklist || [], assignments: assignments.rows });
+                return res.json({
+                        case: details,
+                        checklist: details?.checklist || [],
+                        assignments: assignments.rows
+                });
     } catch (err) {
         console.error('getMyCase error:', err.message);
         return res.status(500).json({ error: 'Server error' });

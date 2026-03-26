@@ -23,6 +23,14 @@ const AdminManagementPage = () => {
     const [hrUsers, setHrUsers] = useState([]);
     const [listLoading, setListLoading] = useState(true);
     const [departments, setDepartments] = useState([]);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const hrRoleOptions = [
+        'HR Manager',
+        'HR Executive',
+        'HR Generalist',
+        'Talent Acquisition Specialist',
+        'HR Business Partner'
+    ];
 
     const isAdmin = profile?.role === 'admin';
 
@@ -66,12 +74,18 @@ const AdminManagementPage = () => {
 
     const handleCreateHr = async (e) => {
         e.preventDefault();
+        const normalizedEmail = String(form.email || '').trim().toLowerCase();
+        if (!emailRegex.test(normalizedEmail)) {
+            toast.error('Please enter a valid work email address.');
+            return;
+        }
+
         setLoading(true);
 
         try {
             const payload = new FormData();
             payload.append('full_name', form.full_name);
-            payload.append('email', form.email);
+            payload.append('email', normalizedEmail);
             payload.append('account_role', 'hr');
             payload.append('role', form.role || 'HR Manager');
             payload.append('phone', form.phone);
@@ -112,7 +126,11 @@ const AdminManagementPage = () => {
                     <form onSubmit={handleCreateHr} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <input name="full_name" className="input-field" placeholder="Full Name" value={form.full_name} onChange={handleChange} required />
                         <input name="email" type="email" className="input-field" placeholder="Work Email" value={form.email} onChange={handleChange} required />
-                        <input name="role" className="input-field" placeholder="Designation" value={form.role} onChange={handleChange} required />
+                        <select name="role" className="input-field" value={form.role} onChange={handleChange} required>
+                            {hrRoleOptions.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                        </select>
                         <input name="phone" className="input-field" placeholder="Phone" value={form.phone} onChange={handleChange} required />
                         <input name="joining_date" type="date" className="input-field" value={form.joining_date} onChange={handleChange} required />
                         <input name="salary" type="number" className="input-field" placeholder="Annual Salary" value={form.salary} onChange={handleChange} required />

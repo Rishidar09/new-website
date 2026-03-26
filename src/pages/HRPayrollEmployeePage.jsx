@@ -25,8 +25,31 @@ const HRPayrollEmployeePage = () => {
     const [year, setYear] = useState('2026');
     const [metricsLoading, setMetricsLoading] = useState(false);
     const [statutorySettings, setStatutorySettings] = useState(null);
+    const [generatedPayrollMeta, setGeneratedPayrollMeta] = useState(null);
 
     const round2 = (value) => Number((Math.round((Number(value) || 0) * 100) / 100).toFixed(2));
+    const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+
+    const getTdsBreakdown = (annualIncome, slabs = []) => {
+        const income = Math.max(0, Number(annualIncome) || 0);
+
+        return slabs.map((slab) => {
+            const from = Number(slab.income_from) || 0;
+            const to = slab.income_to == null || slab.income_to === '' ? Number.POSITIVE_INFINITY : Number(slab.income_to);
+            const rate = Number(slab.rate) || 0;
+            const taxable = income > from ? Math.max(0, Math.min(income, to) - from) : 0;
+            const tax = taxable * (rate / 100);
+
+            return {
+                income_from: from,
+                income_to: Number.isFinite(to) ? to : null,
+                rate,
+                taxable_income: round2(taxable),
+                tax_amount: round2(tax),
+                applied: taxable > 0,
+            };
+        });
+    };
 
     const computeAnnualTds = (annualIncome, slabs = []) => {
         const income = Math.max(0, Number(annualIncome) || 0);
@@ -78,6 +101,10 @@ const HRPayrollEmployeePage = () => {
             return recalculatePayslip(prev);
         });
     }, [statutorySettings]);
+
+    useEffect(() => {
+        setGeneratedPayrollMeta(null);
+    }, [selectedEmp?.id, month, year]);
 
     useEffect(() => {
         const fetchAttendanceMetrics = async () => {
@@ -166,7 +193,7 @@ const HRPayrollEmployeePage = () => {
         const allowances = conveyance + specialAllowance;
         const baseGross = basic + hra + allowances;
         const gross_salary = Math.round(baseGross * factor);
-        const effectiveOtherDeduction = Math.round(otherDeduction * factor);
+        const effectiveOtherDeduction = round2(otherDeduction);
 
         const pfEmployeeRate = Number(statutorySettings?.settings?.pf_employee_rate) || 0;
         const pfEmployerRate = Number(statutorySettings?.settings?.pf_employer_rate) || 0;
@@ -196,7 +223,7 @@ const HRPayrollEmployeePage = () => {
             gross_salary,
             deductions,
             net_salary,
-            otherDeduction: effectiveOtherDeduction,
+            otherDeduction,
             year: Number(current.year) || Number(year)
         };
     };
@@ -210,9 +237,30 @@ const HRPayrollEmployeePage = () => {
         });
     };
 
+    const normalizePanByPosition = (rawValue) => {
+        const source = String(rawValue || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+        let next = '';
+
+        for (const ch of source) {
+            const idx = next.length;
+            const needsLetter = idx < 5 || idx === 9;
+            const needsDigit = idx >= 5 && idx <= 8;
+            if (needsLetter && /[A-Z]/.test(ch)) next += ch;
+            if (needsDigit && /\d/.test(ch)) next += ch;
+            if (next.length >= 10) break;
+        }
+
+        return next;
+    };
+
     const updateTextField = (field, value) => {
         setPayslip((prev) => {
             if (!prev) return prev;
+
+            if (field === 'pan_no') {
+                return { ...prev, [field]: normalizePanByPosition(value) };
+            }
+
             return { ...prev, [field]: value };
         });
     };
@@ -223,7 +271,7 @@ const HRPayrollEmployeePage = () => {
         try {
             setGenerating(true);
             await new Promise(resolve => setTimeout(resolve, 1200));
-            await api.post('/payroll', {
+            const created = await api.post('/payroll', {
                 employee_id: selectedEmp.id,
                 month: payslip.month,
                 year: payslip.year,
@@ -253,6 +301,10 @@ const HRPayrollEmployeePage = () => {
                 deductions: payslip.deductions,
                 net_salary: payslip.net_salary
             });
+            if (created?.id) {
+                setPayslip((prev) => (prev ? { ...prev, id: created.id } : prev));
+            }
+            setGeneratedPayrollMeta(created || null);
             toast.success('Payslip generated and saved successfully!');
         } catch (error) {
             toast.error(error.message);
@@ -289,6 +341,11 @@ const HRPayrollEmployeePage = () => {
             </div>
         );
     }
+
+    const previewAnnualIncome = round2((Number(payslip.gross_salary) || 0) * 12);
+    const previewBreakdown = getTdsBreakdown(previewAnnualIncome, statutorySettings?.tds_slabs || []);
+    const generatedBreakdown = generatedPayrollMeta?.statutory_breakup?.tds_breakdown || [];
+    const generatedAnnualTaxable = generatedPayrollMeta?.annual_taxable_income;
 
     return (
         <>
@@ -327,32 +384,32 @@ const HRPayrollEmployeePage = () => {
                         <div style={{ background: '#F9FAFB', padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
                             <div>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Employee</p>
-                                <p style={{ fontSize: '16px', fontWeight: '700' }}>{selectedEmp.full_name}</p>
+                                <p style={{ fontSize: '16px', fontWeight: '700', color: '#111827' }}>{selectedEmp.full_name}</p>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Period</p>
-                                <p style={{ fontSize: '16px', fontWeight: '700' }}>{month} {year}</p>
+                                <p style={{ fontSize: '16px', fontWeight: '700', color: '#111827' }}>{month} {year}</p>
                             </div>
                         </div>
 
-                        <div className="payroll-breakdown" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', padding: '24px' }}>
+                        <div className="payroll-breakdown" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', padding: '24px' }}>
                             <div>
                                 <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--primary)', marginBottom: '12px' }}>EARNINGS</p>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>Basic Salary</span>
-                                    <input type="number" value={payslip.basic_salary} onChange={(e) => updateNumericField('basic_salary', e.target.value)} style={{ width: '120px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.basic_salary} onChange={(e) => updateNumericField('basic_salary', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>HRA</span>
-                                    <input type="number" value={payslip.hra} onChange={(e) => updateNumericField('hra', e.target.value)} style={{ width: '120px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.hra} onChange={(e) => updateNumericField('hra', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>Conveyance</span>
-                                    <input type="number" value={payslip.conveyance} onChange={(e) => updateNumericField('conveyance', e.target.value)} style={{ width: '120px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.conveyance} onChange={(e) => updateNumericField('conveyance', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>Special Allowance</span>
-                                    <input type="number" value={payslip.specialAllowance} onChange={(e) => updateNumericField('specialAllowance', e.target.value)} style={{ width: '120px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.specialAllowance} onChange={(e) => updateNumericField('specialAllowance', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
                                 <div className="pay-row total"><span>Gross Total</span> <span>₹{payslip.gross_salary}</span></div>
                             </div>
@@ -361,13 +418,13 @@ const HRPayrollEmployeePage = () => {
                                 <div className="pay-row"><span>PF</span> <span>₹{payslip.pf}</span></div>
                                 <div className="pay-row"><span>ESI (Employee)</span> <span>₹{payslip.esi_employee}</span></div>
                                 <div className="pay-row"><span>TDS</span> <span>₹{payslip.tds}</span></div>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>Other Deduction</span>
-                                    <input type="number" value={payslip.otherDeduction} onChange={(e) => updateNumericField('otherDeduction', e.target.value)} style={{ width: '100px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.otherDeduction} onChange={(e) => updateNumericField('otherDeduction', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
-                                <div className="pay-row" style={{ alignItems: 'center' }}>
+                                <div className="pay-row pay-row-editable">
                                     <span>P Tax</span>
-                                    <input type="number" value={payslip.ptax} onChange={(e) => updateNumericField('ptax', e.target.value)} style={{ width: '120px', textAlign: 'right' }} className="input-field" />
+                                    <input type="number" value={payslip.ptax} onChange={(e) => updateNumericField('ptax', e.target.value)} style={{ width: '100%', textAlign: 'right' }} className="input-field" />
                                 </div>
                                 <div className="pay-row total"><span>Total Deductions</span> <span>₹{payslip.deductions}</span></div>
                             </div>
@@ -426,6 +483,42 @@ const HRPayrollEmployeePage = () => {
                             </div>
                         </div>
 
+                        <div style={{ borderTop: '1px solid var(--border)', padding: '16px 24px', background: 'var(--card-bg)' }}>
+                            <p style={{ fontSize: '13px', fontWeight: '700', marginBottom: '10px' }}>TDS Slab Breakdown</p>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                                {generatedBreakdown.length > 0
+                                    ? `Generated payroll uses annual taxable income of ${formatCurrency(generatedAnnualTaxable)}.`
+                                    : `Preview uses annualized gross ${formatCurrency(previewAnnualIncome)}. Generate payslip to see exact applied slabs after declaration adjustments.`}
+                            </p>
+
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                {(generatedBreakdown.length > 0 ? generatedBreakdown : previewBreakdown).map((row, idx) => (
+                                    <div
+                                        key={`${idx}-${row.income_from}-${row.income_to ?? 'open'}`}
+                                        style={{
+                                            border: '1px solid var(--border)',
+                                            borderRadius: '8px',
+                                            padding: '10px',
+                                            background: row.applied ? 'rgba(16, 185, 129, 0.10)' : 'transparent'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                                                Slab {idx + 1}: {formatCurrency(row.income_from)} to {row.income_to == null ? 'No Upper Cap' : formatCurrency(row.income_to)} @ {row.rate}%
+                                            </span>
+                                            <span style={{ fontSize: '12px', color: row.applied ? '#059669' : 'var(--text-muted)', fontWeight: 600 }}>
+                                                {row.applied ? 'Applied' : 'Not Applied'}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '16px', marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                                            <span>Taxable in slab: {formatCurrency(row.taxable_income)}</span>
+                                            <span>Tax from slab: {formatCurrency(row.tax_amount)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         <div style={{ background: '#EFF6FF', padding: '20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <p style={{ fontSize: '14px', fontWeight: '600' }}>Net Salary Payable</p>
                             <p style={{ fontSize: '24px', fontWeight: '800', color: '#1E40AF' }}>₹{payslip.net_salary}</p>
@@ -440,17 +533,32 @@ const HRPayrollEmployeePage = () => {
 
                         <button
                             onClick={async () => {
+                                if (!payslip?.id) {
+                                    toast.error('Payslip must be saved first before sending email');
+                                    return;
+                                }
                                 try {
-                                    console.log(`[SIMULATION] Sending payslip email to ${selectedEmp.email}`);
-                                    toast.success('Payslip sent to ' + selectedEmp.email + ' (Simulated)');
-                                } catch (err) {
-                                    console.error(err);
+                                    setGenerating(true);
+                                    const { pdf } = await import('@react-pdf/renderer');
+                                    const blob = await pdf(<PayslipPDF payslip={payslip} employee={selectedEmp} />).toBlob();
+                                    const formData = new FormData();
+                                    const fileName = `Payslip_${selectedEmp.full_name}_${payslip.month}_${payslip.year}.pdf`;
+                                    formData.append('payslipPdf', blob, fileName);
+                                    formData.append('pdfFileName', fileName);
+
+                                    await api.post(`/payroll/${payslip.id}/send`, formData);
+                                    toast.success('Payslip sent successfully to ' + selectedEmp.email);
+                                } catch (error) {
+                                    toast.error(error.message || 'Failed to send payslip email');
+                                } finally {
+                                    setGenerating(false);
                                 }
                             }}
                             className="btn-secondary"
                             style={{ flex: 1, background: '#F3F4F6', color: '#000000' }}
+                            disabled={generating || !payslip?.id}
                         >
-                            <Send size={18} /> Send Email
+                            {generating ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} Send Email
                         </button>
 
                         <button onClick={handleDownloadPDF} className="btn-secondary" style={{ flex: 1, background: '#F3F4F6', color: '#000000' }}>
@@ -497,6 +605,46 @@ const HRPayrollEmployeePage = () => {
                 #confirm-save-btn:disabled {
                     background-color: #6B7280 !important;
                     color: #FFFFFF !important;
+                }
+
+                .pay-row {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) minmax(120px, 160px);
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 10px;
+                    color: var(--text-main);
+                }
+
+                .pay-row span:first-child {
+                    color: var(--text-main);
+                }
+
+                .pay-row span:last-child {
+                    justify-self: end;
+                    font-weight: 600;
+                }
+
+                .pay-row.total {
+                    padding-top: 8px;
+                    border-top: 1px dashed var(--border);
+                    margin-top: 8px;
+                    font-weight: 700;
+                }
+
+                .pay-row.pay-row-editable .input-field {
+                    margin: 0;
+                }
+
+                @media (max-width: 820px) {
+                    .pay-row {
+                        grid-template-columns: 1fr;
+                        gap: 6px;
+                    }
+
+                    .pay-row span:last-child {
+                        justify-self: start;
+                    }
                 }
             `}</style>
         </>

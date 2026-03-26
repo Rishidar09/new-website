@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import EmployeeTable from '../components/Employees/EmployeeTable';
 import AddEmployeeModal from '../components/Employees/AddEmployeeModal';
-import { CreditCard, Users, Printer, UserMinus } from 'lucide-react';
+import { CreditCard, Users, UserMinus, Download, FileText } from 'lucide-react';
 import IDCard from '../components/IDCard';
 import HROffboardingPage from './HROffboardingPage';
 import HRSalaryRevisionsPage from './HRSalaryRevisionsPage';
+import { toPng } from 'html-to-image';
+import { downloadIdCardPdf } from '../lib/idCardExport';
 
 const EmployeesPage = () => {
     const [activeTab, setActiveTab] = useState('list'); // 'list' | 'id-cards' | 'offboarding' | 'salary-revisions'
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [employeeToEdit, setEmployeeToEdit] = useState(null);
     const [employees, setEmployees] = useState([]);
+    const [exportingPngId, setExportingPngId] = useState(null);
+    const [exportingPdfId, setExportingPdfId] = useState(null);
+    const cardRefs = useRef({});
 
     const handleDataLoaded = (data) => {
         setEmployees(data);
@@ -26,8 +31,57 @@ const EmployeesPage = () => {
         setEmployeeToEdit(null);
     };
 
-    const handleBulkPrint = () => {
-        window.print();
+    const sanitizeFileName = (rawName, fallback = 'Employee') => {
+        const safe = String(rawName || '')
+            .trim()
+            .replace(/\s+/g, '_')
+            .replace(/[^A-Za-z0-9_-]/g, '');
+        return safe || fallback;
+    };
+
+    const setCardRef = (employeeId, node) => {
+        if (!employeeId) return;
+        if (node) {
+            cardRefs.current[employeeId] = node;
+            return;
+        }
+        delete cardRefs.current[employeeId];
+    };
+
+    const handleDownloadPng = async (employee) => {
+        const node = cardRefs.current[employee?.id];
+        if (!node || !employee) return;
+
+        try {
+            setExportingPngId(employee.id);
+            const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff' });
+            const link = document.createElement('a');
+            link.download = `ID_Card_${sanitizeFileName(employee.full_name, employee.employee_id || employee.id)}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Failed to export ID card PNG:', error);
+        } finally {
+            setExportingPngId(null);
+        }
+    };
+
+    const handleDownloadPdf = async (employee) => {
+        const node = cardRefs.current[employee?.id];
+        if (!node || !employee) return;
+
+        try {
+            setExportingPdfId(employee.id);
+            await downloadIdCardPdf({
+                node,
+                fullName: employee.full_name,
+                fallbackName: employee.employee_id || employee.id || 'Employee',
+            });
+        } catch (error) {
+            console.error('Failed to export ID card PDF:', error);
+        } finally {
+            setExportingPdfId(null);
+        }
     };
 
     return (
@@ -40,15 +94,7 @@ const EmployeesPage = () => {
                     </p>
                 </div>
 
-                {activeTab === 'id-cards' && (
-                    <button
-                        onClick={handleBulkPrint}
-                        className="btn-bulk"
-                    >
-                        <Printer size={18} />
-                        Bulk Print All IDs
-                    </button>
-                )}
+                {activeTab === 'id-cards' && null}
             </div>
 
             {/* Tabs */}
@@ -141,23 +187,49 @@ const EmployeesPage = () => {
                 <div className="id-cards-print-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px', padding: '16px 0' }}>
                     {employees.map(emp => (
                         <div key={emp.id} className="id-card-print-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                            <IDCard employee={emp} />
-                            <button
-                                onClick={() => window.print()}
-                                className="no-print"
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--card-bg)',
-                                    color: 'var(--text-main)',
-                                    fontSize: 'var(--font-sm)',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Download / Print
-                            </button>
+                            <IDCard employee={emp} idRef={(node) => setCardRef(emp.id, node)} />
+                            <div className="no-print" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                <button
+                                    onClick={() => handleDownloadPng(emp)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--card-bg)',
+                                        color: 'var(--text-main)',
+                                        fontSize: 'var(--font-sm)',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                    disabled={exportingPngId === emp.id}
+                                >
+                                    <Download size={14} />
+                                    {exportingPngId === emp.id ? 'Saving PNG...' : 'Download PNG'}
+                                </button>
+                                <button
+                                    onClick={() => handleDownloadPdf(emp)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--card-bg)',
+                                        color: 'var(--text-main)',
+                                        fontSize: 'var(--font-sm)',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                    disabled={exportingPdfId === emp.id}
+                                >
+                                    <FileText size={14} />
+                                    {exportingPdfId === emp.id ? 'Saving PDF...' : 'Download PDF'}
+                                </button>
+                            </div>
                         </div>
                     ))}
                     {employees.length === 0 && (
@@ -180,21 +252,8 @@ const EmployeesPage = () => {
             />
 
             <style>{`
-                .btn-bulk {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 20px;
-                    background: var(--primary);
-                    color: #000000;
-                    border: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                }
                 @media print {
-                    header, .btn-bulk, [role="tablist"], button, .no-print { display: none !important; }
+                    header, [role="tablist"], button, .no-print { display: none !important; }
                     body { background: white !important; padding: 0 !important; margin: 0 !important; }
                     
                     .id-cards-print-container {
@@ -215,8 +274,7 @@ const EmployeesPage = () => {
 
                     #digital-id-card { 
                         margin: 0 !important; 
-                        box-shadow: none !important; 
-                        transform: scale(1.1); /* Slightly larger for print if needed */
+                        box-shadow: none !important;
                     }
                 }
             `}</style>

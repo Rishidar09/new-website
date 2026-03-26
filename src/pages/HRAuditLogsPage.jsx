@@ -3,24 +3,22 @@ import { api } from '../lib/api';
 import {
     Search,
     Download,
-    Calendar,
     User,
     Activity,
-    Shield,
     Loader2,
-    Filter,
-    ArrowUpDown,
     CheckCircle2,
     Edit3,
     Trash2,
     LogIn,
     LogOut,
-    Eye
+    Eye,
+    X,
 } from 'lucide-react';
 
 const HRAuditLogsPage = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedLog, setSelectedLog] = useState(null);
     const [filters, setFilters] = useState({
         status: 'All',
         category: 'All',
@@ -101,6 +99,22 @@ const HRAuditLogsPage = () => {
         link.click();
         document.body.removeChild(link);
     };
+
+    const parseDetailsPayload = (detailsValue) => {
+        if (!detailsValue) return null;
+        if (typeof detailsValue === 'object') return detailsValue;
+
+        const raw = String(detailsValue).trim();
+        if (!raw) return null;
+
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    };
+
+    const detailsPayload = parseDetailsPayload(selectedLog?.details);
 
     return (
         <>
@@ -245,7 +259,8 @@ const HRAuditLogsPage = () => {
                                     </td>
                                     <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                                         <button
-                                            title={l.details}
+                                            title="View details"
+                                            onClick={() => setSelectedLog(l)}
                                             style={{ background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
                                         >
                                             <Eye size={14} />
@@ -257,6 +272,84 @@ const HRAuditLogsPage = () => {
                     </table>
                 </div>
             </div>
+
+            {selectedLog && (
+                <div
+                    onClick={() => setSelectedLog(null)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(15, 23, 42, 0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1200,
+                        padding: '16px',
+                    }}
+                >
+                    <div
+                        className="card"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: 'min(860px, 96vw)',
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            padding: '20px',
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)' }}>Audit Log Details</h2>
+                            <button
+                                onClick={() => setSelectedLog(null)}
+                                style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', cursor: 'pointer' }}
+                            >
+                                <X size={16} color="var(--text-main)" />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '10px', marginBottom: '14px' }}>
+                            <div><strong>Timestamp:</strong> {selectedLog.created_at ? new Date(selectedLog.created_at).toLocaleString() : '-'}</div>
+                            <div><strong>Action:</strong> {selectedLog.action || '-'}</div>
+                            <div><strong>Module:</strong> {selectedLog.module || '-'}</div>
+                            <div><strong>IP Address:</strong> {selectedLog.ip_address || '-'}</div>
+                            <div><strong>User Name:</strong> {selectedLog.full_name || '-'}</div>
+                            <div><strong>Email:</strong> {selectedLog.user_email || '-'}</div>
+                        </div>
+
+                        <div style={{ marginTop: '10px' }}>
+                            <p style={{ fontWeight: 700, marginBottom: '6px' }}>Details (Raw)</p>
+                            <pre style={{
+                                margin: 0,
+                                padding: '12px',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                background: 'var(--input-bg)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                fontSize: '12px',
+                                color: 'var(--text-main)'
+                            }}>{selectedLog.details || 'No details provided'}</pre>
+                        </div>
+
+                        {detailsPayload && (
+                            <div style={{ marginTop: '12px' }}>
+                                <p style={{ fontWeight: 700, marginBottom: '6px' }}>Details (Parsed JSON)</p>
+                                <pre style={{
+                                    margin: 0,
+                                    padding: '12px',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
+                                    background: 'var(--input-bg)',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontSize: '12px',
+                                    color: 'var(--text-main)'
+                                }}>{JSON.stringify(detailsPayload, null, 2)}</pre>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .btn-export {

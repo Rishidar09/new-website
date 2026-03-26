@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -91,10 +91,36 @@ const LegacySharedRedirect = ({ section }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const handleFocusIn = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (target.readOnly || target.disabled) return;
+
+      const supportedTypes = new Set(['number', 'text', 'tel']);
+      if (!supportedTypes.has((target.type || '').toLowerCase())) return;
+      if (String(target.value).trim() !== '0') return;
+
+      // Select the default 0 so first keypress replaces it instead of appending.
+      requestAnimationFrame(() => {
+        try {
+          target.select();
+        } catch (_) {
+          // Ignore non-selectable inputs.
+        }
+      });
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
-        <Toaster position="top-right" />
+        <Toaster position="top-center" />
         <Routes>
           {/* Public Route */}
           <Route path="/login" element={<LoginPage />} />

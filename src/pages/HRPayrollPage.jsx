@@ -13,7 +13,7 @@ const HRPayrollPage = () => {
         const fetchEmployees = async () => {
             try {
                 setLoading(true);
-                const data = await api.get('/employees');
+                const data = await api.get('/employees?scope=all');
                 setEmployees(data || []);
             } catch (error) {
                 console.error(error.message);

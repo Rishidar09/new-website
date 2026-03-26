@@ -33,13 +33,18 @@ const HRAttendancePage = () => {
         return diff.toFixed(1);
     };
 
+    const formatTime = (value) => {
+        if (!value) return '--:--';
+        return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
     const handleExport = () => {
         const headers = ['Employee', 'Department', 'Check-In', 'Check-Out', 'Hours', 'Status'];
         const rows = records.map(r => [
             r.full_name,
             r.department,
-            new Date(r.check_in).toLocaleTimeString(),
-            r.check_out ? new Date(r.check_out).toLocaleTimeString() : '--',
+            formatTime(r.check_in),
+            formatTime(r.check_out),
             calculateHours(r.check_in, r.check_out),
             r.status
         ]);
@@ -60,7 +65,7 @@ const HRAttendancePage = () => {
         total: records.length,
         present: records.filter(r => r.status === 'Present').length,
         late: records.filter(r => r.status === 'Late').length,
-        absent: 0 // In a real system, you'd compare this to total employees
+        onLeave: records.filter(r => r.status === 'On Leave').length
     };
 
     return (
@@ -113,9 +118,9 @@ const HRAttendancePage = () => {
                     </h2>
                 </div>
                 <div className="card">
-                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Leaves/Absent</p>
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>On Leave</p>
                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <AlertCircle color="#EF4444" /> {stats.absent}
+                        <AlertCircle color="#EF4444" /> {stats.onLeave}
                     </h2>
                 </div>
             </div>
@@ -172,17 +177,17 @@ const HRAttendancePage = () => {
                                         <td style={{ padding: '16px', fontWeight: '500' }}>{row.full_name}</td>
                                         <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{row.department}</td>
                                         <td style={{ padding: '16px' }}>
-                                            <div>{new Date(row.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                            <div>{formatTime(row.check_in)}</div>
                                             {row.location && (
                                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                                     📍 {row.location}
                                                 </div>
                                             )}
                                         </td>
-                                        <td style={{ padding: '16px' }}>{row.check_out ? new Date(row.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
+                                        <td style={{ padding: '16px' }}>{formatTime(row.check_out)}</td>
                                         <td style={{ padding: '16px' }}>{calculateHours(row.check_in, row.check_out)}h</td>
                                         <td style={{ padding: '16px' }}>
-                                            <span className={`status-badge ${row.status.toLowerCase()}`}>
+                                            <span className={`attendance-status-badge ${(row.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
                                                 {row.status}
                                             </span>
                                         </td>

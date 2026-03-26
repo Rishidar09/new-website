@@ -31,8 +31,21 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    const login = async (email, password) => {
-        const data = await api.post('/auth/login', { email, password });
+    const login = async (email, password, options = {}) => {
+        const selectedRole = options.selectedRole || null;
+        const data = await api.post('/auth/login', {
+            email,
+            password,
+            requestedRole: selectedRole,
+        });
+
+        const allowedRoles = Array.isArray(options.allowedRoles) ? options.allowedRoles : null;
+        if (allowedRoles && !allowedRoles.includes(data?.user?.role)) {
+            throw new Error(
+                `Unauthorized. This account is registered as ${String(data?.user?.role || '').toUpperCase()}, but you tried to login as ${String(selectedRole || '').toUpperCase()}.`
+            );
+        }
+
         localStorage.setItem('token', data.token);
         setUser(data.user);
         setProfile(data.user);

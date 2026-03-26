@@ -17,8 +17,11 @@ const getEmployeeByEmail = async (email) => {
 // ─── Helper: Get HR team members ─────────────────────────────────
 const getHRTeamMembers = async () => {
     const result = await pool.query(
-        'SELECT id, full_name, email FROM employees WHERE role = $1',
-        ['HR']
+        `SELECT e.id, e.full_name, e.email
+         FROM employees e
+         LEFT JOIN profiles p ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+         WHERE LOWER(COALESCE(p.role, e.role, '')) IN ('hr', 'admin')
+         ORDER BY e.full_name ASC`
     );
     return result.rows;
 };
@@ -105,6 +108,51 @@ const getMyTickets = async (req, res) => {
         }
 
         query += ` GROUP BY t.id, a.full_name ORDER BY t.created_at DESC`;
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// ─── Get tickets assigned to me (employee) ──────────────────────
+const getAssignedTickets = async (req, res) => {
+    const { status, category } = req.query;
+    try {
+        const emp = await getEmployeeByEmail(req.user.email);
+        if (!emp) return res.status(404).json({ error: 'Employee not found' });
+
+        let query = `
+            SELECT 
+                t.*,
+                e.full_name as employee_name,
+                e.email as employee_email,
+                COUNT(c.id) as comment_count,
+                (SELECT COUNT(*) FROM helpdesk_attachments WHERE ticket_id = t.id) as attachment_count,
+                a.full_name as assigned_to_name
+            FROM helpdesk_tickets t
+            LEFT JOIN employees e ON t.employee_id = e.id
+            LEFT JOIN helpdesk_comments c ON t.id = c.ticket_id
+            LEFT JOIN employees a ON t.assigned_to = a.id
+            WHERE t.assigned_to = $1
+        `;
+        
+        let params = [emp.id];
+        let paramIndex = 2;
+
+        if (status) {
+            query += ` AND t.status = $${paramIndex++}`;
+            params.push(status);
+        }
+
+        if (category) {
+            query += ` AND t.category = $${paramIndex++}`;
+            params.push(category);
+        }
+
+        query += ` GROUP BY t.id, e.id, a.id ORDER BY t.created_at DESC`;
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -319,11 +367,58 @@ const updateAssignment = async (req, res) => {
 
         // Emit real-time notification
         if (req.io) {
-            emitTicketUpdate(req.io, ticketId, null, 'assignment_changed', {
+            emitTicketUpdate(req.io, ticketId, ticket.employee_id, 'assignment_changed', {
                 assigned_to,
                 assigned_to_name: assigneeName,
-                updated_by_role: 'hr'
+                updated_by_role: req.user.role || 'hr'
             });
+
+            // Create bell/toast notification for ticket owner
+            try {
+                const ownerProfileRes = await pool.query(
+                    `SELECT p.id AS profile_id
+                     FROM employees e
+                     JOIN profiles p
+                       ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+                       OR (p.employee_id IS NOT NULL AND p.employee_id::text = e.id::text)
+                       OR (p.employee_id IS NOT NULL AND e.employee_id IS NOT NULL AND p.employee_id = e.employee_id)
+                     WHERE e.id = $1
+                     LIMIT 1`,
+                    [ticket.employee_id]
+                );
+
+                const notificationMessage = assigned_to
+                    ? `Your ticket was assigned to ${assigneeName || 'a team member'}.`
+                    : 'Your ticket assignment was cleared.';
+
+                if (ownerProfileRes.rows[0]?.profile_id) {
+                    const notificationRes = await pool.query(
+                        `INSERT INTO notifications (user_id, title, message, type)
+                         VALUES ($1, $2, $3, $4)
+                         RETURNING id, user_id, title, message, type, is_read, created_at`,
+                        [
+                            ownerProfileRes.rows[0].profile_id,
+                            'Ticket assignment updated',
+                            notificationMessage,
+                            'helpdesk_assignment',
+                        ]
+                    );
+
+                    req.io.to(ownerProfileRes.rows[0].profile_id).emit('notification_created', notificationRes.rows[0]);
+                    req.io.to(String(ticket.employee_id)).emit('notification_created', notificationRes.rows[0]);
+                } else {
+                    req.io.to(String(ticket.employee_id)).emit('notification_created', {
+                        id: `rt_assign_${Date.now()}`,
+                        title: 'Ticket assignment updated',
+                        message: notificationMessage,
+                        type: 'helpdesk_assignment',
+                        is_read: false,
+                        created_at: new Date().toISOString(),
+                    });
+                }
+            } catch (notifyErr) {
+                console.warn('[Helpdesk] Assignment notification failed:', notifyErr.message);
+            }
         }
 
         res.json({ ...ticket, assigned_to_name: assigneeName });
@@ -432,11 +527,11 @@ const getDashboardStats = async (req, res) => {
 const getTeamMembers = async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT id, full_name, email, department 
-             FROM employees 
-             WHERE role = $1
-             ORDER BY full_name ASC`,
-            ['HR']
+              `SELECT e.id, e.full_name, e.email, e.department
+               FROM employees e
+               LEFT JOIN profiles p ON LOWER(TRIM(p.email)) = LOWER(TRIM(e.email))
+               WHERE LOWER(COALESCE(p.role, e.role, '')) IN ('hr', 'admin')
+               ORDER BY e.full_name ASC`,
         );
         res.json(result.rows);
     } catch (err) {
@@ -506,6 +601,7 @@ const downloadAttachment = async (req, res) => {
 module.exports = {
     createTicket,
     getMyTickets,
+    getAssignedTickets,
     getAllTickets,
     getTicketDetails,
     addComment,

@@ -23,6 +23,14 @@ const ProfilePage = () => {
     const [saving, setSaving] = useState(false);
     const [photoUpdating, setPhotoUpdating] = useState(false);
 
+    const nameValidationRegex = /^[A-Za-z][A-Za-z\s.'-]*$/;
+    const allowedRoles = ['admin', 'hr', 'employee'];
+    const canEditOwnRole = false;
+    const todayDate = new Date().toISOString().split('T')[0];
+    const roleHelperText = role === 'admin'
+        ? 'Admin role cannot be changed.'
+        : "Role changes are restricted. Only admin can change other users' roles.";
+
     useEffect(() => {
         fetchProfile();
     }, []);
@@ -46,7 +54,7 @@ const ProfilePage = () => {
             setUserData(data);
             setName(formatDisplayName(data.name));
             setEmail(data.email || '');
-            setRole(data.role || '');
+            setRole(allowedRoles.includes(String(data.role || '').toLowerCase()) ? String(data.role).toLowerCase() : '');
 
             // Format DATE for input type="date"
             if (data.dob) {
@@ -60,7 +68,7 @@ const ProfilePage = () => {
             if (authProfile) {
                 setName(formatDisplayName(authProfile.full_name || authProfile.name));
                 setEmail(authProfile.email || '');
-                setRole(authProfile.role || '');
+                setRole(allowedRoles.includes(String(authProfile.role || '').toLowerCase()) ? String(authProfile.role).toLowerCase() : '');
             }
         } finally {
             setLoading(false);
@@ -69,18 +77,43 @@ const ProfilePage = () => {
 
     const handleUpdateProfile = async (e) => {
         if (e) e.preventDefault();
+
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            toast.error('Full Name is required.');
+            return;
+        }
+
+        if (!nameValidationRegex.test(trimmedName)) {
+            toast.error('Full Name can contain only alphabets, spaces, apostrophes, dots, and hyphens.');
+            return;
+        }
+
+        if (canEditOwnRole && !allowedRoles.includes(role)) {
+            toast.error('Please select a valid role.');
+            return;
+        }
+
+        if (dob && dob > todayDate) {
+            toast.error('Date of Birth cannot be in the future');
+            return;
+        }
+
         try {
             setSaving(true);
-            await api.put('/user/update-profile', { name, email, role, dob, address });
+            const payload = canEditOwnRole
+                ? { name: trimmedName, email, role, dob, address }
+                : { name: trimmedName, email, dob, address };
+            await api.put('/user/update-profile', payload);
             toast.success('Changes saved!');
 
             // Update local state and auth context
             if (setAuthProfile) {
                 setAuthProfile(prev => ({
                     ...prev,
-                    full_name: name,
+                    full_name: trimmedName,
                     email: email,
-                    role: role
+                    role: canEditOwnRole ? role : prev?.role
                 }));
             }
             fetchProfile();
@@ -248,7 +281,10 @@ const ProfilePage = () => {
                                     className="ref-input"
                                     type="text"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        const sanitized = e.target.value.replace(/[^A-Za-z\s.'-]/g, '');
+                                        setName(sanitized);
+                                    }}
                                     placeholder="Enter your full name"
                                 />
                             </div>
@@ -260,20 +296,31 @@ const ProfilePage = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="Enter your email"
+                                    disabled
                                 />
+                                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>
+                                    Email cannot be changed once the account is created.
+                                </p>
                             </div>
                         </div>
 
                         <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                             <div>
                                 <label className="input-label">Role</label>
-                                <input
+                                <select
                                     className="ref-input"
-                                    type="text"
                                     value={role}
                                     onChange={(e) => setRole(e.target.value)}
-                                    placeholder="Enter your role"
-                                />
+                                    disabled={!canEditOwnRole}
+                                >
+                                    <option value="">Select role</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="hr">HR</option>
+                                    <option value="employee">Employee</option>
+                                </select>
+                                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>
+                                    {roleHelperText}
+                                </p>
                             </div>
                             <div>
                                 <label className="input-label">Date of Birth</label>
@@ -282,6 +329,7 @@ const ProfilePage = () => {
                                     type="date"
                                     value={dob}
                                     onChange={(e) => setDob(e.target.value)}
+                                    max={todayDate}
                                 />
                             </div>
                         </div>

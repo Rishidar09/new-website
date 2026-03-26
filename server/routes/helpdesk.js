@@ -29,6 +29,7 @@ const upload = multer({
 // ─── Employee Routes ────────────────────────────────────────────
 router.post('/', auth, authorize(['employee']), helpdeskController.createTicket);
 router.get('/my/tickets', auth, authorize(['employee']), helpdeskController.getMyTickets);
+router.get('/my/assigned', auth, authorize(['employee']), helpdeskController.getAssignedTickets);
 
 // ─── HR Routes ──────────────────────────────────────────────────
 router.get('/hr/all', auth, authorize(['hr', 'admin']), helpdeskController.getAllTickets);

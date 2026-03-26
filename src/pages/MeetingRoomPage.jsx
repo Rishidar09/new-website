@@ -559,9 +559,18 @@ const MeetingRoomPage = () => {
     const handleAddMember = async (employeeId, employeeName) => {
         try {
             console.log('[Meeting] Adding member:', employeeId, employeeName);
-            await api.post(`/meetings/${id}/add-participant`, { 
+            const response = await api.post(`/meetings/${id}/add-participant`, {
                 employee_id: employeeId 
             });
+
+            setChatMessages(prev => ([
+                ...prev,
+                {
+                    sender: 'System',
+                    content: response?.message || `${employeeName} has been invited to this meeting.`,
+                    time: new Date()
+                }
+            ]));
             
             // Refresh meeting details to update participants
             await fetchMeetingDetails();
@@ -906,7 +915,7 @@ const MeetingRoomPage = () => {
                                     const participantId = getSignalUserId(p);
                                     return participantId !== myId && !peers[participantId];
                                 }).map((p, idx) => (
-                                    <div key={`invited-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', opacity: 0.5 }}>
+                                    <div key={`invited-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', opacity: 0.8 }}>
                                         <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px' }}>
                                             {p.full_name?.charAt(0)}
                                         </div>
@@ -914,6 +923,21 @@ const MeetingRoomPage = () => {
                                             <p style={{ fontSize: '13px', fontWeight: '700' }}>{p.full_name}</p>
                                             <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Not Joined</p>
                                         </div>
+                                        <button
+                                            onClick={() => handleAddMember(getSignalUserId(p), p.full_name)}
+                                            style={{
+                                                padding: '5px 10px',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--input-bg)',
+                                                color: 'var(--text-main)',
+                                                fontSize: '11px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Invite Again
+                                        </button>
                                     </div>
                                 ))}
                             </div>

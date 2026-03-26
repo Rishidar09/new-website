@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import IDCard from '../components/IDCard';
 import { toPng } from 'html-to-image';
+import { downloadIdCardPdf } from '../lib/idCardExport';
 import {
     ArrowLeft,
     User,
@@ -31,6 +32,7 @@ const EmployeeProfilePage = () => {
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
     const [idExporting, setIdExporting] = useState(false);
+    const [idPdfExporting, setIdPdfExporting] = useState(false);
     const idCardRef = useRef(null);
 
     const tabs = ['Personal Info', 'Documents', 'Attendance', 'ID Card', 'NDA'];
@@ -101,6 +103,23 @@ const EmployeeProfilePage = () => {
             console.error('Failed to export ID card:', error);
         } finally {
             setIdExporting(false);
+        }
+    };
+
+    const handleDownloadIdCardPdf = async () => {
+        if (!idCardRef.current || !employee) return;
+
+        try {
+            setIdPdfExporting(true);
+            await downloadIdCardPdf({
+                node: idCardRef.current,
+                fullName: employee.full_name,
+                fallbackName: employee.employee_id || employee.id || 'Employee'
+            });
+        } catch (error) {
+            console.error('Failed to export ID card PDF:', error);
+        } finally {
+            setIdPdfExporting(false);
         }
     };
 
@@ -305,8 +324,8 @@ const EmployeeProfilePage = () => {
                             <button className="btn-secondary" onClick={handleDownloadIdCard} disabled={idExporting} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Download size={16} /> {idExporting ? 'Saving...' : 'Download PNG'}
                             </button>
-                            <button className="btn-secondary" onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FileText size={16} /> Save as PDF
+                            <button className="btn-secondary" onClick={handleDownloadIdCardPdf} disabled={idPdfExporting} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FileText size={16} /> {idPdfExporting ? 'Saving...' : 'Download PDF'}
                             </button>
                         </div>
                     </div>

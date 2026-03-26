@@ -31,7 +31,19 @@ const DrivePage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [contextMenu, setContextMenu] = useState(null); // { x, y, item, isFolder }
     const fileInputRef = useRef(null);
+    const menuRef = useRef(null);
     const [userRole, setUserRole] = useState('');
+
+    useEffect(() => {
+        const handleOutsideClick = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setContextMenu(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user'));
@@ -107,6 +119,33 @@ const DrivePage = () => {
         }
     };
 
+    const handleRenameFolder = async (folder) => {
+        const nextName = prompt('Enter new folder name:', folder?.name || '');
+        if (!nextName || !nextName.trim()) return;
+
+        try {
+            await api.patch(`/drive/folders/${folder.id}`, { name: nextName.trim() });
+            setContextMenu(null);
+            fetchContents();
+        } catch (error) {
+            alert(error.message || 'Failed to rename folder');
+        }
+    };
+
+    const handleDeleteFolder = async (folder) => {
+        const ok = window.confirm(`Delete folder "${folder?.name || 'this folder'}" and all its contents?`);
+        if (!ok) return;
+
+        try {
+            await api.delete(`/drive/folders/${folder.id}`);
+            setContextMenu(null);
+            fetchContents();
+            fetchStorageUsage();
+        } catch (error) {
+            alert(error.message || 'Failed to delete folder');
+        }
+    };
+
     const handleDelete = async (id, isFolder) => {
         if (!window.confirm(`Are you sure you want to delete this ${isFolder ? 'folder' : 'file'}?`)) return;
         try {
@@ -120,6 +159,46 @@ const DrivePage = () => {
             }
         } catch (error) {
             console.error('Delete failed:', error);
+        }
+    };
+
+    const handleDownloadFile = async (file) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Your session has expired. Please sign in again.');
+                return;
+            }
+
+            const res = await fetch(`/api/drive/download/${file.id}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!res.ok) {
+                let message = `Download failed (${res.status})`;
+                try {
+                    const data = await res.json();
+                    if (data?.error) message = data.error;
+                } catch {
+                    // Ignore non-JSON responses and use fallback message.
+                }
+                throw new Error(message);
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name || 'download';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            alert(error.message || 'Failed to download file');
         }
     };
 
@@ -223,10 +302,72 @@ const DrivePage = () => {
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                             <Folder size={28} color="#94A3B8" fill="#F1F5F9" />
-                                            <MoreVertical size={16} color="var(--text-muted)" />
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setContextMenu((prev) => (
+                                                        prev?.isFolder && prev?.item?.id === folder.id
+                                                            ? null
+                                                            : { item: folder, isFolder: true }
+                                                    ));
+                                                }}
+                                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                                                aria-label="Folder options"
+                                            >
+                                                <MoreVertical size={16} color="var(--text-muted)" />
+                                            </button>
                                         </div>
                                         <p style={{ fontSize: '14px', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{folder.name}</p>
                                         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Folder</p>
+
+                                        {contextMenu?.isFolder && contextMenu?.item?.id === folder.id && (
+                                            <div
+                                                ref={menuRef}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '42px',
+                                                    right: '10px',
+                                                    minWidth: '150px',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--card-bg)',
+                                                    boxShadow: '0 10px 24px rgba(0,0,0,0.22)',
+                                                    zIndex: 20,
+                                                    overflow: 'hidden'
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCurrentPath([...currentPath, { id: folder.id, name: folder.name }]);
+                                                        setContextMenu(null);
+                                                    }}
+                                                    style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', color: 'var(--text-main)', textAlign: 'left', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                                                >
+                                                    Open Folder
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleRenameFolder(folder);
+                                                    }}
+                                                    style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', color: 'var(--text-main)', textAlign: 'left', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                                                >
+                                                    Rename Folder
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleDeleteFolder(folder);
+                                                    }}
+                                                    style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'transparent', color: '#EF4444', textAlign: 'left', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                                                >
+                                                    Delete Folder
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
 
@@ -258,14 +399,14 @@ const DrivePage = () => {
                                         <p style={{ fontSize: '14px', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</p>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                                             <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatSize(file.size)}</p>
-                                            <a
-                                                href={`/api/drive/download/${file.id}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDownloadFile(file)}
+                                                style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                                                title="Download"
                                             >
                                                 <Download size={14} />
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}

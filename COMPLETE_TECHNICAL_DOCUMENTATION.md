@@ -154,7 +154,7 @@
 - `employee_id` (UUID) - FK
 - `check_in` (TIMESTAMP)
 - `check_out` (TIMESTAMP)
-- `status` (TEXT) - 'Present' | 'Absent' | 'Late' | 'Half-Day'
+- `status` (TEXT) - 'Present' | 'On Leave' | 'Late' | 'Half-Day'
 - `hours_worked` (NUMERIC)
 - `location` (TEXT)
 - `created_at` (TIMESTAMP)

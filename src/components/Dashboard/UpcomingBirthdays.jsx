@@ -13,8 +13,8 @@ const UpcomingBirthdays = ({ birthdays = [] }) => {
                 {birthdays.length === 0 ? (
                     <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: '14px', padding: '20px' }}>No birthdays this month</p>
                 ) : (
-                    birthdays.map((person) => (
-                        <div key={person.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    birthdays.map((person, index) => (
+                        <div key={person.id || `${person.name || 'employee'}-${person.date || 'unknown'}-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <img
                                     src={person.avatar || '/avatar-placeholder.svg'}

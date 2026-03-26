@@ -12,6 +12,9 @@ const parseResponse = async (res) => {
     try {
         return JSON.parse(raw);
     } catch {
+        if (/<!doctype html>|<html/i.test(raw)) {
+            return { error: 'API route not found on backend. Please restart backend server and try again.' };
+        }
         return { error: raw };
     }
 };

@@ -3,7 +3,7 @@ import {
     Briefcase, Plus, Calendar, User,
     CheckCircle2, Clock, MoreVertical,
     Layout, ListTodo, FileText, ChevronRight,
-    Users, Target, AlertCircle
+    Users, Target, AlertCircle, X
 } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -65,6 +65,36 @@ const HRProjectsPage = () => {
             setNewProject({ name: '', client: '', deadline: '', team: [] });
         } catch (err) {
             alert('Failed to add project');
+        }
+    };
+
+    const handleCloseProject = async () => {
+        if (!selectedProject?.id) return;
+        const ok = window.confirm('Close this project? It will be marked as Completed.');
+        if (!ok) return;
+
+        try {
+            const updated = await api.patch(`/projects/${selectedProject.id}/close`, {});
+            setProjects((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+            setSelectedProject((prev) => (prev ? { ...prev, ...updated } : prev));
+            setProjectDetail((prev) => (prev ? { ...prev, ...updated } : prev));
+        } catch (err) {
+            alert(err?.message || 'Failed to close project');
+        }
+    };
+
+    const handleReopenProject = async () => {
+        if (!selectedProject?.id) return;
+        const ok = window.confirm('Reopen this project? It will be marked as Active.');
+        if (!ok) return;
+
+        try {
+            const updated = await api.patch(`/projects/${selectedProject.id}/reopen`, {});
+            setProjects((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+            setSelectedProject((prev) => (prev ? { ...prev, ...updated } : prev));
+            setProjectDetail((prev) => (prev ? { ...prev, ...updated } : prev));
+        } catch (err) {
+            alert(err?.message || 'Failed to reopen project');
         }
     };
 
@@ -197,11 +227,19 @@ const HRProjectsPage = () => {
                     background: 'var(--card-bg)', borderLeft: '1px solid var(--border)', zIndex: 100,
                     padding: '40px', overflowY: 'auto', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
-                        <button onClick={() => setSelectedProject(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                            <ChevronRight size={24} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                        <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                                setSelectedProject(null);
+                                setProjectDetail(null);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}
+                        >
+                            <X size={16} /> Close Panel
                         </button>
-                        <span style={{ padding: '4px 12px', background: '#F1F5F9', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                        <span style={{ padding: '4px 12px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
                             {selectedProject.name}
                         </span>
                     </div>
@@ -217,12 +255,12 @@ const HRProjectsPage = () => {
                         </h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                             {projectDetail.members.map((m, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '12px' }}>
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px' }}>
                                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>
                                         {m.full_name[0]}
                                     </div>
                                     <div>
-                                        <p style={{ fontSize: '14px', fontWeight: '600' }}>{m.full_name}</p>
+                                        <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)' }}>{m.full_name}</p>
                                         <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.role || 'Member'}</p>
                                     </div>
                                 </div>
@@ -236,11 +274,11 @@ const HRProjectsPage = () => {
                         </h3>
                         <div style={{ display: 'flex', gap: '12px', height: '300px' }}>
                             {['todo', 'in-progress', 'done'].map(status => (
-                                <div key={status} style={{ flex: 1, background: '#F1F5F9', borderRadius: '12px', padding: '12px' }}>
-                                    <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: '#64748B', marginBottom: '12px' }}>{status}</p>
+                                <div key={status} style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+                                    <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>{status}</p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {projectDetail.tasks.filter(t => t.status === status).map((t, i) => (
-                                            <div key={i} style={{ padding: '10px', background: 'var(--input-bg)', color: 'var(--text-main)', borderRadius: '8px', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                            <div key={i} style={{ padding: '10px', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                                                 {t.title}
                                             </div>
                                         ))}
@@ -256,20 +294,62 @@ const HRProjectsPage = () => {
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {projectDetail.reports?.map((r, i) => (
-                                <div key={i} style={{ padding: '16px', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
+                                <div key={i} style={{ padding: '16px', border: '1px solid var(--border)', background: 'var(--input-bg)', borderRadius: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <span style={{ fontWeight: '600', fontSize: '14px' }}>{r.full_name}</span>
+                                        <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)' }}>{r.full_name}</span>
                                         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{new Date(r.created_at).toLocaleDateString()}</span>
                                     </div>
-                                    <p style={{ fontSize: '13px', color: '#444', lineHeight: 1.5 }}>{r.work_done}</p>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.5 }}>{r.work_done}</p>
                                     <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
-                                        <span style={{ fontSize: '11px', padding: '2px 8px', background: '#F1F5F9', borderRadius: '4px', color: '#666' }}>{r.hours}h Worked</span>
+                                        <span style={{ fontSize: '11px', padding: '2px 8px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-muted)' }}>{r.hours}h Worked</span>
                                         {r.blockers && <span style={{ fontSize: '11px', padding: '2px 8px', background: '#FEF2F2', borderRadius: '4px', color: '#EF4444' }}>⚠️ {r.blockers}</span>}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </section>
+
+                    <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <button
+                                type="button"
+                                onClick={handleReopenProject}
+                                disabled={(projectDetail?.status || '').toLowerCase() !== 'completed'}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    fontWeight: '700',
+                                    cursor: (projectDetail?.status || '').toLowerCase() !== 'completed' ? 'not-allowed' : 'pointer',
+                                    background: (projectDetail?.status || '').toLowerCase() === 'completed' ? '#059669' : 'var(--input-bg)',
+                                    color: (projectDetail?.status || '').toLowerCase() === 'completed' ? '#FFFFFF' : 'var(--text-muted)',
+                                    opacity: (projectDetail?.status || '').toLowerCase() === 'completed' ? 1 : 0.8,
+                                }}
+                            >
+                                Reopen Project
+                            </button>
+
+                        <button
+                            type="button"
+                            onClick={handleCloseProject}
+                            disabled={(projectDetail?.status || '').toLowerCase() === 'completed'}
+                            style={{
+                                width: '100%',
+                                padding: '12px',
+                                border: 'none',
+                                borderRadius: '10px',
+                                fontWeight: '700',
+                                cursor: (projectDetail?.status || '').toLowerCase() === 'completed' ? 'not-allowed' : 'pointer',
+                                background: (projectDetail?.status || '').toLowerCase() === 'completed' ? 'var(--input-bg)' : '#DC2626',
+                                color: (projectDetail?.status || '').toLowerCase() === 'completed' ? 'var(--text-muted)' : '#FFFFFF',
+                                opacity: (projectDetail?.status || '').toLowerCase() === 'completed' ? 0.8 : 1,
+                            }}
+                        >
+                            {(projectDetail?.status || '').toLowerCase() === 'completed' ? 'Project Already Closed' : 'Close Project'}
+                        </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -354,7 +434,7 @@ const HRProjectsPage = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <button type="submit" style={{ flex: 1, padding: '12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600' }}>Create Project</button>
-                                <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px', background: '#F1F5F9', border: 'none', borderRadius: '8px', fontWeight: '600' }}>Cancel</button>
+                                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px' }}>Cancel</button>
                             </div>
                         </form>
                     </div>

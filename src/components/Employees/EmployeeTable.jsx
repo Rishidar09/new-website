@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -59,21 +59,25 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
         }
     };
 
-    const handleDelete = async (employee) => {
-        if ((employee.status || '').toLowerCase() === 'inactive') {
-            toast('Employee is already inactive');
-            return;
-        }
+    const handleToggleStatus = async (employee) => {
+        const isInactive = (employee.status || '').toLowerCase() === 'inactive';
+        const confirmed = isInactive
+            ? window.confirm(`Reactivate ${employee.full_name}? Their account access will be restored.`)
+            : window.confirm(`Mark ${employee.full_name} as inactive? They will no longer be active in the system.`);
 
-        const confirmed = window.confirm(`Mark ${employee.full_name} as inactive? They will no longer be active in the system.`);
         if (!confirmed) return;
 
         try {
-            await api.delete(`/employees/${employee.id}`);
-            toast.success('Employee marked inactive successfully');
+            if (isInactive) {
+                await api.patch(`/employees/${employee.id}/reactivate`);
+                toast.success('Employee reactivated successfully');
+            } else {
+                await api.delete(`/employees/${employee.id}`);
+                toast.success('Employee marked inactive successfully');
+            }
             fetchEmployees();
         } catch (error) {
-            toast.error(error.message || 'Failed to delete employee');
+            toast.error(error.message || 'Failed to update employee status');
         }
     };
 
@@ -269,18 +273,31 @@ const EmployeeTable = ({ onAddClick, onEditClick, onDataLoaded }) => {
                                             <Edit2 size={18} />
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(emp)}
-                                            disabled={(emp.status || '').toLowerCase() === 'inactive'}
+                                            onClick={() => handleToggleStatus(emp)}
                                             style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: (emp.status || '').toLowerCase() === 'inactive' ? 'not-allowed' : 'pointer',
-                                                color: (emp.status || '').toLowerCase() === 'inactive' ? '#9CA3AF' : '#DC2626',
-                                                padding: '4px'
+                                                width: '44px',
+                                                height: '24px',
+                                                borderRadius: '999px',
+                                                border: '1px solid var(--border)',
+                                                background: (emp.status || '').toLowerCase() === 'inactive' ? '#CBD5E1' : '#16A34A',
+                                                padding: '2px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: (emp.status || '').toLowerCase() === 'inactive' ? 'flex-start' : 'flex-end'
                                             }}
-                                            title={(emp.status || '').toLowerCase() === 'inactive' ? 'Already inactive' : 'Mark inactive'}
+                                            title={(emp.status || '').toLowerCase() === 'inactive' ? 'Reactivate employee' : 'Mark employee inactive'}
+                                            aria-label={(emp.status || '').toLowerCase() === 'inactive' ? 'Reactivate employee' : 'Mark employee inactive'}
                                         >
-                                            <Trash2 size={18} />
+                                            <span
+                                                style={{
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    borderRadius: '999px',
+                                                    background: '#FFFFFF',
+                                                    display: 'inline-block'
+                                                }}
+                                            />
                                         </button>
                                     </div>
                                 </td>

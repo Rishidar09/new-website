@@ -71,7 +71,7 @@ const ResetPasswordPage = () => {
             <div style={{ width: '100%', maxWidth: '440px', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '40px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <img src="/logo.png" alt="Company Logo" style={{ height: '56px', width: 'auto', objectFit: 'contain' }} />
+                        <img src="/logo.png" alt="Company Logo" style={{ height: '56px', width: 'auto', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
                         <div className="brand-lockup" style={{ textAlign: 'left' }}>
                             <span className="brand-name-animated" style={{ fontSize: '26px', fontWeight: '800' }}>IndusInnovate</span>
                             <span className="brand-name-animated-subline" style={{ fontSize: '13px', fontWeight: '500' }}>Technologies Pvt. Ltd.</span>
@@ -87,7 +87,10 @@ const ResetPasswordPage = () => {
                     <div style={{ textAlign: 'center', color: 'var(--status-rejected-text)', background: 'var(--status-rejected-bg)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
                         <AlertCircle size={24} style={{ margin: '0 auto 8px' }} />
                         <p>{error}</p>
-                        <Link to="/login" style={{ color: 'var(--primary)', fontSize: '14px', marginTop: '12px', display: 'block', fontWeight: '600' }}>Back to Login</Link>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                            <Link to="/login" style={{ color: 'var(--primary)', fontSize: '14px', fontWeight: '600' }}>Back to Login</Link>
+                            <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '14px', fontWeight: '600' }}>Request New Reset Link</Link>
+                        </div>
                     </div>
                 )}
 
@@ -125,7 +128,10 @@ const ResetPasswordPage = () => {
 
                         {error && (
                             <div style={{ fontSize: '13px', color: 'var(--status-rejected-text)', background: 'var(--status-rejected-bg)', padding: '10px', borderRadius: '6px', textAlign: 'center' }}>
-                                {error}
+                                <p style={{ margin: '0 0 8px 0' }}>{error}</p>
+                                {error.includes('expired') && (
+                                    <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: '600', display: 'block' }}>Request a new reset link</Link>
+                                )}
                             </div>
                         )}
 

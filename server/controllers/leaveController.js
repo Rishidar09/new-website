@@ -70,6 +70,21 @@ const updateLeaveStatus = async (req, res) => {
     const { status, remarks } = req.body;
     console.log('[Leaves PATCH] User:', req.user.email, '| Leave ID:', req.params.id, '| Status:', status);
     try {
+        // Fetch current leave status first
+        const leaveRes = await pool.query('SELECT status, reviewed_at FROM leaves WHERE id = $1', [req.params.id]);
+        if (leaveRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Leave request not found' });
+        }
+        const currentStatus = leaveRes.rows[0].status;
+        if (currentStatus === status) {
+            // Already set, do not update or send email again
+            return res.status(200).json({
+                ...leaveRes.rows[0],
+                duplicate: true,
+                message: 'Leave status already set.'
+            });
+        }
+
         const reviewer = await pool.query('SELECT id FROM employees WHERE email = $1', [req.user.email]);
         const reviewerUUID = reviewer.rows[0]?.id || null;
         console.log('[Leaves PATCH] Reviewer UUID:', reviewerUUID);
@@ -78,10 +93,6 @@ const updateLeaveStatus = async (req, res) => {
             'UPDATE leaves SET status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3 RETURNING *',
             [status, reviewerUUID, req.params.id]
         );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Leave request not found' });
-        }
 
         const updatedLeave = result.rows[0];
         console.log('[Leaves PATCH] Leave updated successfully:', updatedLeave.id);
@@ -110,7 +121,11 @@ const updateLeaveStatus = async (req, res) => {
             console.warn('[Email] Leave notification failed (non-critical):', emailErr.message);
         }
 
-        res.json(updatedLeave);
+        // Return reviewed_at as ISO string for consistent frontend display
+        res.json({
+            ...updatedLeave,
+            reviewed_at: updatedLeave.reviewed_at ? new Date(updatedLeave.reviewed_at).toISOString() : null
+        });
     } catch (err) {
         console.error('[Leaves PATCH] FULL ERROR:', err);
         res.status(500).json({ error: 'Server error: ' + err.message });

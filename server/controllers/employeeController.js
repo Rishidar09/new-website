@@ -1,14 +1,46 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const dns = require('dns').promises;
 const { createOnboardingCaseFromTemplate } = require('../services/onboardingService');
-const { sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeEmail, sendAccountStatusEmail } = require('../services/emailService');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
+const isStrictEmailReachabilityEnabled = String(process.env.STRICT_EMAIL_REACHABILITY || '').toLowerCase() === 'true';
+
 let employeeColumnsEnsured = false;
+let profileStatusConstraintEnsured = false;
+
+const isEmailDomainReachable = async (email) => {
+    const domain = String(email || '').split('@')[1]?.trim().toLowerCase();
+    if (!domain) return false;
+
+    try {
+        const mx = await dns.resolveMx(domain);
+        if (Array.isArray(mx) && mx.length > 0) return true;
+    } catch (_) {
+        // Fallback to A/AAAA lookup when MX is not explicitly published.
+    }
+
+    try {
+        const ipv4 = await dns.resolve4(domain);
+        if (Array.isArray(ipv4) && ipv4.length > 0) return true;
+    } catch (_) {
+        // Continue to IPv6 check.
+    }
+
+    try {
+        const ipv6 = await dns.resolve6(domain);
+        return Array.isArray(ipv6) && ipv6.length > 0;
+    } catch (_) {
+        // In locked-down server networks DNS may be unavailable.
+        // Reachability is treated as a soft signal unless strict mode is enabled.
+        return !isStrictEmailReachabilityEnabled;
+    }
+};
 
 const ensureEmployeeColumns = async () => {
     if (employeeColumnsEnsured) return;
@@ -64,17 +96,48 @@ const ensureEmployeeColumns = async () => {
     employeeColumnsEnsured = true;
 };
 
+const ensureProfileStatusConstraint = async () => {
+    if (profileStatusConstraintEnsured) return;
+
+    await pool.query(`
+        ALTER TABLE profiles
+        ALTER COLUMN status SET DEFAULT 'active';
+
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.table_constraints
+                WHERE table_name = 'profiles'
+                  AND constraint_name = 'profiles_status_check'
+            ) THEN
+                ALTER TABLE profiles DROP CONSTRAINT profiles_status_check;
+            END IF;
+
+            ALTER TABLE profiles
+              ADD CONSTRAINT profiles_status_check
+              CHECK (status IN ('active', 'inactive', 'pending_activation'));
+        EXCEPTION
+            WHEN duplicate_object THEN
+                NULL;
+        END $$;
+    `);
+
+    profileStatusConstraintEnsured = true;
+};
+
 // ─── Get all employees ───────────────────────────────────────────
 const getEmployees = async (req, res) => {
     try {
         await ensureEmployeeColumns();
         const rawManagerId = req.query.manager_id || null;
+        const scope = String(req.query.scope || '').toLowerCase();
         let managerIdFilter = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawManagerId || '')
             ? rawManagerId
             : null;
 
-        // Backend-only visibility rule: HR users can only fetch employees who report to them.
-        if (req.user?.role === 'hr') {
+        // For HR, default to full list. Team-only filtering is opt-in via scope=team.
+        if (req.user?.role === 'hr' && scope === 'team') {
             managerIdFilter = req.user?.employee_uuid || null;
         }
 
@@ -263,10 +326,112 @@ const createEmployee = async (req, res) => {
     } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : null;
     const client = await pool.connect();
+    const jobRoleRegex = /^[A-Za-z][A-Za-z\s.&'/-]*$/;
+    const aadhaarRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+    const bankAccountRegex = /^\d{9,18}$/;
+    const phoneRegex = /^(\d{10}|\+91\d{10})$/;
+    const emergencyContactRegex = /^\d{10}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     try {
         await ensureEmployeeColumns();
+        await ensureProfileStatusConstraint();
         await client.query('BEGIN');
+
+        const normalizedFullName = String(full_name || '').trim();
+        if (!normalizedFullName) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Please enter full name' });
+        }
+
+        const normalizedJobRole = String(role || '').trim();
+        if (!normalizedJobRole || !jobRoleRegex.test(normalizedJobRole)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Role must contain only alphabets and valid separators (no numbers).' });
+        }
+
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Please provide a valid work email address.' });
+        }
+
+        const existingEmailCheck = await client.query(
+            `SELECT email FROM profiles WHERE email = $1 UNION SELECT email FROM employees WHERE email = $1`,
+            [normalizedEmail]
+        );
+        if (existingEmailCheck.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Email already exists in the system' });
+        }
+
+        const isWorkEmailReachable = await isEmailDomainReachable(normalizedEmail);
+        if (isStrictEmailReachabilityEnabled && !isWorkEmailReachable) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Please provide a valid, reachable work email address.' });
+        }
+
+        const normalizedEmployeeCode = String(employee_id || '').trim();
+
+        const normalizedPersonalEmail = String(personal_email || '').trim().toLowerCase();
+        if (normalizedPersonalEmail && !emailRegex.test(normalizedPersonalEmail)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Please provide a valid personal email address.' });
+        }
+
+        const normalizedPhone = String(phone || '').replace(/[\s-]/g, '').trim();
+        if (!normalizedPhone || !phoneRegex.test(normalizedPhone)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Phone Number must be 10 digits or +91 followed by 10 digits.' });
+        }
+
+        const normalizedDesignation = String(designation || '').trim();
+        if (normalizedDesignation && !jobRoleRegex.test(normalizedDesignation)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Designation must contain only alphabets and valid separators (no numbers).' });
+        }
+
+
+        const normalizedAadhaar = String(aadhaar_card || adhar_card || '').replace(/\s+/g, '').trim();
+        if (normalizedAadhaar && !aadhaarRegex.test(normalizedAadhaar)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Aadhaar Number must be exactly 12 digits.' });
+        }
+
+        const normalizedPan = String(pan || pan_card || '').replace(/\s+/g, '').toUpperCase().trim();
+        if (normalizedPan && !panRegex.test(normalizedPan)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'PAN Number must be in format ABCDE1234F.' });
+        }
+
+        // Duplicate PAN/Aadhaar check
+        if (normalizedPan) {
+            const panCheck = await client.query('SELECT id FROM employees WHERE pan = $1', [normalizedPan]);
+            if (panCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'PAN already exists for another employee' });
+            }
+        }
+        if (normalizedAadhaar) {
+            const aadhaarCheck = await client.query('SELECT id FROM employees WHERE aadhaar_card = $1', [normalizedAadhaar]);
+            if (aadhaarCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Aadhaar already exists for another employee' });
+            }
+        }
+
+        const normalizedBankAccount = String(bank_account || '').replace(/\s+/g, '').trim();
+        if (normalizedBankAccount && !bankAccountRegex.test(normalizedBankAccount)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Bank Account Number must be 9 to 18 digits.' });
+        }
+
+        const normalizedEmergencyContact = String(emergency_contact || '').replace(/\s+/g, '').trim();
+        if (normalizedEmergencyContact && !emergencyContactRegex.test(normalizedEmergencyContact)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Emergency Contact Number must be exactly 10 digits.' });
+        }
 
         const incomingSalary = Number(salary);
         if (!Number.isFinite(incomingSalary) || incomingSalary <= 0) {
@@ -312,13 +477,16 @@ const createEmployee = async (req, res) => {
             departmentNameValue = dep.rows[0].name;
         }
 
-        const existingEmailCheck = await client.query(
-            `SELECT email FROM profiles WHERE email = $1 UNION SELECT email FROM employees WHERE email = $1`,
-            [email]
-        );
-        if (existingEmailCheck.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'Email already exists in the system' });
+        if (normalizedEmployeeCode) {
+            const existingEmployeeCodeCheck = await client.query(
+                'SELECT id FROM employees WHERE employee_id = $1 LIMIT 1',
+                [normalizedEmployeeCode]
+            );
+
+            if (existingEmployeeCodeCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Employee Code already exists' });
+            }
         }
 
         const newEmployee = await client.query(
@@ -327,13 +495,13 @@ const createEmployee = async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
              RETURNING *`,
             [
-                full_name, email, role, departmentNameValue, departmentIdValue, effectiveManagerId,
-                phone, joining_date, normalizedSalary, avatar_url,
-                employee_id || null, designation || role || null, location || null,
-                pan || pan_card || null, bank_account || null, bank_name || null,
-                personal_email || null, emergency_contact || null, technology || null,
+                normalizedFullName, normalizedEmail, normalizedJobRole, departmentNameValue, departmentIdValue, effectiveManagerId,
+                normalizedPhone, joining_date, normalizedSalary, avatar_url,
+                normalizedEmployeeCode || null, normalizedDesignation || normalizedJobRole || null, location || null,
+                normalizedPan || null, normalizedBankAccount || null, bank_name || null,
+                normalizedPersonalEmail || null, normalizedEmergencyContact || null, technology || null,
                 normalizedExperienceYears,
-                aadhaar_card || adhar_card || null
+                normalizedAadhaar || null
             ]
         );
 
@@ -343,7 +511,7 @@ const createEmployee = async (req, res) => {
 
         const profileResult = await client.query(
             'INSERT INTO profiles (email, password_hash, role, employee_id, is_first_login, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email',
-            [email, hash, profileRole, newEmployee.rows[0].id, true, 'active']
+            [normalizedEmail, hash, profileRole, newEmployee.rows[0].id, true, 'pending_activation']
         );
         const profile = profileResult.rows[0];
 
@@ -365,31 +533,74 @@ const createEmployee = async (req, res) => {
             });
         }
 
-        await client.query('COMMIT');
-
-        let credentialEmailSent = true;
         try {
             const resetBase = process.env.CLIENT_URL || 'http://localhost:5173';
             const resetLink = `${resetBase.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
-            await sendWelcomeEmail({
-                to: email,
-                name: full_name,
-                email,
+            const mailInfo = await sendWelcomeEmail({
+                to: normalizedEmail,
+                name: normalizedFullName,
+                email: normalizedEmail,
                 password: tempPassword,
-                role: profileRole === 'hr' ? 'HR' : (role || designation || 'Employee'),
+                role: profileRole === 'hr' ? 'HR' : (normalizedJobRole || normalizedDesignation || 'Employee'),
                 resetLink
             });
+
+            const acceptedRecipients = Array.isArray(mailInfo?.accepted)
+                ? mailInfo.accepted.map((item) => String(item).trim().toLowerCase())
+                : [];
+            const rejectedRecipients = Array.isArray(mailInfo?.rejected)
+                ? mailInfo.rejected.map((item) => String(item).trim().toLowerCase())
+                : [];
+            const wasAccepted = acceptedRecipients.includes(normalizedEmail);
+            const wasRejected = rejectedRecipients.includes(normalizedEmail);
+
+            if (!wasAccepted || wasRejected) {
+                throw new Error('WELCOME_EMAIL_NOT_ACCEPTED_BY_SMTP');
+            }
         } catch (emailErr) {
-            credentialEmailSent = false;
+            await client.query('ROLLBACK');
             console.warn('[Email] Welcome credentials email failed:', emailErr.message);
+
+            if (String(emailErr?.message || '').includes('WELCOME_EMAIL_NOT_ACCEPTED_BY_SMTP')) {
+                return res.status(400).json({
+                    error: 'Work email address was not accepted by the mail server. Employee was not created.'
+                });
+            }
+
+            const rejectedRecipient = Array.isArray(emailErr?.rejected)
+                && emailErr.rejected.some((item) => String(item).toLowerCase() === normalizedEmail);
+            const responseCode = Number(emailErr?.responseCode);
+            const hasHardBounce = Number.isFinite(responseCode) && responseCode >= 500;
+            const hasRecipientHint = /recipient|mailbox|user unknown|invalid|not exist|undeliverable/i.test(String(emailErr?.message || ''));
+
+            if (rejectedRecipient || hasHardBounce || hasRecipientHint) {
+                return res.status(400).json({
+                    error: 'Work email address could not be verified. Please enter a valid email address.'
+                });
+            }
+
+            return res.status(503).json({
+                error: 'Unable to verify email delivery right now. Please try again later.'
+            });
         }
+
+        await client.query('COMMIT');
 
         res.json({
             ...newEmployee.rows[0],
-            credential_email_sent: credentialEmailSent
+            credential_email_sent: true
         });
     } catch (err) {
         await client.query('ROLLBACK');
+        if (
+            err?.code === '23505' &&
+            (
+                String(err?.constraint || '').toLowerCase().includes('employee_id') ||
+                String(err?.detail || '').toLowerCase().includes('employee_id')
+            )
+        ) {
+            return res.status(400).json({ error: 'Employee Code already exists' });
+        }
         console.error(err.message);
         res.status(500).json({ error: 'Server error', details: err.message });
     } finally {
@@ -404,21 +615,133 @@ const updateEmployee = async (req, res) => {
         employee_id, designation, location, pan, bank_account, bank_name,
         personal_email, emergency_contact, technology, experience_years,
         aadhaar_card, adhar_card, pan_card,
-        department_id, manager_id, reporting_manager_id
+        department_id, manager_id, reporting_manager_id, account_role
     } = req.body;
     const avatar_url = req.file ? `/uploads/avatars/${req.file.filename}` : undefined;
+    const jobRoleRegex = /^[A-Za-z][A-Za-z\s.&'/-]*$/;
+    const aadhaarRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}\d{4}[A-Z]$/;
+    const bankAccountRegex = /^\d{9,18}$/;
+    const phoneRegex = /^(\d{10}|\+91\d{10})$/;
+    const emergencyContactRegex = /^\d{10}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     try {
         await ensureEmployeeColumns();
+
+        const normalizedFullName = String(full_name || '').trim();
+        if (!normalizedFullName) {
+            return res.status(400).json({ error: 'Please enter full name' });
+        }
 
         const incomingSalary = Number(salary);
         if (!Number.isFinite(incomingSalary) || incomingSalary <= 0) {
             return res.status(400).json({ error: 'Valid annual salary is required' });
         }
         const normalizedSalary = incomingSalary;
+        const normalizedJobRole = String(role || '').trim();
+        if (!normalizedJobRole || !jobRoleRegex.test(normalizedJobRole)) {
+            return res.status(400).json({ error: 'Role must contain only alphabets and valid separators (no numbers).' });
+        }
+
+        const normalizedDesignation = String(designation || '').trim();
+        if (normalizedDesignation && !jobRoleRegex.test(normalizedDesignation)) {
+            return res.status(400).json({ error: 'Designation must contain only alphabets and valid separators (no numbers).' });
+        }
+
+        const normalizedAadhaar = String(aadhaar_card || adhar_card || '').replace(/\s+/g, '').trim();
+        if (normalizedAadhaar && !aadhaarRegex.test(normalizedAadhaar)) {
+            return res.status(400).json({ error: 'Aadhaar Number must be exactly 12 digits.' });
+        }
+
+        const normalizedPan = String(pan || pan_card || '').replace(/\s+/g, '').toUpperCase().trim();
+        if (normalizedPan && !panRegex.test(normalizedPan)) {
+            return res.status(400).json({ error: 'PAN Number must be in format ABCDE1234F.' });
+        }
+
+        const normalizedBankAccount = String(bank_account || '').replace(/\s+/g, '').trim();
+        if (normalizedBankAccount && !bankAccountRegex.test(normalizedBankAccount)) {
+            return res.status(400).json({ error: 'Bank Account Number must be 9 to 18 digits.' });
+        }
+
+        const normalizedEmergencyContact = String(emergency_contact || '').replace(/\s+/g, '').trim();
+        if (normalizedEmergencyContact && !emergencyContactRegex.test(normalizedEmergencyContact)) {
+            return res.status(400).json({ error: 'Emergency Contact Number must be exactly 10 digits.' });
+        }
+
         const parsedExperience = Number(experience_years);
         const normalizedExperienceYears = Number.isFinite(parsedExperience) ? parsedExperience : null;
+        const normalizedEmployeeCode = String(employee_id || '').trim();
         const nextManagerId = manager_id || reporting_manager_id || null;
+        const normalizedAccountRole = typeof account_role === 'string' ? account_role.trim().toLowerCase() : '';
+        const allowedAccountRoles = new Set(['admin', 'hr', 'employee']);
+
+        const existingEmployeeResult = await pool.query('SELECT id, email FROM employees WHERE id = $1', [req.params.id]);
+        if (existingEmployeeResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Employee not found' });
+        }
+        const currentEmployeeEmail = existingEmployeeResult.rows[0].email;
+        const requestedEmail = String(email || '').trim().toLowerCase();
+        const normalizedCurrentEmployeeEmail = String(currentEmployeeEmail || '').trim().toLowerCase();
+
+        if (requestedEmail && !emailRegex.test(requestedEmail)) {
+            return res.status(400).json({ error: 'Please provide a valid work email address.' });
+        }
+
+        const normalizedPersonalEmail = String(personal_email || '').trim().toLowerCase();
+        if (normalizedPersonalEmail && !emailRegex.test(normalizedPersonalEmail)) {
+            return res.status(400).json({ error: 'Please provide a valid personal email address.' });
+        }
+
+        const normalizedPhone = String(phone || '').replace(/[\s-]/g, '').trim();
+        if (!normalizedPhone || !phoneRegex.test(normalizedPhone)) {
+            return res.status(400).json({ error: 'Phone Number must be 10 digits or +91 followed by 10 digits.' });
+        }
+
+        if (requestedEmail && requestedEmail !== normalizedCurrentEmployeeEmail) {
+            return res.status(400).json({ error: 'Email cannot be changed once the account is created.' });
+        }
+
+        if (normalizedEmployeeCode) {
+            const duplicateEmployeeCodeCheck = await pool.query(
+                'SELECT id FROM employees WHERE employee_id = $1 AND id <> $2 LIMIT 1',
+                [normalizedEmployeeCode, req.params.id]
+            );
+
+            if (duplicateEmployeeCodeCheck.rows.length > 0) {
+                return res.status(400).json({ error: 'Employee Code already exists' });
+            }
+        }
+
+        let targetProfileId = null;
+        if (normalizedAccountRole) {
+            if (!allowedAccountRoles.has(normalizedAccountRole)) {
+                return res.status(400).json({ error: 'Invalid account role selected' });
+            }
+
+            if (req.user?.role !== 'admin') {
+                return res.status(403).json({ error: 'Only admin can change account roles' });
+            }
+
+            const linkedProfile = await pool.query(
+                `SELECT id
+                 FROM profiles
+                 WHERE employee_id = $1
+                    OR email = $2
+                    OR email = $3
+                 LIMIT 1`,
+                [req.params.id, currentEmployeeEmail, email || currentEmployeeEmail]
+            );
+
+            if (linkedProfile.rows.length === 0) {
+                return res.status(404).json({ error: 'Linked login profile not found for this employee' });
+            }
+
+            targetProfileId = linkedProfile.rows[0].id;
+            if (String(targetProfileId) === String(req.user.id)) {
+                return res.status(403).json({ error: 'Admin cannot change their own role' });
+            }
+        }
 
         if (nextManagerId && nextManagerId === req.params.id) {
             return res.status(400).json({ error: 'Employee cannot report to self' });
@@ -452,13 +775,13 @@ const updateEmployee = async (req, res) => {
                 experience_years = $19, aadhaar_card = $20,
                 updated_at = NOW()`;
         let params = [
-            full_name, email, role, departmentNameValue, departmentIdValue, nextManagerId,
-            phone, joining_date, normalizedSalary,
-            employee_id || null, designation || role || null, location || null,
-            pan || pan_card || null, bank_account || null, bank_name || null,
-            personal_email || null, emergency_contact || null, technology || null,
+            normalizedFullName, currentEmployeeEmail, normalizedJobRole, departmentNameValue, departmentIdValue, nextManagerId,
+            normalizedPhone, joining_date, normalizedSalary,
+            normalizedEmployeeCode || null, normalizedDesignation || normalizedJobRole || null, location || null,
+            normalizedPan || null, normalizedBankAccount || null, bank_name || null,
+            normalizedPersonalEmail || null, normalizedEmergencyContact || null, technology || null,
             normalizedExperienceYears,
-            aadhaar_card || adhar_card || null
+            normalizedAadhaar || null
         ];
 
         if (avatar_url !== undefined) {
@@ -471,8 +794,25 @@ const updateEmployee = async (req, res) => {
 
         const result = await pool.query(query + ' RETURNING *', params);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Employee not found' });
+
+        if (normalizedAccountRole && targetProfileId) {
+            await pool.query(
+                'UPDATE profiles SET role = $1, updated_at = NOW() WHERE id = $2',
+                [normalizedAccountRole, targetProfileId]
+            );
+        }
+
         res.json(result.rows[0]);
     } catch (err) {
+        if (
+            err?.code === '23505' &&
+            (
+                String(err?.constraint || '').toLowerCase().includes('employee_id') ||
+                String(err?.detail || '').toLowerCase().includes('employee_id')
+            )
+        ) {
+            return res.status(400).json({ error: 'Employee Code already exists' });
+        }
         console.error(err.message);
         res.status(500).json({ error: 'Server error' });
     }
@@ -486,7 +826,7 @@ const deleteEmployee = async (req, res) => {
 
         await client.query('BEGIN');
 
-        const employeeResult = await client.query('SELECT id, email FROM employees WHERE id = $1', [id]);
+        const employeeResult = await client.query('SELECT id, email, full_name FROM employees WHERE id = $1', [id]);
         if (employeeResult.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Employee not found' });
@@ -512,12 +852,66 @@ const deleteEmployee = async (req, res) => {
             [id]
         );
 
+        await sendAccountStatusEmail({
+            to: employee.email,
+            name: employee.full_name || employee.email,
+            status: 'inactive'
+        });
+
         await client.query('COMMIT');
         return res.json({ message: 'Employee marked inactive successfully' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(err.message);
-        return res.status(500).json({ error: 'Server error' });
+        return res.status(500).json({ error: 'Failed to update employee status. Notification email could not be delivered.' });
+    } finally {
+        client.release();
+    }
+};
+
+// ─── Reactivate employee (HR/Admin) ───────────────────────────
+const reactivateEmployee = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+
+        await client.query('BEGIN');
+
+        const employeeResult = await client.query('SELECT id, email, full_name, status FROM employees WHERE id = $1', [id]);
+        if (employeeResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Employee not found' });
+        }
+
+        const employee = employeeResult.rows[0];
+        const currentStatus = String(employee.status || '').toLowerCase();
+        if (currentStatus === 'active') {
+            await client.query('ROLLBACK');
+            return res.json({ message: 'Employee is already active' });
+        }
+
+        await client.query(
+            "UPDATE profiles SET status = 'active', updated_at = NOW() WHERE employee_id = $1 OR email = $2",
+            [employee.id, employee.email]
+        );
+
+        await client.query(
+            "UPDATE employees SET status = 'Active', updated_at = NOW() WHERE id = $1",
+            [id]
+        );
+
+        await sendAccountStatusEmail({
+            to: employee.email,
+            name: employee.full_name || employee.email,
+            status: 'active'
+        });
+
+        await client.query('COMMIT');
+        return res.json({ message: 'Employee reactivated successfully' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err.message);
+        return res.status(500).json({ error: 'Failed to update employee status. Notification email could not be delivered.' });
     } finally {
         client.release();
     }
@@ -530,5 +924,6 @@ module.exports = {
     getEmployeeById,
     createEmployee,
     updateEmployee,
-    deleteEmployee
+    deleteEmployee,
+    reactivateEmployee
 };

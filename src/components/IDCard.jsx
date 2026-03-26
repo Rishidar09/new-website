@@ -91,7 +91,15 @@ const IDCard = ({ employee, idRef }) => {
 
             {/* Details */}
             <div style={{ textAlign: 'center', marginBottom: '24px', zIndex: 1, width: '100%' }}>
-                <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>{employee.full_name}</h2>
+                <h2 style={{
+                    fontSize: '22px',
+                    fontWeight: '700',
+                    marginBottom: '4px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    width: '100%'
+                }}>{employee.full_name}</h2>
                 <p style={{ fontSize: '14px', opacity: 0.9, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
                     {employee.role}
                 </p>

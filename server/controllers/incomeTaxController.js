@@ -19,6 +19,17 @@ const getCurrentFinancialYear = () => {
     return `${startYear}-${startYear + 1}`;
 };
 
+const getFinancialYearWindow = (years = 6) => {
+    const current = getCurrentFinancialYear();
+    const currentStart = Number(current.split('-')[0]);
+    const options = [];
+    for (let i = 0; i < years; i += 1) {
+        const start = currentStart - i;
+        options.push(`${start}-${start + 1}`);
+    }
+    return options;
+};
+
 const normalizeFinancialYear = (value) => {
     if (!value) return getCurrentFinancialYear();
     const text = String(value).trim();
@@ -27,7 +38,14 @@ const normalizeFinancialYear = (value) => {
     const start = Number(match[1]);
     const end = Number(match[2]);
     if (end !== start + 1) throw new Error('financial_year must be in YYYY-YYYY format');
-    return `${start}-${end}`;
+
+    const allowed = getFinancialYearWindow(6);
+    const normalized = `${start}-${end}`;
+    if (!allowed.includes(normalized)) {
+        throw new Error('financial_year must be current year or one of last 5 years');
+    }
+
+    return normalized;
 };
 
 const getFinancialYearFromPayrollMonth = (monthRaw, yearRaw) => {
@@ -81,13 +99,39 @@ const ensureIncomeTaxSchema = async () => {
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
             financial_year TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'reviewed')),
             submitted_at TIMESTAMP WITH TIME ZONE,
             reviewed_at TIMESTAMP WITH TIME ZONE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            UNIQUE (employee_id, financial_year)
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+
+        ALTER TABLE income_tax_declarations
+            ADD COLUMN IF NOT EXISTS version INTEGER;
+
+        UPDATE income_tax_declarations
+        SET version = 1
+        WHERE version IS NULL;
+
+        ALTER TABLE income_tax_declarations
+            ALTER COLUMN version SET DEFAULT 1;
+
+        ALTER TABLE income_tax_declarations
+            ALTER COLUMN version SET NOT NULL;
+
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'income_tax_declarations_employee_id_financial_year_key'
+                  AND conrelid = 'income_tax_declarations'::regclass
+            ) THEN
+                ALTER TABLE income_tax_declarations
+                    DROP CONSTRAINT income_tax_declarations_employee_id_financial_year_key;
+            END IF;
+        END $$;
 
         CREATE TABLE IF NOT EXISTS income_tax_declaration_items (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,6 +158,9 @@ const ensureIncomeTaxSchema = async () => {
 
         CREATE INDEX IF NOT EXISTS idx_income_tax_decl_employee_year
             ON income_tax_declarations(employee_id, financial_year);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_income_tax_decl_employee_year_version
+            ON income_tax_declarations(employee_id, financial_year, version);
 
         CREATE INDEX IF NOT EXISTS idx_income_tax_decl_status
             ON income_tax_declarations(status);
@@ -144,6 +191,7 @@ const getOrCreateDeclaration = async (client, employeeId, financialYear) => {
         `SELECT *
          FROM income_tax_declarations
          WHERE employee_id = $1 AND financial_year = $2
+         ORDER BY version DESC, created_at DESC
          LIMIT 1`,
         [employeeId, financialYear]
     );
@@ -151,10 +199,42 @@ const getOrCreateDeclaration = async (client, employeeId, financialYear) => {
     if (existing.rows[0]) return existing.rows[0];
 
     const created = await client.query(
-        `INSERT INTO income_tax_declarations (employee_id, financial_year, status, updated_at)
-         VALUES ($1, $2, 'draft', NOW())
+        `INSERT INTO income_tax_declarations (employee_id, financial_year, version, status, updated_at)
+         VALUES ($1, $2, 1, 'draft', NOW())
          RETURNING *`,
         [employeeId, financialYear]
+    );
+
+    return created.rows[0];
+};
+
+const getDeclarationByIdForEmployee = async (client, employeeId, declarationId) => {
+    const result = await client.query(
+        `SELECT *
+         FROM income_tax_declarations
+         WHERE id = $1
+           AND employee_id = $2
+         LIMIT 1`,
+        [declarationId, employeeId]
+    );
+
+    return result.rows[0] || null;
+};
+
+const createDeclarationVersion = async (client, employeeId, financialYear) => {
+    const nextVersionRes = await client.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+         FROM income_tax_declarations
+         WHERE employee_id = $1 AND financial_year = $2`,
+        [employeeId, financialYear]
+    );
+
+    const nextVersion = Number(nextVersionRes.rows[0]?.next_version || 1);
+    const created = await client.query(
+        `INSERT INTO income_tax_declarations (employee_id, financial_year, version, status, updated_at)
+         VALUES ($1, $2, $3, 'draft', NOW())
+         RETURNING *`,
+        [employeeId, financialYear, nextVersion]
     );
 
     return created.rows[0];
@@ -210,12 +290,95 @@ const getMyDeclaration = async (req, res) => {
         if (!employeeId) return res.status(404).json({ error: 'Employee not found' });
 
         const financialYear = normalizeFinancialYear(req.query.financial_year);
-        const declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        const declarationId = req.query.declaration_id ? String(req.query.declaration_id) : null;
+
+        let declaration;
+        if (declarationId) {
+            declaration = await getDeclarationByIdForEmployee(client, employeeId, declarationId);
+            if (!declaration) return res.status(404).json({ error: 'Declaration not found' });
+            if (declaration.financial_year !== financialYear) {
+                return res.status(400).json({ error: 'Declaration does not belong to requested financial year' });
+            }
+        } else {
+            declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        }
+
         const details = await getDeclarationWithItems(client, declaration.id);
 
         res.json(details);
     } catch (err) {
         console.error('getMyDeclaration error:', err.message);
+        if (err.message && err.message.includes('financial_year')) {
+            return res.status(400).json({ error: err.message });
+        }
+        res.status(500).json({ error: 'Server error' });
+    } finally {
+        client.release();
+    }
+};
+
+const getMyDeclarationsList = async (req, res) => {
+    try {
+        await ensureIncomeTaxSchema();
+
+        const employeeId = await getActorEmployeeId(req);
+        if (!employeeId) return res.status(404).json({ error: 'Employee not found' });
+
+        const financialYear = normalizeFinancialYear(req.query.financial_year);
+
+        const result = await pool.query(
+            `SELECT d.id,
+                    d.financial_year,
+                    d.version,
+                    d.status,
+                    d.submitted_at,
+                    d.reviewed_at,
+                    d.updated_at,
+                    COUNT(i.id)::int AS total_items
+             FROM income_tax_declarations d
+             LEFT JOIN income_tax_declaration_items i ON i.declaration_id = d.id
+             WHERE d.employee_id = $1
+               AND d.financial_year = $2
+             GROUP BY d.id
+             ORDER BY d.version DESC`,
+            [employeeId, financialYear]
+        );
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('getMyDeclarationsList error:', err.message);
+        if (err.message && err.message.includes('financial_year')) {
+            return res.status(400).json({ error: err.message });
+        }
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+const createMyDeclarationVersion = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        await ensureIncomeTaxSchema();
+
+        const employeeId = await getActorEmployeeId(req, client);
+        if (!employeeId) return res.status(404).json({ error: 'Employee not found' });
+
+        const financialYear = normalizeFinancialYear(req.body.financial_year || req.query.financial_year);
+
+        await client.query('BEGIN');
+        const declaration = await createDeclarationVersion(client, employeeId, financialYear);
+        await client.query('COMMIT');
+
+        const details = await getDeclarationWithItems(pool, declaration.id);
+        res.status(201).json(details);
+    } catch (err) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackErr) {
+            console.error('createMyDeclarationVersion rollback error:', rollbackErr.message);
+        }
+
+        console.error('createMyDeclarationVersion error:', err.message);
         if (err.message && err.message.includes('financial_year')) {
             return res.status(400).json({ error: err.message });
         }
@@ -235,11 +398,25 @@ const saveMyDeclaration = async (req, res) => {
         if (!employeeId) return res.status(404).json({ error: 'Employee not found' });
 
         const financialYear = normalizeFinancialYear(req.body.financial_year || req.query.financial_year);
+        const declarationId = req.body.declaration_id || req.query.declaration_id;
         const items = Array.isArray(req.body.items) ? req.body.items : [];
 
         await client.query('BEGIN');
 
-        const declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        let declaration;
+        if (declarationId) {
+            declaration = await getDeclarationByIdForEmployee(client, employeeId, declarationId);
+            if (!declaration) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Declaration not found' });
+            }
+            if (declaration.financial_year !== financialYear) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Declaration does not belong to requested financial year' });
+            }
+        } else {
+            declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        }
 
         if (declaration.status === 'reviewed') {
             await client.query('ROLLBACK');
@@ -291,6 +468,7 @@ const saveMyDeclaration = async (req, res) => {
         await client.query(
             `UPDATE income_tax_declarations
              SET status = 'draft',
+                 submitted_at = NULL,
                  reviewed_at = NULL,
                  updated_at = NOW()
              WHERE id = $1`,
@@ -328,10 +506,24 @@ const submitMyDeclaration = async (req, res) => {
         if (!employeeId) return res.status(404).json({ error: 'Employee not found' });
 
         const financialYear = normalizeFinancialYear(req.body.financial_year || req.query.financial_year);
+        const declarationId = req.body.declaration_id || req.query.declaration_id;
 
         await client.query('BEGIN');
 
-        const declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        let declaration;
+        if (declarationId) {
+            declaration = await getDeclarationByIdForEmployee(client, employeeId, declarationId);
+            if (!declaration) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Declaration not found' });
+            }
+            if (declaration.financial_year !== financialYear) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Declaration does not belong to requested financial year' });
+            }
+        } else {
+            declaration = await getOrCreateDeclaration(client, employeeId, financialYear);
+        }
 
         const itemCountRes = await client.query(
             'SELECT COUNT(*)::int AS count FROM income_tax_declaration_items WHERE declaration_id = $1',
@@ -435,6 +627,7 @@ const getDeclarationsForHR = async (req, res) => {
             `SELECT d.id,
                     d.employee_id,
                     d.financial_year,
+                    d.version,
                     d.status,
                     d.submitted_at,
                     d.reviewed_at,
@@ -450,7 +643,7 @@ const getDeclarationsForHR = async (req, res) => {
              LEFT JOIN income_tax_declaration_items i ON i.declaration_id = d.id
              ${where}
              GROUP BY d.id, e.full_name, e.department
-             ORDER BY d.updated_at DESC`,
+             ORDER BY d.updated_at DESC, d.version DESC`,
             params
         );
 
@@ -673,6 +866,8 @@ module.exports = {
     getFinancialYearFromPayrollMonth,
     getApprovedDeclarationAmount,
     getMyDeclaration,
+    getMyDeclarationsList,
+    createMyDeclarationVersion,
     saveMyDeclaration,
     submitMyDeclaration,
     uploadProof,

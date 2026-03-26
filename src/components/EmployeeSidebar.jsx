@@ -16,7 +16,8 @@ import {
     HandCoins,
     UserX,
     LifeBuoy,
-    LogOut
+    LogOut,
+    Video
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -69,6 +70,7 @@ const EmployeeSidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         { icon: <HardDrive size={20} />, label: 'Drive', path: '/employee/drive' },
         { icon: <CreditCard size={20} />, label: 'My ID Card', path: '/employee/id-card' },
         { icon: <BarChart3 size={20} />, label: 'Performance', path: '/employee/performance' },
+        { icon: <Video size={20} />, label: 'Meetings', path: '/employee/meetings' },
         { icon: <ClipboardList size={20} />, label: 'Onboarding', path: '/employee/onboarding' },
     ];
 
